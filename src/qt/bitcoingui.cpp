@@ -399,7 +399,12 @@ void BitcoinGUI::setWalletModel(WalletModel *walletModel)
 
         BOOST_FOREACH(CWallet *wallet, setpwalletRegistered)
         {
-            QAction *action = new QAction(std::string(1, wallet->Unit()).c_str(), this);
+            QString unitString(wallet->Unit());
+            QAction *action = new QAction(unitString, this);
+            action->setCheckable(true);
+            if (unitString == QString(walletModel->getWallet()->Unit()))
+                action->setChecked(true);
+
             changeUnitActions.append(action);
 
             connect(action, SIGNAL(triggered()), mapper, SLOT(map()));
