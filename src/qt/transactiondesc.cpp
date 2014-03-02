@@ -86,7 +86,7 @@ QString TransactionDesc::toHTML(CWallet *wallet, CWalletTx &wtx)
                     if (wallet->IsMine(txout))
                     {
                         CBitcoinAddress address;
-                        if (ExtractAddress(txout.scriptPubKey, address) && wallet->HaveKey(address))
+                        if (wallet->ExtractAddress(txout.scriptPubKey, address) && wallet->HaveKey(address))
                         {
                             if (wallet->mapAddressBook.count(address))
                             {
@@ -171,7 +171,7 @@ QString TransactionDesc::toHTML(CWallet *wallet, CWalletTx &wtx)
                     {
                         // Offline transaction
                         CBitcoinAddress address;
-                        if (ExtractAddress(txout.scriptPubKey, address))
+                        if (wallet->ExtractAddress(txout.scriptPubKey, address))
                         {
                             strHTML += tr("<b>To:</b> ");
                             if (wallet->mapAddressBook.count(address) && !wallet->mapAddressBook[address].empty())
@@ -263,7 +263,7 @@ QString TransactionDesc::toHTML(CWallet *wallet, CWalletTx &wtx)
                             strHTML += "<li>";
                             const CTxOut &vout = prev.vout[prevout.n];
                             CBitcoinAddress address;
-                            if (ExtractAddress(vout.scriptPubKey, address))
+                            if (wallet->ExtractAddress(vout.scriptPubKey, address))
                             {
                                 if (wallet->mapAddressBook.count(address) && !wallet->mapAddressBook[address].empty())
                                     strHTML += GUIUtil::HtmlEscape(wallet->mapAddressBook[address]) + " ";

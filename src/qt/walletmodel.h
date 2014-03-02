@@ -5,6 +5,9 @@
 
 #include "allocators.h" /* for SecureString */
 
+#include "base58.h"
+#include "wallet.h"
+
 class OptionsModel;
 class AddressTableModel;
 class TransactionTableModel;
@@ -104,6 +107,11 @@ public:
     UnlockContext requestUnlock();
 
     void ExportPeercoinKeys(int &nExportedCount, int &nErrorCount);
+
+    CWallet* getWallet() const
+    {
+        return wallet;
+    }
 
 private:
     CWallet *wallet;

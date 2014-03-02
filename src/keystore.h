@@ -69,6 +69,11 @@ public:
         return CBitcoinAddress(input, cUnit);
     }
 
+    CBitcoinAddress GetAddress(std::string input) const
+    {
+        return CBitcoinAddress(input);
+    }
+
     bool IsAddressValid(const CBitcoinAddress& address) const
     {
         return address.IsValid(cUnit);
