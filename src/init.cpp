@@ -624,7 +624,10 @@ bool AppInit2(int argc, char* argv[])
         ThreadSafeMessageBox(_("Error: CreateThread(StartNode) failed"), _("PPCoin"), wxOK | wxMODAL);
 
     if (fServer)
-        CreateThread(ThreadRPCServer, *setpwalletRegistered.begin());
+    {
+        BOOST_FOREACH(CWallet *wallet, setpwalletRegistered)
+            CreateThread(ThreadRPCServer, wallet);
+    }
 
 #ifdef QT_GUI
     if (GetStartOnSystemStartup())
