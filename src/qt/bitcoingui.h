@@ -91,6 +91,9 @@ private:
     QAction *aboutQtAction;
     QAction *openRPCConsoleAction;
     QAction *distributeDividendsAction;
+    QVector<QAction*> changeUnitActions;
+
+    QMenu *unitMenu;
 
     QSystemTrayIcon *trayIcon;
     Notificator *notificator;
@@ -178,6 +181,9 @@ private slots:
     void showNormalIfMinimized();
     /** Hide window if visible, show if hidden */
     void toggleHidden();
+
+    /** Switch to another unit */
+    void changeUnit(const QString &unit);
 };
 
 #endif
