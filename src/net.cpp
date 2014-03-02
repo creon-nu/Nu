@@ -1662,10 +1662,10 @@ void StartNode(void* parg)
         printf("Error; CreateThread(ThreadDumpAddress) failed\n");
 
     // Generate coins in the background
-    GenerateBitcoins(GetBoolArg("-gen", false), pwalletMain);
+    GenerateBitcoins(GetBoolArg("-gen", false), GetWallet('S'));
 
     // ppcoin: mint proof-of-stake blocks in the background
-    if (!CreateThread(ThreadStakeMinter, pwalletMain))
+    if (!CreateThread(ThreadStakeMinter, GetWallet('S')))
         printf("Error: CreateThread(ThreadStakeMinter) failed\n");
 }
 

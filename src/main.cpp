@@ -10,6 +10,7 @@
 #include "init.h"
 #include "ui_interface.h"
 #include "kernel.h"
+#include "wallet.h"
 #include <boost/algorithm/string/replace.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>
@@ -77,6 +78,13 @@ int64 nTransactionFee = MIN_TX_FEE;
 
 // These functions dispatch to one or all registered wallets
 
+CWallet *GetWallet(unsigned char cUnit)
+{
+    BOOST_FOREACH(CWallet* pwallet, setpwalletRegistered)
+        if (pwallet->Unit() == cUnit)
+            return pwallet;
+    return NULL;
+}
 
 void RegisterWallet(CWallet* pwalletIn)
 {
@@ -91,6 +99,20 @@ void UnregisterWallet(CWallet* pwalletIn)
     {
         LOCK(cs_setpwalletRegistered);
         setpwalletRegistered.erase(pwalletIn);
+    }
+}
+
+void UnregisterAndDeleteAllWallets()
+{
+    {
+        LOCK(cs_setpwalletRegistered);
+        set<CWallet*>::iterator it;
+        for (it = setpwalletRegistered.begin(); it != setpwalletRegistered.end(); )
+        {
+            CWallet* pWallet = *it;
+            setpwalletRegistered.erase(it++);
+            delete pWallet;
+        }
     }
 }
 
@@ -3612,6 +3634,7 @@ CBlock* CreateNewBlock(CReserveKey& reservekey, CWallet* pwallet, bool fProofOfS
     txNew.vin[0].prevout.SetNull();
     txNew.vout.resize(1);
     txNew.vout[0].scriptPubKey << reservekey.GetReservedKey() << OP_CHECKSIG;
+    txNew.cUnit = pwallet->Unit();
 
     // Add our coinbase tx as first transaction
     pblock->vtx.push_back(txNew);
@@ -3957,7 +3980,7 @@ void BitcoinMiner(CWallet *pwallet, bool fProofOfStake)
             // ppcoin: if proof-of-stake block found then process block
             if (pblock->IsProofOfStake())
             {
-                if (!pblock->SignBlock(*pwalletMain))
+                if (!pblock->SignBlock(*pwallet))
                 {
                     strMintWarning = strMintMessage;
                     continue;
@@ -3965,7 +3988,7 @@ void BitcoinMiner(CWallet *pwallet, bool fProofOfStake)
                 strMintWarning = "";
                 printf("CPUMiner : proof-of-stake block found %s\n", pblock->GetHash().ToString().c_str()); 
                 SetThreadPriority(THREAD_PRIORITY_NORMAL);
-                CheckWork(pblock.get(), *pwalletMain, reservekey);
+                CheckWork(pblock.get(), *pwallet, reservekey);
                 SetThreadPriority(THREAD_PRIORITY_LOWEST);
             }
             Sleep(500);
@@ -4015,14 +4038,14 @@ void BitcoinMiner(CWallet *pwallet, bool fProofOfStake)
                     // Found a solution
                     pblock->nNonce = ByteReverse(nNonceFound);
                     assert(hash == pblock->GetHash());
-                    if (!pblock->SignBlock(*pwalletMain))
+                    if (!pblock->SignBlock(*pwallet))
                     {
                         strMintWarning = strMintMessage;
                         break;
                     }
                     strMintWarning = "";
                     SetThreadPriority(THREAD_PRIORITY_NORMAL);
-                    CheckWork(pblock.get(), *pwalletMain, reservekey);
+                    CheckWork(pblock.get(), *pwallet, reservekey);
                     SetThreadPriority(THREAD_PRIORITY_LOWEST);
                     break;
                 }

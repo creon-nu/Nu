@@ -8,6 +8,7 @@
 #include "crypter.h"
 #include "util.h"
 #include "base58.h"
+#include "script.h"
 
 class CScript;
 
@@ -17,6 +18,8 @@ class CKeyStore
 protected:
     mutable CCriticalSection cs_KeyStore;
 
+    unsigned char cUnit;
+
 public:
     virtual ~CKeyStore() {}
 
@@ -25,7 +28,9 @@ public:
 
     // Check whether a key corresponding to a given address is present in the store.
     virtual bool HaveKey(const CBitcoinAddress &address) const =0;
+    bool HaveKey(const uint160 &hash) const { return HaveKey(GetAddress(hash)); }
     virtual bool GetKey(const CBitcoinAddress &address, CKey& keyOut) const =0;
+    virtual bool GetKey(const uint160& hash, CKey& keyOut) const { return GetKey(GetAddress(hash), keyOut); }
     virtual void GetKeys(std::set<CBitcoinAddress> &setAddress) const =0;
     virtual bool GetPubKey(const CBitcoinAddress &address, std::vector<unsigned char>& vchPubKeyOut) const;
 
@@ -42,6 +47,48 @@ public:
         vchSecret = key.GetSecret(fCompressed);
         return true;
     }
+
+    // Unit related methods/helpers
+    void SetUnit(unsigned char cUnit)
+    {
+        this->cUnit = cUnit;
+    }
+
+    unsigned char Unit() const
+    {
+        return cUnit;
+    }
+
+    CBitcoinAddress GetAddress(uint160 input) const
+    {
+        return CBitcoinAddress(input, cUnit);
+    }
+
+    CBitcoinAddress GetAddress(std::vector<unsigned char> input) const
+    {
+        return CBitcoinAddress(input, cUnit);
+    }
+
+    bool IsAddressValid(const CBitcoinAddress& address) const
+    {
+        return address.IsValid(cUnit);
+    }
+
+    bool IsAddressScript(const CBitcoinAddress& address) const
+    {
+        return address.IsScript(cUnit);
+    }
+
+    bool ExtractAddress(const CScript& scriptPubKey, CBitcoinAddress& addressRet) const
+    {
+        return ::ExtractAddress(scriptPubKey, addressRet, cUnit);
+    }
+
+    bool ExtractAddresses(const CScript& scriptPubKey, txnouttype& typeRet, std::vector<CBitcoinAddress>& addressRet, int& nRequiredRet) const
+    {
+        return ExtractAddresses(scriptPubKey, typeRet, addressRet, nRequiredRet);
+    }
+
 };
 
 typedef std::map<CBitcoinAddress, std::pair<CSecret, bool> > KeyMap;
@@ -168,6 +215,7 @@ public:
         }
         return false;
     }
+    bool HaveKey(const uint160 &hash) const { return HaveKey(GetAddress(hash)); }
     bool GetKey(const CBitcoinAddress &address, CKey& keyOut) const;
     bool GetPubKey(const CBitcoinAddress &address, std::vector<unsigned char>& vchPubKeyOut) const;
     void GetKeys(std::set<CBitcoinAddress> &setAddress) const

@@ -161,7 +161,7 @@ BOOST_AUTO_TEST_CASE(DoS_mapOrphans)
         tx.vin[0].scriptSig << OP_1;
         tx.vout.resize(1);
         tx.vout[0].nValue = 1*CENT;
-        tx.vout[0].scriptPubKey.SetBitcoinAddress(key.GetPubKey());
+        tx.vout[0].scriptPubKey.SetBitcoinAddress(key.GetPubKey(), 'S');
         tx.cUnit = 'S';
 
         CDataStream ds(SER_DISK, CLIENT_VERSION);
@@ -180,7 +180,7 @@ BOOST_AUTO_TEST_CASE(DoS_mapOrphans)
         tx.vin[0].prevout.hash = txPrev.GetHash();
         tx.vout.resize(1);
         tx.vout[0].nValue = 1*CENT;
-        tx.vout[0].scriptPubKey.SetBitcoinAddress(key.GetPubKey());
+        tx.vout[0].scriptPubKey.SetBitcoinAddress(key.GetPubKey(), 'S');
         tx.cUnit = 'S';
         SignSignature(keystore, txPrev, tx, 0);
 
@@ -197,7 +197,7 @@ BOOST_AUTO_TEST_CASE(DoS_mapOrphans)
         CTransaction tx;
         tx.vout.resize(1);
         tx.vout[0].nValue = 1*CENT;
-        tx.vout[0].scriptPubKey.SetBitcoinAddress(key.GetPubKey());
+        tx.vout[0].scriptPubKey.SetBitcoinAddress(key.GetPubKey(), 'S');
         tx.vin.resize(500);
         for (int j = 0; j < tx.vin.size(); j++)
         {
@@ -247,7 +247,7 @@ BOOST_AUTO_TEST_CASE(DoS_checkSig)
         tx.vin[0].scriptSig << OP_1;
         tx.vout.resize(1);
         tx.vout[0].nValue = 1*CENT;
-        tx.vout[0].scriptPubKey.SetBitcoinAddress(key.GetPubKey());
+        tx.vout[0].scriptPubKey.SetBitcoinAddress(key.GetPubKey(), 'S');
         tx.cUnit = 'S';
 
         CDataStream ds(SER_DISK, CLIENT_VERSION);
@@ -259,7 +259,7 @@ BOOST_AUTO_TEST_CASE(DoS_checkSig)
     CTransaction tx;
     tx.vout.resize(1);
     tx.vout[0].nValue = 1*CENT;
-    tx.vout[0].scriptPubKey.SetBitcoinAddress(key.GetPubKey());
+    tx.vout[0].scriptPubKey.SetBitcoinAddress(key.GetPubKey(), 'S');
     tx.cUnit = 'S';
     tx.vin.resize(NPREV);
     for (int j = 0; j < tx.vin.size(); j++)

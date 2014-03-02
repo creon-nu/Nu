@@ -1333,8 +1333,7 @@ bool SignN(const vector<valtype>& multisigdata, const CKeyStore& keystore, uint2
     for (vector<valtype>::const_iterator it = multisigdata.begin()+1; it != multisigdata.begin()+multisigdata.size()-1; it++)
     {
         const valtype& pubkey = *it;
-        CBitcoinAddress address;
-        address.SetPubKey(pubkey);
+        CBitcoinAddress address = keystore.GetAddress(pubkey);
         if (Sign1(address, keystore, hash, nHashType, scriptSigRet))
         {
             ++nSigned;
@@ -1365,10 +1364,10 @@ bool Solver(const CKeyStore& keystore, const CScript& scriptPubKey, uint256 hash
     case TX_NONSTANDARD:
         return false;
     case TX_PUBKEY:
-        address.SetPubKey(vSolutions[0]);
+        address = keystore.GetAddress(vSolutions[0]);
         return Sign1(address, keystore, hash, nHashType, scriptSigRet);
     case TX_PUBKEYHASH:
-        address.SetHash160(uint160(vSolutions[0]));
+        address = keystore.GetAddress(uint160(vSolutions[0]));
         if (!Sign1(address, keystore, hash, nHashType, scriptSigRet))
             return false;
         else
@@ -1435,8 +1434,7 @@ unsigned int HaveKeys(const vector<valtype>& pubkeys, const CKeyStore& keystore)
     unsigned int nResult = 0;
     BOOST_FOREACH(const valtype& pubkey, pubkeys)
     {
-        CBitcoinAddress address;
-        address.SetPubKey(pubkey);
+        CBitcoinAddress address = keystore.GetAddress(pubkey);
         if (keystore.HaveKey(address))
             ++nResult;
     }
@@ -1456,10 +1454,10 @@ bool IsMine(const CKeyStore &keystore, const CScript& scriptPubKey)
     case TX_NONSTANDARD:
         return false;
     case TX_PUBKEY:
-        address.SetPubKey(vSolutions[0]);
+        address = keystore.GetAddress(vSolutions[0]);
         return keystore.HaveKey(address);
     case TX_PUBKEYHASH:
-        address.SetHash160(uint160(vSolutions[0]));
+        address = keystore.GetAddress(uint160(vSolutions[0]));
         return keystore.HaveKey(address);
     case TX_SCRIPTHASH:
     {
@@ -1482,7 +1480,7 @@ bool IsMine(const CKeyStore &keystore, const CScript& scriptPubKey)
     return false;
 }
 
-bool ExtractAddress(const CScript& scriptPubKey, CBitcoinAddress& addressRet)
+bool ExtractAddress(const CScript& scriptPubKey, CBitcoinAddress& addressRet, unsigned char cUnit)
 {
     vector<valtype> vSolutions;
     txnouttype whichType;
@@ -1491,24 +1489,24 @@ bool ExtractAddress(const CScript& scriptPubKey, CBitcoinAddress& addressRet)
 
     if (whichType == TX_PUBKEY)
     {
-        addressRet.SetPubKey(vSolutions[0]);
+        addressRet.SetPubKey(vSolutions[0], cUnit);
         return true;
     }
     else if (whichType == TX_PUBKEYHASH)
     {
-        addressRet.SetHash160(uint160(vSolutions[0]));
+        addressRet.SetHash160(uint160(vSolutions[0]), cUnit);
         return true;
     }
     else if (whichType == TX_SCRIPTHASH)
     {
-        addressRet.SetScriptHash160(uint160(vSolutions[0]));
+        addressRet.SetScriptHash160(uint160(vSolutions[0]), cUnit);
         return true;
     }
     // Multisig txns have more than one address...
     return false;
 }
 
-bool ExtractAddresses(const CScript& scriptPubKey, txnouttype& typeRet, vector<CBitcoinAddress>& addressRet, int& nRequiredRet)
+bool ExtractAddresses(const CScript& scriptPubKey, txnouttype& typeRet, vector<CBitcoinAddress>& addressRet, int& nRequiredRet, unsigned char cUnit)
 {
     addressRet.clear();
     typeRet = TX_NONSTANDARD;
@@ -1522,7 +1520,7 @@ bool ExtractAddresses(const CScript& scriptPubKey, txnouttype& typeRet, vector<C
         for (unsigned int i = 1; i < vSolutions.size()-1; i++)
         {
             CBitcoinAddress address;
-            address.SetPubKey(vSolutions[i]);
+            address.SetPubKey(vSolutions[i], cUnit);
             addressRet.push_back(address);
         }
     }
@@ -1531,11 +1529,11 @@ bool ExtractAddresses(const CScript& scriptPubKey, txnouttype& typeRet, vector<C
         nRequiredRet = 1;
         CBitcoinAddress address;
         if (typeRet == TX_PUBKEYHASH)
-            address.SetHash160(uint160(vSolutions.front()));
+            address.SetHash160(uint160(vSolutions.front()), cUnit);
         else if (typeRet == TX_SCRIPTHASH)
-            address.SetScriptHash160(uint160(vSolutions.front()));
+            address.SetScriptHash160(uint160(vSolutions.front()), cUnit);
         else if (typeRet == TX_PUBKEY)
-            address.SetPubKey(vSolutions.front());
+            address.SetPubKey(vSolutions.front(), cUnit);
         addressRet.push_back(address);
     }
 
@@ -1694,10 +1692,10 @@ bool CScript::IsPayToScriptHash() const
             this->at(22) == OP_EQUAL);
 }
 
-void CScript::SetBitcoinAddress(const CBitcoinAddress& address)
+void CScript::SetBitcoinAddress(const CBitcoinAddress& address, unsigned char cUnit)
 {
     this->clear();
-    if (address.IsScript())
+    if (address.IsScript(cUnit))
         *this << OP_HASH160 << address.GetHash160() << OP_EQUAL;
     else
         *this << OP_DUP << OP_HASH160 << address.GetHash160() << OP_EQUALVERIFY << OP_CHECKSIG;

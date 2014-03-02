@@ -366,7 +366,7 @@ bool CWallet::AddToWallet(const CWalletTx& wtxIn)
 #ifndef QT_GUI
         // If default receiving address gets used, replace it with a new one
         CScript scriptDefaultKey;
-        scriptDefaultKey.SetBitcoinAddress(vchDefaultKey);
+        scriptDefaultKey.SetBitcoinAddress(vchDefaultKey, cUnit);
         BOOST_FOREACH(const CTxOut& txout, wtx.vout)
         {
             if (txout.scriptPubKey == scriptDefaultKey)
@@ -375,7 +375,7 @@ bool CWallet::AddToWallet(const CWalletTx& wtxIn)
                 if (GetKeyFromPool(newDefaultKey, false))
                 {
                     SetDefaultKey(newDefaultKey);
-                    SetAddressBookName(CBitcoinAddress(vchDefaultKey), "");
+                    SetAddressBookName(GetAddress(vchDefaultKey), "");
                 }
             }
         }
@@ -555,7 +555,7 @@ void CWalletTx::GetAmounts(int64& nGeneratedImmature, int64& nGeneratedMature, l
     {
         CBitcoinAddress address;
         vector<unsigned char> vchPubKey;
-        if (!ExtractAddress(txout.scriptPubKey, address))
+        if (!pwallet->ExtractAddress(txout.scriptPubKey, address))
         {
             printf("CWalletTx::GetAmounts: Unknown transaction type found, txid %s\n",
                    this->GetHash().ToString().c_str());
@@ -1101,6 +1101,7 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, int64> >& vecSend, CW
                 wtxNew.vin.clear();
                 wtxNew.vout.clear();
                 wtxNew.fFromMe = true;
+                wtxNew.cUnit = cUnit;
 
                 int64 nTotalValue = nValue + nFeeRet;
                 double dPriority = 0;
@@ -1157,7 +1158,7 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, int64> >& vecSend, CW
                         // Fill a vout to ourself
                         // TODO: pass in scriptChange instead of reservekey so
                         // change transaction isn't always pay-to-bitcoin-address
-                        scriptChange.SetBitcoinAddress(vchPubKey);
+                        scriptChange.SetBitcoinAddress(vchPubKey, cUnit);
                     }
 
                     // Insert change txn at random position:
@@ -1504,7 +1505,7 @@ string CWallet::SendMoneyToBitcoinAddress(const CBitcoinAddress& address, int64 
 
     // Parse bitcoin address
     CScript scriptPubKey;
-    scriptPubKey.SetBitcoinAddress(address);
+    scriptPubKey.SetBitcoinAddress(address, cUnit);
 
     return SendMoney(scriptPubKey, nValue, wtxNew, fAskFee);
 }
@@ -1881,7 +1882,7 @@ void CWallet::GetAllReserveAddresses(set<CBitcoinAddress>& setAddress)
         CKeyPool keypool;
         if (!walletdb.ReadPool(id, keypool))
             throw runtime_error("GetAllReserveKeyHashes() : read failed");
-        CBitcoinAddress address(keypool.vchPubKey);
+        CBitcoinAddress address = GetAddress(keypool.vchPubKey);
         assert(!keypool.vchPubKey.empty());
         if (!HaveKey(address))
             throw runtime_error("GetAllReserveKeyHashes() : unknown key in key pool");

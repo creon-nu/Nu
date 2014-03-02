@@ -8,6 +8,7 @@
 #include "ui_interface.h"
 
 #include <boost/lexical_cast.hpp>
+#include <boost/thread.hpp>
 
 #include "json/json_spirit_reader_template.h"
 #include "json/json_spirit_writer_template.h"
@@ -18,6 +19,9 @@
 // using namespace boost::asio;
 using namespace json_spirit;
 using namespace std;
+
+extern boost::thread_specific_ptr<CWallet*> threadWallet;
+#define pwalletMain (*threadWallet.get())
 
 extern Object JSONRPCError(int code, const string& message);
 
@@ -63,7 +67,7 @@ Value importprivkey(const Array& params, bool fHelp)
     bool fCompressed;
     CSecret secret = vchSecret.GetSecret(fCompressed);
     key.SetSecret(secret, fCompressed);
-    CBitcoinAddress vchAddress = CBitcoinAddress(key.GetPubKey());
+    CBitcoinAddress vchAddress = pwalletMain->GetAddress(key.GetPubKey());
 
     {
         LOCK2(cs_main, pwalletMain->cs_wallet);
@@ -93,7 +97,7 @@ Value dumpprivkey(const Array& params, bool fHelp)
     string strAddress = params[0].get_str();
     CBitcoinAddress address;
     if (!address.SetString(strAddress))
-        throw JSONRPCError(-5, "Invalid ppcoin address");
+        throw JSONRPCError(-5, "Invalid address");
     if (pwalletMain->IsLocked())
         throw JSONRPCError(-13, "Error: Please enter the wallet passphrase with walletpassphrase first.");
     if (fWalletUnlockMintOnly) // ppcoin: no dumpprivkey in mint-only mode

@@ -518,10 +518,10 @@ public:
     }
 
 
-    void SetBitcoinAddress(const CBitcoinAddress& address);
-    void SetBitcoinAddress(const std::vector<unsigned char>& vchPubKey)
+    void SetBitcoinAddress(const CBitcoinAddress& address, unsigned char cUnit);
+    void SetBitcoinAddress(const std::vector<unsigned char>& vchPubKey, unsigned char cUnit)
     {
-        SetBitcoinAddress(CBitcoinAddress(vchPubKey));
+        SetBitcoinAddress(CBitcoinAddress(vchPubKey, cUnit), cUnit);
     }
     void SetMultisig(int nRequired, const std::vector<CKey>& keys);
     void SetPayToScriptHash(const CScript& subscript);
@@ -570,8 +570,8 @@ bool Solver(const CScript& scriptPubKey, txnouttype& typeRet, std::vector<std::v
 int ScriptSigArgsExpected(txnouttype t, const std::vector<std::vector<unsigned char> >& vSolutions);
 bool IsStandard(const CScript& scriptPubKey);
 bool IsMine(const CKeyStore& keystore, const CScript& scriptPubKey);
-bool ExtractAddress(const CScript& scriptPubKey, CBitcoinAddress& addressRet);
-bool ExtractAddresses(const CScript& scriptPubKey, txnouttype& typeRet, std::vector<CBitcoinAddress>& addressRet, int& nRequiredRet);
+bool ExtractAddress(const CScript& scriptPubKey, CBitcoinAddress& addressRet, unsigned char cUnit);
+bool ExtractAddresses(const CScript& scriptPubKey, txnouttype& typeRet, std::vector<CBitcoinAddress>& addressRet, int& nRequiredRet, unsigned char cUnit);
 bool SignSignature(const CKeyStore& keystore, const CTransaction& txFrom, CTransaction& txTo, unsigned int nIn, int nHashType=SIGHASH_ALL);
 bool VerifySignature(const CTransaction& txFrom, const CTransaction& txTo, unsigned int nIn, bool fValidatePayToScriptHash, int nHashType);
 

@@ -20,6 +20,8 @@ SetupDummyInputs(CBasicKeyStore& keystoreRet, MapPrevTx& inputsRet)
     std::vector<CTransaction> dummyTransactions;
     dummyTransactions.resize(2);
 
+    keystoreRet.SetUnit('S');
+
     // Add some keys to the keystore:
     CKey key[4];
     for (int i = 0; i < 4; i++)
@@ -40,9 +42,9 @@ SetupDummyInputs(CBasicKeyStore& keystoreRet, MapPrevTx& inputsRet)
     dummyTransactions[1].cUnit = 'S';
     dummyTransactions[1].vout.resize(2);
     dummyTransactions[1].vout[0].nValue = 21*CENT;
-    dummyTransactions[1].vout[0].scriptPubKey.SetBitcoinAddress(key[2].GetPubKey());
+    dummyTransactions[1].vout[0].scriptPubKey.SetBitcoinAddress(key[2].GetPubKey(), 'S');
     dummyTransactions[1].vout[1].nValue = 22*CENT;
-    dummyTransactions[1].vout[1].scriptPubKey.SetBitcoinAddress(key[3].GetPubKey());
+    dummyTransactions[1].vout[1].scriptPubKey.SetBitcoinAddress(key[3].GetPubKey(), 'S');
     inputsRet[dummyTransactions[1].GetHash()] = make_pair(CTxIndex(), dummyTransactions[1]);
 
     return dummyTransactions;
@@ -112,6 +114,15 @@ BOOST_AUTO_TEST_CASE(test_changing_unit_invalidates_signature)
 
     t1.cUnit = 'U';
     BOOST_CHECK(!VerifySignature(dummyTransactions[0], t1, 0, true, 0));
+}
+
+BOOST_AUTO_TEST_CASE(address_use_unit)
+{
+    // Invalid unit
+    BOOST_CHECK_THROW(CBitcoinAddress(1, '?'), runtime_error);
+
+    BOOST_CHECK_EQUAL(CBitcoinAddress(uint160(0), 'B').ToString(), "B4T5ciTCkWauSqVAcVKy88ofjcSasUkSYU");
+    BOOST_CHECK_EQUAL(CBitcoinAddress(uint160(0), 'S').ToString(), "SMJ12qn9jNCCXJnTYRz5Yu9ZenERqvYwfg");
 }
 
 BOOST_AUTO_TEST_SUITE_END()

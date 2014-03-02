@@ -20,6 +20,7 @@
 #include <vector>
 #include "bignum.h"
 #include "key.h"
+#include <boost/format.hpp>
 
 static const char* pszBase58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
 
@@ -270,73 +271,69 @@ public:
         SCRIPT_ADDRESS_TEST = 212,
     };
 
-    bool SetHash160(const uint160& hash160)
+    unsigned char ExpectedVersion(unsigned char cUnit, bool fPubKey, bool fTest = fTestNet) const
     {
-        SetData(fTestNet ? PUBKEY_ADDRESS_TEST : PUBKEY_ADDRESS, &hash160, 20);
-        return true;
-    }
-
-    void SetPubKey(const std::vector<unsigned char>& vchPubKey)
-    {
-        SetHash160(Hash160(vchPubKey));
-    }
-
-    bool SetScriptHash160(const uint160& hash160)
-    {
-        SetData(fTestNet ? SCRIPT_ADDRESS_TEST : SCRIPT_ADDRESS, &hash160, 20);
-        return true;
-    }
-
-    bool IsValid() const
-    {
-        unsigned int nExpectedSize = 20;
-        bool fExpectTestNet = false;
-        switch(nVersion)
+        switch (cUnit)
         {
-            case PUBKEY_ADDRESS:
-                nExpectedSize = 20; // Hash of public key
-                fExpectTestNet = false;
-                break;
-            case SCRIPT_ADDRESS:
-                nExpectedSize = 20; // Hash of CScript
-                fExpectTestNet = false;
-                break;
-
-            case PUBKEY_ADDRESS_TEST:
-                nExpectedSize = 20;
-                fExpectTestNet = true;
-                break;
-            case SCRIPT_ADDRESS_TEST:
-                nExpectedSize = 20;
-                fExpectTestNet = true;
-                break;
-
+            // See https://gist.github.com/sigmike/9295530
+            case 'S':
+                if (fTestNet)
+                    return fPubKey ? 125 : 126;
+                else
+                    return fPubKey ? 63 : 64;
+            case 'B':
+                if (fTestNet)
+                    return fPubKey ? 85 : 86;
+                else
+                    return fPubKey ? 25 : 26;
             default:
-                return false;
+                throw std::runtime_error((boost::format("No address version defined for unit %c") % cUnit).str());
         }
-        return fExpectTestNet == fTestNet && vchData.size() == nExpectedSize;
     }
-    bool IsScript() const
+
+    bool SetHash160(const uint160& hash160, unsigned char cUnit)
     {
-        if (!IsValid())
+        SetData(ExpectedVersion(cUnit, true), &hash160, 20);
+        return true;
+    }
+
+    void SetPubKey(const std::vector<unsigned char>& vchPubKey, unsigned char cUnit)
+    {
+        SetHash160(Hash160(vchPubKey), cUnit);
+    }
+
+    bool SetScriptHash160(const uint160& hash160, unsigned char cUnit)
+    {
+        SetData(ExpectedVersion(cUnit, false), &hash160, 20);
+        return true;
+    }
+
+    bool IsValid(unsigned char cUnit) const
+    {
+        if (nVersion != ExpectedVersion(cUnit, true) && nVersion != ExpectedVersion(cUnit, false))
             return false;
-        if (fTestNet)
-            return nVersion == SCRIPT_ADDRESS_TEST;
-        return nVersion == SCRIPT_ADDRESS;
+
+        return vchData.size() == 20;
+    }
+    bool IsScript(unsigned char cUnit) const
+    {
+        if (!IsValid(cUnit))
+            return false;
+        return nVersion == ExpectedVersion(cUnit, false);
     }
 
     CBitcoinAddress()
     {
     }
 
-    CBitcoinAddress(uint160 hash160In)
+    CBitcoinAddress(uint160 hash160In, unsigned char cUnit)
     {
-        SetHash160(hash160In);
+        SetHash160(hash160In, cUnit);
     }
 
-    CBitcoinAddress(const std::vector<unsigned char>& vchPubKey)
+    CBitcoinAddress(const std::vector<unsigned char>& vchPubKey, unsigned char cUnit)
     {
-        SetPubKey(vchPubKey);
+        SetPubKey(vchPubKey, cUnit);
     }
 
     CBitcoinAddress(const std::string& strAddress)

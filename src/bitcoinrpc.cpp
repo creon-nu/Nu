@@ -25,6 +25,8 @@
 #include <boost/lexical_cast.hpp>
 #include <boost/asio/ssl.hpp> 
 #include <boost/filesystem/fstream.hpp>
+#include <boost/thread.hpp>
+#include <boost/format.hpp>
 typedef boost::asio::ssl::stream<boost::asio::ip::tcp::socket> SSLStream;
 
 #define printf OutputDebugStringF
@@ -48,6 +50,17 @@ static std::string strRPCUserColonPass;
 
 static int64 nWalletUnlockTime;
 static CCriticalSection cs_nWalletUnlockTime;
+
+thread_specific_ptr<CWallet*> threadWallet;
+#define pwalletMain GetThreadWallet()
+
+CWallet *GetThreadWallet()
+{
+    CWallet **wallet = threadWallet.get();
+    if (wallet == NULL)
+        throw runtime_error("No wallet defined in this thread");
+    return *wallet;
+}
 
 extern Value dumpprivkey(const Array& params, bool fHelp);
 extern Value importprivkey(const Array& params, bool fHelp);
@@ -443,6 +456,7 @@ Value getinfo(const Array& params, bool fHelp)
     obj.push_back(Pair("version",       FormatFullVersion()));
     obj.push_back(Pair("protocolversion",(int)PROTOCOL_VERSION));
     obj.push_back(Pair("walletversion", pwalletMain->GetVersion()));
+    obj.push_back(Pair("walletunit",    string(1, pwalletMain->Unit())));
     obj.push_back(Pair("balance",       ValueFromAmount(pwalletMain->GetBalance())));
     obj.push_back(Pair("newmint",       ValueFromAmount(pwalletMain->GetNewMint())));
     obj.push_back(Pair("stake",         ValueFromAmount(pwalletMain->GetStake())));
@@ -507,7 +521,7 @@ Value getnewaddress(const Array& params, bool fHelp)
     std::vector<unsigned char> newKey;
     if (!pwalletMain->GetKeyFromPool(newKey, false))
         throw JSONRPCError(-12, "Error: Keypool ran out, please call keypoolrefill first");
-    CBitcoinAddress address(newKey);
+    CBitcoinAddress address = pwalletMain->GetAddress(newKey);
 
     pwalletMain->SetAddressBookName(address, strAccount);
 
@@ -528,7 +542,7 @@ CBitcoinAddress GetAccountAddress(string strAccount, bool bForceNew=false)
     if (!account.vchPubKey.empty())
     {
         CScript scriptPubKey;
-        scriptPubKey.SetBitcoinAddress(account.vchPubKey);
+        scriptPubKey.SetBitcoinAddress(pwalletMain->GetAddress(account.vchPubKey), pwalletMain->Unit());
         for (map<uint256, CWalletTx>::iterator it = pwalletMain->mapWallet.begin();
              it != pwalletMain->mapWallet.end() && !account.vchPubKey.empty();
              ++it)
@@ -546,11 +560,11 @@ CBitcoinAddress GetAccountAddress(string strAccount, bool bForceNew=false)
         if (!pwalletMain->GetKeyFromPool(account.vchPubKey, false))
             throw JSONRPCError(-12, "Error: Keypool ran out, please call keypoolrefill first");
 
-        pwalletMain->SetAddressBookName(CBitcoinAddress(account.vchPubKey), strAccount);
+        pwalletMain->SetAddressBookName(pwalletMain->GetAddress(account.vchPubKey), strAccount);
         walletdb.WriteAccount(strAccount, account);
     }
 
-    return CBitcoinAddress(account.vchPubKey);
+    return pwalletMain->GetAddress(account.vchPubKey);
 }
 
 Value getaccountaddress(const Array& params, bool fHelp)
@@ -580,8 +594,8 @@ Value setaccount(const Array& params, bool fHelp)
             "Sets the account associated with the given address.");
 
     CBitcoinAddress address(params[0].get_str());
-    if (!address.IsValid())
-        throw JSONRPCError(-5, "Invalid ppcoin address");
+    if (!pwalletMain->IsAddressValid(address))
+        throw JSONRPCError(-5, "Invalid address");
 
 
     string strAccount;
@@ -610,8 +624,8 @@ Value getaccount(const Array& params, bool fHelp)
             "Returns the account associated with the given address.");
 
     CBitcoinAddress address(params[0].get_str());
-    if (!address.IsValid())
-        throw JSONRPCError(-5, "Invalid ppcoin address");
+    if (!pwalletMain->IsAddressValid(address))
+        throw JSONRPCError(-5, "Invalid address");
 
     string strAccount;
     map<CBitcoinAddress, string>::iterator mi = pwalletMain->mapAddressBook.find(address);
@@ -690,8 +704,8 @@ Value sendtoaddress(const Array& params, bool fHelp)
             "<amount> is a real and is rounded to the nearest 0.000001");
 
     CBitcoinAddress address(params[0].get_str());
-    if (!address.IsValid())
-        throw JSONRPCError(-5, "Invalid ppcoin address");
+    if (!pwalletMain->IsAddressValid(address))
+        throw JSONRPCError(-5, "Invalid address");
 
     // Amount
     int64 nAmount = AmountFromValue(params[1]);
@@ -729,7 +743,7 @@ Value signmessage(const Array& params, bool fHelp)
     string strMessage = params[1].get_str();
 
     CBitcoinAddress addr(strAddress);
-    if (!addr.IsValid())
+    if (!pwalletMain->IsAddressValid(addr))
         throw JSONRPCError(-3, "Invalid address");
 
     CKey key;
@@ -759,7 +773,7 @@ Value verifymessage(const Array& params, bool fHelp)
     string strMessage  = params[2].get_str();
 
     CBitcoinAddress addr(strAddress);
-    if (!addr.IsValid())
+    if (!pwalletMain->IsAddressValid(addr))
         throw JSONRPCError(-3, "Invalid address");
 
     bool fInvalid = false;
@@ -776,7 +790,7 @@ Value verifymessage(const Array& params, bool fHelp)
     if (!key.SetCompactSignature(Hash(ss.begin(), ss.end()), vchSig))
         return false;
 
-    return (CBitcoinAddress(key.GetPubKey()) == addr);
+    return (pwalletMain->GetAddress(key.GetPubKey()) == addr);
 }
 
 
@@ -790,9 +804,9 @@ Value getreceivedbyaddress(const Array& params, bool fHelp)
     // Bitcoin address
     CBitcoinAddress address = CBitcoinAddress(params[0].get_str());
     CScript scriptPubKey;
-    if (!address.IsValid())
-        throw JSONRPCError(-5, "Invalid ppcoin address");
-    scriptPubKey.SetBitcoinAddress(address);
+    if (!pwalletMain->IsAddressValid(address))
+        throw JSONRPCError(-5, "Invalid address");
+    scriptPubKey.SetBitcoinAddress(address, pwalletMain->Unit());
     if (!IsMine(*pwalletMain,scriptPubKey))
         return (double)0.0;
 
@@ -859,7 +873,7 @@ Value getreceivedbyaccount(const Array& params, bool fHelp)
         BOOST_FOREACH(const CTxOut& txout, wtx.vout)
         {
             CBitcoinAddress address;
-            if (ExtractAddress(txout.scriptPubKey, address) && pwalletMain->HaveKey(address) && setAddress.count(address))
+            if (pwalletMain->ExtractAddress(txout.scriptPubKey, address) && pwalletMain->HaveKey(address) && setAddress.count(address))
                 if (wtx.GetDepthInMainChain() >= nMinDepth)
                     nAmount += txout.nValue;
         }
@@ -1016,8 +1030,8 @@ Value sendfrom(const Array& params, bool fHelp)
 
     string strAccount = AccountFromValue(params[0]);
     CBitcoinAddress address(params[1].get_str());
-    if (!address.IsValid())
-        throw JSONRPCError(-5, "Invalid ppcoin address");
+    if (!pwalletMain->IsAddressValid(address))
+        throw JSONRPCError(-5, "Invalid address");
     int64 nAmount = AmountFromValue(params[2]);
     if (nAmount < MIN_TXOUT_AMOUNT)
         throw JSONRPCError(-101, "Send amount too small");
@@ -1079,15 +1093,15 @@ Value sendmany(const Array& params, bool fHelp)
     BOOST_FOREACH(const Pair& s, sendTo)
     {
         CBitcoinAddress address(s.name_);
-        if (!address.IsValid())
-            throw JSONRPCError(-5, string("Invalid ppcoin address:")+s.name_);
+        if (!pwalletMain->IsAddressValid(address))
+            throw JSONRPCError(-5, string("Invalid address:")+s.name_);
 
         if (setAddress.count(address))
             throw JSONRPCError(-8, string("Invalid parameter, duplicated address: ")+s.name_);
         setAddress.insert(address);
 
         CScript scriptPubKey;
-        scriptPubKey.SetBitcoinAddress(address);
+        scriptPubKey.SetBitcoinAddress(address, pwalletMain->Unit());
         int64 nAmount = AmountFromValue(s.value_); 
         if (nAmount < MIN_TXOUT_AMOUNT)
             throw JSONRPCError(-101, "Send amount too small");
@@ -1199,9 +1213,9 @@ Value addmultisigaddress(const Array& params, bool fHelp)
 
         // Case 1: bitcoin address and we have full public key:
         CBitcoinAddress address(ks);
-        if (address.IsValid())
+        if (pwalletMain->IsAddressValid(address))
         {
-            if (address.IsScript())
+            if (pwalletMain->IsAddressScript(address))
                 throw runtime_error(
                     strprintf("%s is a pay-to-script address",ks.c_str()));
             std::vector<unsigned char> vchPubKey;
@@ -1234,7 +1248,7 @@ Value addmultisigaddress(const Array& params, bool fHelp)
     scriptPubKey.SetPayToScriptHash(inner);
     pwalletMain->AddCScript(inner);
     CBitcoinAddress address;
-    address.SetScriptHash160(scriptHash);
+    address.SetScriptHash160(scriptHash, pwalletMain->Unit());
 
     pwalletMain->SetAddressBookName(address, strAccount);
     return address.ToString();
@@ -1280,7 +1294,7 @@ Value ListReceived(const Array& params, bool fByAccounts)
         BOOST_FOREACH(const CTxOut& txout, wtx.vout)
         {
             CBitcoinAddress address;
-            if (!ExtractAddress(txout.scriptPubKey, address) || !pwalletMain->HaveKey(address) || !address.IsValid())
+            if (!pwalletMain->ExtractAddress(txout.scriptPubKey, address) || !pwalletMain->HaveKey(address) || !pwalletMain->IsAddressValid(address))
                 continue;
 
             tallyitem& item = mapTally[address];
@@ -1916,7 +1930,7 @@ Value validateaddress(const Array& params, bool fHelp)
             "Return information about <ppcoinaddress>.");
 
     CBitcoinAddress address(params[0].get_str());
-    bool isValid = address.IsValid();
+    bool isValid = pwalletMain->IsAddressValid(address);
 
     Object ret;
     ret.push_back(Pair("isvalid", isValid));
@@ -1945,7 +1959,7 @@ Value validateaddress(const Array& params, bool fHelp)
             std::vector<CBitcoinAddress> addresses;
             txnouttype whichType;
             int nRequired;
-            ExtractAddresses(subscript, whichType, addresses, nRequired);
+            pwalletMain->ExtractAddresses(subscript, whichType, addresses, nRequired);
             ret.push_back(Pair("script", GetTxnOutputType(whichType)));
             Array a;
             BOOST_FOREACH(const CBitcoinAddress& addr, addresses)
@@ -2848,6 +2862,9 @@ private:
 void ThreadRPCServer(void* parg)
 {
     IMPLEMENT_RANDOMIZE_STACK(ThreadRPCServer(parg));
+
+    CWallet *wallet = (CWallet*)parg;
+    threadWallet.reset(new CWallet*(wallet));
 
     // getwork/getblocktemplate mining rewards paid here:
     pMiningKey = new CReserveKey(pwalletMain);

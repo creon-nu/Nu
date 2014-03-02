@@ -58,6 +58,7 @@ static const int64 nMaxClockDrift = 2 * 60 * 60;        // two hours
 
 extern CScript COINBASE_FLAGS;
 
+static const std::string sAvailableUnits("SB");
 
 
 
@@ -98,8 +99,10 @@ class CReserveKey;
 class CTxDB;
 class CTxIndex;
 
+CWallet *GetWallet(unsigned char cUnit);
 void RegisterWallet(CWallet* pwalletIn);
 void UnregisterWallet(CWallet* pwalletIn);
+void UnregisterAndDeleteAllWallets();
 bool ProcessBlock(CNode* pfrom, CBlock* pblock);
 bool CheckDiskSpace(uint64 nAdditionalBytes=0);
 FILE* OpenBlockFile(unsigned int nFile, unsigned int nBlockPos, const char* pszMode="rb");
