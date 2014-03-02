@@ -162,6 +162,7 @@ BOOST_AUTO_TEST_CASE(DoS_mapOrphans)
         tx.vout.resize(1);
         tx.vout[0].nValue = 1*CENT;
         tx.vout[0].scriptPubKey.SetBitcoinAddress(key.GetPubKey());
+        tx.cUnit = 'S';
 
         CDataStream ds(SER_DISK, CLIENT_VERSION);
         ds << tx;
@@ -180,6 +181,7 @@ BOOST_AUTO_TEST_CASE(DoS_mapOrphans)
         tx.vout.resize(1);
         tx.vout[0].nValue = 1*CENT;
         tx.vout[0].scriptPubKey.SetBitcoinAddress(key.GetPubKey());
+        tx.cUnit = 'S';
         SignSignature(keystore, txPrev, tx, 0);
 
         CDataStream ds(SER_DISK, CLIENT_VERSION);
@@ -202,6 +204,7 @@ BOOST_AUTO_TEST_CASE(DoS_mapOrphans)
             tx.vin[j].prevout.n = j;
             tx.vin[j].prevout.hash = txPrev.GetHash();
         }
+        tx.cUnit = 'S';
         SignSignature(keystore, txPrev, tx, 0);
         // Re-use same signature for other inputs
         // (they don't have to be valid for this test)
@@ -245,6 +248,7 @@ BOOST_AUTO_TEST_CASE(DoS_checkSig)
         tx.vout.resize(1);
         tx.vout[0].nValue = 1*CENT;
         tx.vout[0].scriptPubKey.SetBitcoinAddress(key.GetPubKey());
+        tx.cUnit = 'S';
 
         CDataStream ds(SER_DISK, CLIENT_VERSION);
         ds << tx;
@@ -256,6 +260,7 @@ BOOST_AUTO_TEST_CASE(DoS_checkSig)
     tx.vout.resize(1);
     tx.vout[0].nValue = 1*CENT;
     tx.vout[0].scriptPubKey.SetBitcoinAddress(key.GetPubKey());
+    tx.cUnit = 'S';
     tx.vin.resize(NPREV);
     for (int j = 0; j < tx.vin.size(); j++)
     {

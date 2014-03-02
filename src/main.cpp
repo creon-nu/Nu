@@ -307,6 +307,22 @@ bool CTransaction::IsStandard() const
     return true;
 }
 
+bool CTransaction::AreInputsSameUnit(const MapPrevTx& mapInputs) const
+{
+    for (unsigned int i = 0; i < vin.size(); i++)
+    {
+        MapPrevTx::const_iterator mi = mapInputs.find(vin[i].prevout.hash);
+        if (mi == mapInputs.end())
+            throw std::runtime_error("CTransaction::AreInputsSameUnit() : prevout.hash not found");
+
+        const CTransaction& txPrev = (mi->second).second;
+        if (txPrev.cUnit != cUnit)
+            return false;
+    }
+
+    return true;
+}
+
 //
 // Check transaction inputs, and make sure any
 // pay-to-script-hash transactions are evaluating IsStandard scripts
@@ -448,6 +464,8 @@ int CMerkleTx::SetMerkleBranch(const CBlock* pblock)
 bool CTransaction::CheckTransaction() const
 {
     // Basic checks that don't depend on any context
+    if (cUnit == 0)
+        return DoS(10, error("CTransaction::CheckTransaction() : blank unit"));
     if (vin.empty())
         return DoS(10, error("CTransaction::CheckTransaction() : vin empty"));
     if (vout.empty())
@@ -573,6 +591,11 @@ bool CTxMemPool::accept(CTxDB& txdb, CTransaction &tx, bool fCheckInputs,
                 *pfMissingInputs = true;
             return error("CTxMemPool::accept() : FetchInputs failed %s", hash.ToString().substr(0,10).c_str());
         }
+
+
+        // Check for cross unit transaction
+        if (!tx.AreInputsSameUnit(mapInputs))
+            return error("CTxMemPool::accept() : cross unit transaction");
 
         // Check for non-standard pay-to-script-hash in inputs
         if (!tx.AreInputsStandard(mapInputs) && !fTestNet)
@@ -2254,6 +2277,7 @@ bool LoadBlockIndex(bool fAllowNew)
         txNew.nTime = nTimeGenesis;
         txNew.vin.resize(1);
         txNew.vout.resize(1);
+        txNew.cUnit = 'S';
         txNew.vin[0].scriptSig = CScript() << 486604799 << CBigNum(9999) << vector<unsigned char>((const unsigned char*)pszTimestamp, (const unsigned char*)pszTimestamp + strlen(pszTimestamp));
         txNew.vout[0].SetEmpty();
         CBlock block;
