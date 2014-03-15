@@ -125,5 +125,35 @@ BOOST_AUTO_TEST_CASE(address_use_unit)
     BOOST_CHECK_EQUAL(CBitcoinAddress(uint160(0), 'S').ToString(), "SMJ12qn9jNCCXJnTYRz5Yu9ZenERqvYwfg");
 }
 
+BOOST_AUTO_TEST_CASE(serialize_keeps_unit)
+{
+    CBasicKeyStore keystore;
+    MapPrevTx dummyInputs;
+    std::vector<CTransaction> dummyTransactions = SetupDummyInputs(keystore, dummyInputs);
+
+    CTransaction t1;
+    t1.vin.resize(1);
+    t1.vin[0].prevout.hash = dummyTransactions[0].GetHash();
+    t1.vin[0].prevout.n = 1;
+    t1.vin[0].scriptSig << std::vector<unsigned char>(65, 0);
+    t1.vout.resize(1);
+    t1.vout[0].nValue = 11*CENT;
+    t1.vout[0].scriptPubKey << OP_1;
+    t1.cUnit = 'S';
+    BOOST_CHECK(SignSignature(keystore, dummyTransactions[0], t1, 0));
+    BOOST_CHECK(t1.CheckTransaction());
+
+    CDataStream stream(SER_DISK, CLIENT_VERSION);
+    stream << t1;
+
+    vector<unsigned char> vch(stream.begin(), stream.end());
+    CDataStream stream2(vch, SER_DISK, CLIENT_VERSION);
+    CTransaction t2;
+    stream2 >> t2;
+    BOOST_CHECK_EQUAL(11*CENT, t2.vout[0].nValue);
+    BOOST_CHECK_EQUAL('S', t2.cUnit);
+    BOOST_CHECK(t2.CheckTransaction());
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 
