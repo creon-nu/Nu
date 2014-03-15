@@ -1906,7 +1906,7 @@ void CWallet::ExportPeercoinKeys(int &nExportedCount, int &nErrorCount)
         const CBitcoinAddress& address = item.first;
         CSecret vchSecret;
         bool fCompressed;
-        if (address.IsScript())
+        if (address.IsScript(cUnit))
         {
             const uint160 hash = address.GetHash160();
             CScript script;
