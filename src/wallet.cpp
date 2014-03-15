@@ -1225,6 +1225,7 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
     LOCK2(cs_main, cs_wallet);
     txNew.vin.clear();
     txNew.vout.clear();
+    txNew.cUnit = cUnit;
     // Mark coin stake transaction
     CScript scriptEmpty;
     scriptEmpty.clear();
