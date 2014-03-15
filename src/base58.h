@@ -423,10 +423,12 @@ public:
 
     CPeercoinAddress(const CBitcoinAddress &address)
     {
-        if (address.IsScript())
+        if (address.IsScript('S'))
             SetScriptHash160(address.GetHash160());
-        else
+        else if (address.IsValid('S'))
             SetHash160(address.GetHash160());
+        else
+            throw std::runtime_error("Peercoin address can only be built from S unit addresses");
     }
 };
 
