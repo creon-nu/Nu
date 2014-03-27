@@ -9,6 +9,7 @@
 #include "bignum.h"
 #include "net.h"
 #include "script.h"
+#include "vote.h"
 
 #ifdef WIN32
 #include <io.h> /* for _commit */
@@ -374,6 +375,11 @@ public:
     bool IsEmpty() const
     {
         return (nValue == 0 && scriptPubKey.empty());
+    }
+
+    bool IsVote() const
+    {
+        return (nValue == 0 && ::IsVote(scriptPubKey));
     }
 
     uint256 GetHash() const
