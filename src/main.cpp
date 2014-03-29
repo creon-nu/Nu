@@ -22,7 +22,7 @@ using namespace boost;
 // Global state
 //
 static const uint256 hashGenesisBlockOfficial("0x000000d78e35e381ca738ceb966b9faf528f0970d994ce4eb4560b56cbe2f6c4");
-static const uint256 hashGenesisBlockTestNet ("0x000001df948ddf5a15f6eb0a5c57047600f6817ad2fcdf615a021700ae99db08");
+static const uint256 hashGenesisBlockTestNet ("0x00000da01001c0f91ccb20ad67e801a173f55f4be23d63463a4d453c8aebab48");
 
 CCriticalSection cs_setpwalletRegistered;
 set<CWallet*> setpwalletRegistered;
@@ -2338,7 +2338,7 @@ bool LoadBlockIndex(bool fAllowNew)
         if (!fTestNet)
             assert(block.hashMerkleRoot == uint256("0xf88246c72a053cc2176dbf2ac884bcf79f021bba9c2c3c8fccc0735c37d9354c"));
         else
-            assert(block.hashMerkleRoot == uint256("0x07c1ed6a29eb50960b476ad05cfd686021f88384b12b1ca351a374abd55fcd3c"));
+            assert(block.hashMerkleRoot == uint256("0x8b2874310ab6015b75dafbd3cde22fbe41b0f914e01e2d4a7ebce488e528f92c"));
 
         block.print();
         assert(block.GetHash() == hashGenesisBlock);
