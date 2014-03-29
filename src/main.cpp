@@ -496,6 +496,10 @@ bool CTransaction::CheckTransaction() const
     if (::GetSerializeSize(*this, SER_NETWORK, PROTOCOL_VERSION) > MAX_BLOCK_SIZE)
         return DoS(100, error("CTransaction::CheckTransaction() : size limits failed"));
 
+    // nuBits: CoinBase and CoinStake are only allowed on shares
+    if (cUnit != 'S' && (IsCoinBase() || IsCoinStake()))
+        return DoS(10, error("CTransaction::CheckTransaction() : invalid unit in CoinBase or CoinStake"));
+
     // Check for negative or overflow output values
     int64 nValueOut = 0;
     for (int i = 0; i < vout.size(); i++)
