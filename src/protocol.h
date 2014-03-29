@@ -16,9 +16,9 @@
 #include "uint256.h"
 
 #define PEERSHARES_PORT  9921
-#define RPC_PORT     9922
+#define RPC_PORT     14001
 #define TESTNET_PORT 9923
-#define TESTNET_RPC_PORT 9924
+#define TESTNET_RPC_PORT 15001
 
 #define PEERCOIN_RPC_PORT         9902
 #define PEERCOIN_TESTNET_RPC_PORT 9904
