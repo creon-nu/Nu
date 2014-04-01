@@ -301,9 +301,22 @@ bool CTransaction::IsStandard() const
         if (!txin.scriptSig.IsPushOnly())
             return false;
     }
+    
+    unsigned int nDataOut = 0;
+    txnouttype whichType;
     BOOST_FOREACH(const CTxOut& txout, vout)
-        if (!::IsStandard(txout.scriptPubKey))
+        if (!::IsStandard(txout.scriptPubKey, whichType)){
             return false;
+		}
+		if (whichType == TX_NULL_DATA)
+			nDataOut++;
+		
+		
+		if (nDataOut > 1) {
+			return false;
+		}
+            
+            
     return true;
 }
 
