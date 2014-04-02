@@ -87,6 +87,7 @@ const char* GetTxnOutputType(txnouttype t)
     case TX_PUBKEYHASH: return "pubkeyhash";
     case TX_SCRIPTHASH: return "scripthash";
     case TX_MULTISIG: return "multisig";
+    case TX_NULL_DATA: return "nulldata";
     }
     return NULL;
 }
@@ -228,6 +229,7 @@ const char* GetOpName(opcodetype opcode)
     // template matching params
     case OP_PUBKEYHASH             : return "OP_PUBKEYHASH";
     case OP_PUBKEY                 : return "OP_PUBKEY";
+    case OP_SMALLDATA              : return "OP_SMALLDATA";
 
     case OP_INVALIDOPCODE          : return "OP_INVALIDOPCODE";
     default:
@@ -1207,6 +1209,9 @@ bool Solver(const CScript& scriptPubKey, txnouttype& typeRet, vector<vector<unsi
     {
         // Standard tx, sender provides pubkey, receiver adds signature
         mTemplates.insert(make_pair(TX_PUBKEY, CScript() << OP_PUBKEY << OP_CHECKSIG));
+        
+        //Empty, provably pruneable, data carring output
+        mTemplates.insert(make_pair(TX_NULL_DATA, CScript() << OP_RETURN << OP_SMALLDATA));
 
         // Bitcoin address tx, sender provides hash of pubkey, receiver provides signature and pubkey
         mTemplates.insert(make_pair(TX_PUBKEYHASH, CScript() << OP_DUP << OP_HASH160 << OP_PUBKEYHASH << OP_EQUALVERIFY << OP_CHECKSIG));
@@ -1297,6 +1302,12 @@ bool Solver(const CScript& scriptPubKey, txnouttype& typeRet, vector<vector<unsi
                 else
                     break;
             }
+            else if (opcode2 == OP_SMALLDATA)
+            {
+				//small pushdata, <= 80bytes
+				if (vch1.size() > 80)
+				break;
+			}
             else if (opcode1 != opcode2 || vch1 != vch2)
             {
                 // Others must match exactly
@@ -1363,6 +1374,7 @@ bool Solver(const CKeyStore& keystore, const CScript& scriptPubKey, uint256 hash
     switch (whichTypeRet)
     {
     case TX_NONSTANDARD:
+    case TX_NULL_DATA:
         return false;
     case TX_PUBKEY:
         address.SetPubKey(vSolutions[0]);
@@ -1394,6 +1406,8 @@ int ScriptSigArgsExpected(txnouttype t, const std::vector<std::vector<unsigned c
     {
     case TX_NONSTANDARD:
         return -1;
+    case TX_NULL_DATA:
+		return 1;
     case TX_PUBKEY:
         return 1;
     case TX_PUBKEYHASH:
@@ -1408,10 +1422,9 @@ int ScriptSigArgsExpected(txnouttype t, const std::vector<std::vector<unsigned c
     return -1;
 }
 
-bool IsStandard(const CScript& scriptPubKey)
+bool IsStandard(const CScript& scriptPubKey, txnouttype& whichType)
 {
     vector<valtype> vSolutions;
-    txnouttype whichType;
     if (!Solver(scriptPubKey, whichType, vSolutions))
         return false;
 
@@ -1454,6 +1467,7 @@ bool IsMine(const CKeyStore &keystore, const CScript& scriptPubKey)
     switch (whichType)
     {
     case TX_NONSTANDARD:
+    case TX_NULL_DATA:
         return false;
     case TX_PUBKEY:
         address.SetPubKey(vSolutions[0]);
@@ -1488,6 +1502,8 @@ bool ExtractAddress(const CScript& scriptPubKey, CBitcoinAddress& addressRet)
     txnouttype whichType;
     if (!Solver(scriptPubKey, whichType, vSolutions))
         return false;
+    if (whichType == TX_NULL_DATA)
+		return true;
 
     if (whichType == TX_PUBKEY)
     {
