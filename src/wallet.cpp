@@ -1148,7 +1148,7 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, int64> >& vecSend, CW
                     //  rediscover unknown transactions that were written with keys of ours to recover
                     //  post-backup change.
 
-                    if (!GetBoolArg("-avatar")) // ppcoin: not avatar mode
+                    if (!GetBoolArg("-avatar", true)) // peercoin: not avatar mode; peershares: avatar mode enabled by default to avoid change being sent to hidden address
                     {
                         // Reserve a new key pair from key pool
                         vector<unsigned char> vchPubKey = reservekey.GetReservedKey();
@@ -1159,6 +1159,8 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, int64> >& vecSend, CW
                         // change transaction isn't always pay-to-bitcoin-address
                         scriptChange.SetBitcoinAddress(vchPubKey);
                     }
+                    else
+                        reservekey.ReturnKey(); // return key in avatar mode
 
                     // Insert change txn at random position:
                     vector<CTxOut>::iterator position = wtxNew.vout.begin()+GetRandInt(wtxNew.vout.size());
