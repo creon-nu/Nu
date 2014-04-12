@@ -80,6 +80,10 @@ public:
     )
 
     CScript ToScript() const;
+
+    uint64 nCoinAgeDestroyed;
+
+    static bool CalculateParkRateResult(const std::vector<CVote>& vVote, std::vector<CParkRate> &result);
 };
 
 bool IsVote(const CScript& scriptPubKey);

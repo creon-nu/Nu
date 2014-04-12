@@ -89,4 +89,105 @@ BOOST_AUTO_TEST_CASE(reload_park_rates_from_script_tests)
 #undef CHECK_PARK_RATE_EQUAL
 }
 
+BOOST_AUTO_TEST_CASE(premium_calculation_from_vote_tests)
+{
+    vector<CVote> vVote;
+    vector<CParkRate> result;
+
+    // Result of empty vote is empty
+    BOOST_CHECK(CVote::CalculateParkRateResult(vVote, result));
+    BOOST_CHECK_EQUAL(0, result.size());
+
+    CParkRateVote parkRateVote;
+    parkRateVote.cUnit = 'B';
+    parkRateVote.vParkRate.push_back(CParkRate( 8, 100));
+
+    CVote vote;
+    vote.vParkRateVote.push_back(parkRateVote);
+    vote.nCoinAgeDestroyed = 1000;
+
+    vVote.push_back(vote);
+
+    // Single vote: same result as vote
+    BOOST_CHECK(CVote::CalculateParkRateResult(vVote, result));
+    BOOST_CHECK_EQUAL(  1, result.size());
+    BOOST_CHECK_EQUAL(  8, result[0].nDuration);
+    BOOST_CHECK_EQUAL(100, result[0].nRate);
+
+    // New vote with same weight and bigger rate
+    parkRateVote.vParkRate.clear();
+    vote.vParkRateVote.clear();
+    parkRateVote.vParkRate.push_back(CParkRate(8, 200));
+    vote.vParkRateVote.push_back(parkRateVote);
+    vVote.push_back(vote);
+
+    // Two votes of same weight, the median is the first one
+    BOOST_CHECK(CVote::CalculateParkRateResult(vVote, result));
+    BOOST_CHECK_EQUAL(  1, result.size());
+    BOOST_CHECK_EQUAL(  8, result[0].nDuration);
+    BOOST_CHECK_EQUAL(100, result[0].nRate);
+
+    // Vote 2 has a little more weight
+    vVote[1].nCoinAgeDestroyed = 1001;
+
+    // Each coin age has a vote. So the median is the second vote rate.
+    BOOST_CHECK(CVote::CalculateParkRateResult(vVote, result));
+    BOOST_CHECK_EQUAL(  1, result.size());
+    BOOST_CHECK_EQUAL(  8, result[0].nDuration);
+    BOOST_CHECK_EQUAL(200, result[0].nRate);
+
+    // New vote with small weight and rate between the 2 first
+    parkRateVote.vParkRate.clear();
+    vote.vParkRateVote.clear();
+    parkRateVote.vParkRate.push_back(CParkRate(8, 160));
+    vote.vParkRateVote.push_back(parkRateVote);
+    vote.nCoinAgeDestroyed = 3;
+    vVote.push_back(vote);
+
+    // The median is the middle rate
+    BOOST_CHECK(CVote::CalculateParkRateResult(vVote, result));
+    BOOST_CHECK_EQUAL(  1, result.size());
+    BOOST_CHECK_EQUAL(  8, result[0].nDuration);
+    BOOST_CHECK_EQUAL(160, result[0].nRate);
+
+    // New vote with another duration
+    parkRateVote.vParkRate.clear();
+    vote.vParkRateVote.clear();
+    parkRateVote.vParkRate.push_back(CParkRate(9, 300));
+    vote.vParkRateVote.push_back(parkRateVote);
+    vote.nCoinAgeDestroyed = 100;
+    vVote.push_back(vote);
+
+    // It votes for 0 on duration 8, so the result is back to 100
+    // On duration 9 everybody else vote for 0, so the median is 0, so there's no result
+    BOOST_CHECK(CVote::CalculateParkRateResult(vVote, result));
+    BOOST_CHECK_EQUAL(  1, result.size());
+    BOOST_CHECK_EQUAL(  8, result[0].nDuration);
+    BOOST_CHECK_EQUAL(100, result[0].nRate);
+
+    // New vote with multiple durations unordered
+    parkRateVote.vParkRate.clear();
+    vote.vParkRateVote.clear();
+    parkRateVote.vParkRate.push_back(CParkRate(13, 500));
+    parkRateVote.vParkRate.push_back(CParkRate(9, 400));
+    parkRateVote.vParkRate.push_back(CParkRate(8, 200));
+    vote.vParkRateVote.push_back(parkRateVote);
+    vote.nCoinAgeDestroyed = 2050;
+    vVote.push_back(vote);
+
+    BOOST_CHECK(CVote::CalculateParkRateResult(vVote, result));
+    // On duration 8:
+    // Vote weights: 0: 100, 100: 1000, 160: 3, 200: 3051
+    // So median is 200
+    BOOST_CHECK_EQUAL(  8, result[0].nDuration);
+    BOOST_CHECK_EQUAL(200, result[0].nRate);
+    // On duration 9:
+    // Vote weights: 0: 2004, 300: 100, 400: 2050
+    // So median is 300
+    BOOST_CHECK_EQUAL(  9, result[1].nDuration);
+    BOOST_CHECK_EQUAL(300, result[1].nRate);
+    // On duration 13: only last vote is positive and it has not the majority, so median is 0
+    BOOST_CHECK_EQUAL(  2, result.size());
+}
+
 BOOST_AUTO_TEST_SUITE_END()

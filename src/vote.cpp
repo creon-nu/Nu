@@ -1,3 +1,5 @@
+#include <numeric>
+
 #include "script.h"
 #include "vote.h"
 #include "main.h"
@@ -88,3 +90,69 @@ bool ExtractParkRateResult(const CScript& scriptPubKey, CParkRateVote& parkRateR
     return true;
 }
 
+typedef map<uint64, uint64> RateWeightMap;
+typedef RateWeightMap::value_type RateWeight;
+
+typedef map<unsigned char, RateWeightMap> DurationRateWeightMap;
+typedef DurationRateWeightMap::value_type DurationRateWeight;
+
+static uint64 AddRateWeight(const uint64& totalWeight, const RateWeight& rateWeight)
+{
+    return totalWeight + rateWeight.second;
+}
+
+bool CVote::CalculateParkRateResult(const std::vector<CVote>& vVote, std::vector<CParkRate> &result)
+{
+    result.clear();
+
+    if (vVote.empty())
+        return true;
+
+    DurationRateWeightMap durationRateWeights;
+    uint64 totalVoteWeight = 0;
+
+    BOOST_FOREACH(const CVote& vote, vVote)
+    {
+        totalVoteWeight += vote.nCoinAgeDestroyed;
+
+        BOOST_FOREACH(const CParkRateVote& parkRateVote, vote.vParkRateVote)
+        {
+            BOOST_FOREACH(const CParkRate& parkRate, parkRateVote.vParkRate)
+            {
+                RateWeightMap &rateWeights = durationRateWeights[parkRate.nDuration];
+                rateWeights[parkRate.nRate] += vote.nCoinAgeDestroyed;
+            }
+        }
+    }
+
+    uint64 halfWeight = totalVoteWeight / 2;
+
+    BOOST_FOREACH(const DurationRateWeight& durationRateWeight, durationRateWeights)
+    {
+        unsigned char nDuration = durationRateWeight.first;
+        const RateWeightMap &rateWeights = durationRateWeight.second;
+
+        uint64 totalWeight = accumulate(rateWeights.begin(), rateWeights.end(), (uint64)0, AddRateWeight);
+        uint64 sum = totalWeight;
+        uint64 median = 0;
+
+        BOOST_FOREACH(const RateWeight& rateWeight, rateWeights)
+        {
+            if (sum <= halfWeight)
+                break;
+
+            sum -= rateWeight.second;
+            median = rateWeight.first;
+        }
+
+        if (median != 0)
+        {
+            CParkRate parkRate;
+            parkRate.nDuration = nDuration;
+            parkRate.nRate = median;
+            result.push_back(parkRate);
+        }
+    }
+
+    return true;
+}
