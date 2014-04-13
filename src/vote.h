@@ -84,6 +84,8 @@ public:
     uint64 nCoinAgeDestroyed;
 
     static bool CalculateParkRateResult(const std::vector<CVote>& vVote, std::vector<CParkRate> &result);
+
+    bool Valid() const;
 };
 
 bool IsVote(const CScript& scriptPubKey);

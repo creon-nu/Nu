@@ -113,6 +113,9 @@ bool CVote::CalculateParkRateResult(const std::vector<CVote>& vVote, std::vector
 
     BOOST_FOREACH(const CVote& vote, vVote)
     {
+        if (!vote.Valid())
+            return false;
+
         totalVoteWeight += vote.nCoinAgeDestroyed;
 
         BOOST_FOREACH(const CParkRateVote& parkRateVote, vote.vParkRateVote)
@@ -154,5 +157,27 @@ bool CVote::CalculateParkRateResult(const std::vector<CVote>& vVote, std::vector
         }
     }
 
+    return true;
+}
+
+bool CVote::Valid() const
+{
+    set<unsigned char> seenParkVoteUnits;
+    BOOST_FOREACH(const CParkRateVote& parkRateVote, vParkRateVote)
+    {
+        if (parkRateVote.cUnit == 'S')
+            return false;
+        if (seenParkVoteUnits.find(parkRateVote.cUnit) != seenParkVoteUnits.end())
+            return false;
+        seenParkVoteUnits.insert(parkRateVote.cUnit);
+
+        set<unsigned char> seenDurations;
+        BOOST_FOREACH(const CParkRate& parkRate, parkRateVote.vParkRate)
+        {
+            if (seenDurations.find(parkRate.nDuration) != seenDurations.end())
+                return false;
+            seenDurations.insert(parkRate.nDuration);
+        }
+    }
     return true;
 }

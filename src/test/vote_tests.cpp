@@ -188,6 +188,60 @@ BOOST_AUTO_TEST_CASE(premium_calculation_from_vote_tests)
     BOOST_CHECK_EQUAL(300, result[1].nRate);
     // On duration 13: only last vote is positive and it has not the majority, so median is 0
     BOOST_CHECK_EQUAL(  2, result.size());
+
+    // New vote with duplicate duration makes the result invalid
+    parkRateVote.vParkRate.clear();
+    vote.vParkRateVote.clear();
+    parkRateVote.vParkRate.push_back(CParkRate(13, 500));
+    parkRateVote.vParkRate.push_back(CParkRate(13, 400));
+    vote.vParkRateVote.push_back(parkRateVote);
+    vVote.push_back(vote);
+
+    BOOST_CHECK(!CVote::CalculateParkRateResult(vVote, result));
+    BOOST_CHECK_EQUAL(0, result.size());
+}
+
+BOOST_AUTO_TEST_CASE(vote_validity_tests)
+{
+    CVote vote;
+    CParkRateVote parkRateVote;
+
+    // An empty vote is valid
+    BOOST_CHECK(vote.Valid());
+
+    // A park rate vote on share is invalid
+    parkRateVote.cUnit = 'S';
+    vote.vParkRateVote.push_back(parkRateVote);
+    BOOST_CHECK(!vote.Valid());
+
+    // A park rate vote on nubits is valid
+    vote.vParkRateVote[0].cUnit = 'B';
+    BOOST_CHECK(vote.Valid());
+
+    // Two park rate vote on nubits is invalid
+    parkRateVote.cUnit = 'B';
+    vote.vParkRateVote.push_back(parkRateVote);
+    BOOST_CHECK(!vote.Valid());
+
+    // Park rate with duration and 0 rate is valid
+    vote.vParkRateVote.erase(vote.vParkRateVote.end());
+    CParkRate parkRate;
+    parkRate.nDuration = 0;
+    parkRate.nRate = 0;
+    vote.vParkRateVote[0].vParkRate.push_back(parkRate);
+    BOOST_CHECK(vote.Valid());
+
+    // Two valid park rates
+    parkRate.nDuration = 4;
+    parkRate.nRate = 100;
+    vote.vParkRateVote[0].vParkRate.push_back(parkRate);
+    BOOST_CHECK(vote.Valid());
+
+    // Two times the same duration is invalid
+    parkRate.nDuration = 4;
+    parkRate.nRate = 200;
+    vote.vParkRateVote[0].vParkRate.push_back(parkRate);
+    BOOST_CHECK(!vote.Valid());
 }
 
 BOOST_AUTO_TEST_SUITE_END()
