@@ -1390,11 +1390,20 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
 
     txNew.vout.push_back(CTxOut(0, vote.ToScript()));
 
+    // nubit: The result of the vote is stored in the CoinStake transaction
+    CParkRateVote parkRateResult;
+    parkRateResult.cUnit = 'B';
+    parkRateResult.vParkRate.push_back(CParkRate(12, 5));
+    parkRateResult.vParkRate.push_back(CParkRate(13, 8));
+    parkRateResult.vParkRate.push_back(CParkRate(15, 17));
+
+    txNew.vout.push_back(CTxOut(0, parkRateResult.ToParkRateResultScript()));
+
     int64 nMinFee = 0;
     loop
     {
         // Set output amount
-        if (txNew.vout.size() == 4)
+        if (txNew.vout.size() == 5)
         {
             txNew.vout[1].nValue = ((nCredit - nMinFee) / 2 / CENT) * CENT;
             txNew.vout[2].nValue = nCredit - nMinFee - txNew.vout[1].nValue;

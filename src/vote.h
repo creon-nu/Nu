@@ -52,6 +52,8 @@ public:
         READWRITE(cUnit);
         READWRITE(vParkRate);
     )
+
+    CScript ToParkRateResultScript() const;
 };
 
 class CVote
@@ -82,5 +84,8 @@ public:
 
 bool IsVote(const CScript& scriptPubKey);
 bool ExtractVote(const CScript& scriptPubKey, CVote& voteRet);
+
+bool IsParkRateResult(const CScript& scriptPubKey);
+bool ExtractParkRateResult(const CScript& scriptPubKey, CParkRateVote& parkRateResultRet);
 
 #endif

@@ -46,3 +46,45 @@ bool ExtractVote(const CScript& scriptPubKey, CVote& voteRet)
     return true;
 }
 
+CScript CParkRateVote::ToParkRateResultScript() const
+{
+    CScript script;
+
+    script << OP_RETURN;
+    script << OP_2;
+
+    CDataStream stream(SER_NETWORK, PROTOCOL_VERSION);
+    stream << *this;
+
+    vector<unsigned char> vch(stream.begin(), stream.end());
+    script << vch;
+
+    return script;
+}
+
+bool IsParkRateResult(const CScript& scriptPubKey)
+{
+    return (scriptPubKey.size() > 2 && scriptPubKey[0] == OP_RETURN && scriptPubKey[1] == OP_2);
+}
+
+bool ExtractParkRateResult(const CScript& scriptPubKey, CParkRateVote& parkRateResultRet)
+{
+    if (!IsParkRateResult(scriptPubKey))
+        return false;
+
+    CScript script(scriptPubKey.begin() + 2, scriptPubKey.end());
+
+    vector<vector<unsigned char> > stack;
+    CTransaction fakeTx;
+    EvalScript(stack, script, fakeTx, 0, 0);
+
+    if (stack.size() != 1)
+        return false;
+
+    CDataStream stream(stack[0], SER_NETWORK, PROTOCOL_VERSION);
+
+    stream >> parkRateResultRet;
+
+    return true;
+}
+

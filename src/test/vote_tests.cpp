@@ -63,4 +63,30 @@ BOOST_AUTO_TEST_CASE(reload_vote_from_script_tests)
 #undef CHECK_VOTE_EQUAL
 }
 
+BOOST_AUTO_TEST_CASE(reload_park_rates_from_script_tests)
+{
+    CParkRateVote parkRateVote;
+    parkRateVote.cUnit = 'B';
+    parkRateVote.vParkRate.push_back(CParkRate(13, 3));
+    parkRateVote.vParkRate.push_back(CParkRate(14, 6));
+    parkRateVote.vParkRate.push_back(CParkRate(15, 13));
+
+    CScript script = parkRateVote.ToParkRateResultScript();
+    BOOST_CHECK(IsParkRateResult(script));
+
+    CParkRateVote parkRateVoteResult;
+    BOOST_CHECK(ExtractParkRateResult(script, parkRateVoteResult));
+
+#undef CHECK_PARK_RATE_EQUAL
+#define CHECK_PARK_RATE_EQUAL(value) BOOST_CHECK(parkRateVoteResult.value == parkRateVote.value);
+    CHECK_PARK_RATE_EQUAL(cUnit);
+    CHECK_PARK_RATE_EQUAL(vParkRate.size());
+    for (int i=0; i<parkRateVote.vParkRate.size(); i++)
+    {
+        CHECK_PARK_RATE_EQUAL(vParkRate[i].nDuration);
+        CHECK_PARK_RATE_EQUAL(vParkRate[i].nRate);
+    }
+#undef CHECK_PARK_RATE_EQUAL
+}
+
 BOOST_AUTO_TEST_SUITE_END()

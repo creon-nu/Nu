@@ -386,6 +386,11 @@ public:
         return (nValue == 0 && ::IsVote(scriptPubKey));
     }
 
+    bool IsParkRateResult() const
+    {
+        return (nValue == 0 && ::IsParkRateResult(scriptPubKey));
+    }
+
     uint256 GetHash() const
     {
         return SerializeHash(*this);
