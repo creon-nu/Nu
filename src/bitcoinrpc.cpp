@@ -156,6 +156,46 @@ string AccountFromValue(const Value& value)
     return strAccount;
 }
 
+Object voteToJSON(const CVote& vote)
+{
+    Object result;
+
+    Array custodianVotes;
+    BOOST_FOREACH(const CCustodianVote& custodianVote, vote.vCustodianVote)
+    {
+        Object object;
+        object.push_back(Pair("unit", string(1, custodianVote.cUnit)));
+        object.push_back(Pair("address", CBitcoinAddress(custodianVote.hashAddress).ToString()));
+        object.push_back(Pair("amount", (double)custodianVote.nAmount / COIN));
+        custodianVotes.push_back(object);
+    }
+    result.push_back(Pair("custodians", custodianVotes));
+
+    Array parkRateVotes;
+    BOOST_FOREACH(const CParkRateVote& parkRateVote, vote.vParkRateVote)
+    {
+        Object object;
+        object.push_back(Pair("unit", string(1, parkRateVote.cUnit)));
+
+        Array rates;
+        BOOST_FOREACH(const CParkRate& parkRate, parkRateVote.vParkRate)
+        {
+            Array rate;
+            rate.push_back(1 << parkRate.nDuration);
+            rate.push_back((double)parkRate.nRate / COIN);
+            rates.push_back(rate);
+        }
+        object.push_back(Pair("rates", rates));
+
+        parkRateVotes.push_back(object);
+    }
+    result.push_back(Pair("parkrates", parkRateVotes));
+
+    result.push_back(Pair("motionhash", vote.hashMotion.GetHex()));
+
+    return result;
+}
+
 Object blockToJSON(const CBlock& block, const CBlockIndex* blockindex, bool fPrintTransactionDetail)
 {
     Object result;
@@ -179,6 +219,7 @@ Object blockToJSON(const CBlock& block, const CBlockIndex* blockindex, bool fPri
     result.push_back(Pair("modifier", strprintf("%016"PRI64x, blockindex->nStakeModifier)));
     result.push_back(Pair("modifierchecksum", strprintf("%08x", blockindex->nStakeModifierChecksum)));
     Array txinfo;
+    Array votes;
     BOOST_FOREACH (const CTransaction& tx, block.vtx)
     {
         if (fPrintTransactionDetail)
@@ -192,8 +233,19 @@ Object blockToJSON(const CBlock& block, const CBlockIndex* blockindex, bool fPri
         }
         else
             txinfo.push_back(tx.GetHash().GetHex());
+
+        if (tx.IsCoinStake())
+        {
+            BOOST_FOREACH (const CTxOut& txo, tx.vout)
+            {
+                CVote vote;
+                if (ExtractVote(txo.scriptPubKey, vote))
+                    votes.push_back(voteToJSON(vote));
+            }
+        }
     }
     result.push_back(Pair("tx", txinfo));
+    result.push_back(Pair("votes", votes));
     return result;
 }
 
