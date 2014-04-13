@@ -495,6 +495,10 @@ bool CTransaction::CheckTransaction() const
         vInOutPoints.insert(txin.prevout);
     }
 
+    // nubit: CoinStake maximum size
+    if (IsCoinStake() && ::GetSerializeSize(*this, SER_NETWORK, PROTOCOL_VERSION) > MAX_COINSTAKE_SIZE)
+        return DoS(100, error("CTransaction::CheckTransaction() : coinstake size"));
+
     if (IsCoinBase())
     {
         if (vin[0].scriptSig.size() < 2 || vin[0].scriptSig.size() > 100)
