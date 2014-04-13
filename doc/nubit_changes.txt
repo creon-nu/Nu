@@ -1,0 +1,35 @@
+CBitcoinAddress
+---------------
+
+Most CBitcoinAddress methods take a unit parameter. You can't have a CBitcoinAddress if you don't have an unit.
+
+
+Main wallet
+-----------
+
+There's no global pwalletMain anymore.
+
+There is instead one wallet per unit.
+The wallets are in the global setpwalletRegistered (which already existed).
+
+In init.cpp there's a local pwalletMain used when wallets are created.
+
+
+RPC
+---
+
+There is one RPC server per unit.
+
+In bitcoinrpc.cpp there's a wallet per thread, and a #define for pwalletMain to keep old code working.
+
+The RPC servers start by default on these ports:
+Main network:
+Shares: 14001
+nuBits: 14002
+
+Testnet:
+Shares: 15001
+nuBits: 15002
+
+When running the command line you can provide an unit to make it connect to the right port.
+For example: `ppcoind -testnet -unit=B getbalance`

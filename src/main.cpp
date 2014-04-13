@@ -10,6 +10,7 @@
 #include "init.h"
 #include "ui_interface.h"
 #include "kernel.h"
+#include "wallet.h"
 #include <boost/algorithm/string/replace.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>
@@ -21,7 +22,7 @@ using namespace boost;
 // Global state
 //
 static const uint256 hashGenesisBlockOfficial("0x000000d78e35e381ca738ceb966b9faf528f0970d994ce4eb4560b56cbe2f6c4");
-static const uint256 hashGenesisBlockTestNet ("0x000001df948ddf5a15f6eb0a5c57047600f6817ad2fcdf615a021700ae99db08");
+static const uint256 hashGenesisBlockTestNet ("0x00000da01001c0f91ccb20ad67e801a173f55f4be23d63463a4d453c8aebab48");
 
 CCriticalSection cs_setpwalletRegistered;
 set<CWallet*> setpwalletRegistered;
@@ -77,6 +78,13 @@ int64 nTransactionFee = MIN_TX_FEE;
 
 // These functions dispatch to one or all registered wallets
 
+CWallet *GetWallet(unsigned char cUnit)
+{
+    BOOST_FOREACH(CWallet* pwallet, setpwalletRegistered)
+        if (pwallet->Unit() == cUnit)
+            return pwallet;
+    return NULL;
+}
 
 void RegisterWallet(CWallet* pwalletIn)
 {
@@ -91,6 +99,20 @@ void UnregisterWallet(CWallet* pwalletIn)
     {
         LOCK(cs_setpwalletRegistered);
         setpwalletRegistered.erase(pwalletIn);
+    }
+}
+
+void UnregisterAndDeleteAllWallets()
+{
+    {
+        LOCK(cs_setpwalletRegistered);
+        set<CWallet*>::iterator it;
+        for (it = setpwalletRegistered.begin(); it != setpwalletRegistered.end(); )
+        {
+            CWallet* pWallet = *it;
+            setpwalletRegistered.erase(it++);
+            delete pWallet;
+        }
     }
 }
 
@@ -320,6 +342,22 @@ bool CTransaction::IsStandard() const
     return true;
 }
 
+bool CTransaction::AreInputsSameUnit(const MapPrevTx& mapInputs) const
+{
+    for (unsigned int i = 0; i < vin.size(); i++)
+    {
+        MapPrevTx::const_iterator mi = mapInputs.find(vin[i].prevout.hash);
+        if (mi == mapInputs.end())
+            throw std::runtime_error("CTransaction::AreInputsSameUnit() : prevout.hash not found");
+
+        const CTransaction& txPrev = (mi->second).second;
+        if (txPrev.cUnit != cUnit)
+            return false;
+    }
+
+    return true;
+}
+
 //
 // Check transaction inputs, and make sure any
 // pay-to-script-hash transactions are evaluating IsStandard scripts
@@ -461,6 +499,8 @@ int CMerkleTx::SetMerkleBranch(const CBlock* pblock)
 bool CTransaction::CheckTransaction() const
 {
     // Basic checks that don't depend on any context
+    if (cUnit == 0)
+        return DoS(10, error("CTransaction::CheckTransaction() : blank unit"));
     if (vin.empty())
         return DoS(10, error("CTransaction::CheckTransaction() : vin empty"));
     if (vout.empty())
@@ -468,6 +508,10 @@ bool CTransaction::CheckTransaction() const
     // Size limits
     if (::GetSerializeSize(*this, SER_NETWORK, PROTOCOL_VERSION) > MAX_BLOCK_SIZE)
         return DoS(100, error("CTransaction::CheckTransaction() : size limits failed"));
+
+    // nuBits: CoinBase and CoinStake are only allowed on shares
+    if (cUnit != 'S' && (IsCoinBase() || IsCoinStake()))
+        return DoS(10, error("CTransaction::CheckTransaction() : invalid unit in CoinBase or CoinStake"));
 
     // Check for negative or overflow output values
     int64 nValueOut = 0;
@@ -586,6 +630,11 @@ bool CTxMemPool::accept(CTxDB& txdb, CTransaction &tx, bool fCheckInputs,
                 *pfMissingInputs = true;
             return error("CTxMemPool::accept() : FetchInputs failed %s", hash.ToString().substr(0,10).c_str());
         }
+
+
+        // Check for cross unit transaction
+        if (!tx.AreInputsSameUnit(mapInputs))
+            return error("CTxMemPool::accept() : cross unit transaction");
 
         // Check for non-standard pay-to-script-hash in inputs
         if (!tx.AreInputsStandard(mapInputs) && !fTestNet)
@@ -2267,6 +2316,7 @@ bool LoadBlockIndex(bool fAllowNew)
         txNew.nTime = nTimeGenesis;
         txNew.vin.resize(1);
         txNew.vout.resize(1);
+        txNew.cUnit = 'S';
         txNew.vin[0].scriptSig = CScript() << 486604799 << CBigNum(9999) << vector<unsigned char>((const unsigned char*)pszTimestamp, (const unsigned char*)pszTimestamp + strlen(pszTimestamp));
         txNew.vout[0].SetEmpty();
         CBlock block;
@@ -2305,7 +2355,7 @@ bool LoadBlockIndex(bool fAllowNew)
         if (!fTestNet)
             assert(block.hashMerkleRoot == uint256("0xf88246c72a053cc2176dbf2ac884bcf79f021bba9c2c3c8fccc0735c37d9354c"));
         else
-            assert(block.hashMerkleRoot == uint256("0x07c1ed6a29eb50960b476ad05cfd686021f88384b12b1ca351a374abd55fcd3c"));
+            assert(block.hashMerkleRoot == uint256("0x8b2874310ab6015b75dafbd3cde22fbe41b0f914e01e2d4a7ebce488e528f92c"));
 
         block.print();
         assert(block.GetHash() == hashGenesisBlock);
@@ -3086,33 +3136,6 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv)
     }
 
 
-    else if (strCommand == "checkorder")
-    {
-        uint256 hashReply;
-        vRecv >> hashReply;
-
-        if (!GetBoolArg("-allowreceivebyip"))
-        {
-            pfrom->PushMessage("reply", hashReply, (int)2, string(""));
-            return true;
-        }
-
-        CWalletTx order;
-        vRecv >> order;
-
-        /// we have a chance to check the order here
-
-        // Keep giving the same key to the same ip until they use it
-        if (!mapReuseKey.count(pfrom->addr))
-            pwalletMain->GetKeyFromPool(mapReuseKey[pfrom->addr], true);
-
-        // Send back approval of order and pubkey to use
-        CScript scriptPubKey;
-        scriptPubKey << mapReuseKey[pfrom->addr] << OP_CHECKSIG;
-        pfrom->PushMessage("reply", hashReply, (int)0, scriptPubKey);
-    }
-
-
     else if (strCommand == "reply")
     {
         uint256 hashReply;
@@ -3628,6 +3651,7 @@ CBlock* CreateNewBlock(CReserveKey& reservekey, CWallet* pwallet, bool fProofOfS
     txNew.vin[0].prevout.SetNull();
     txNew.vout.resize(1);
     txNew.vout[0].scriptPubKey << reservekey.GetReservedKey() << OP_CHECKSIG;
+    txNew.cUnit = pwallet->Unit();
 
     // Add our coinbase tx as first transaction
     pblock->vtx.push_back(txNew);
@@ -3973,7 +3997,7 @@ void BitcoinMiner(CWallet *pwallet, bool fProofOfStake)
             // ppcoin: if proof-of-stake block found then process block
             if (pblock->IsProofOfStake())
             {
-                if (!pblock->SignBlock(*pwalletMain))
+                if (!pblock->SignBlock(*pwallet))
                 {
                     strMintWarning = strMintMessage;
                     continue;
@@ -3981,7 +4005,7 @@ void BitcoinMiner(CWallet *pwallet, bool fProofOfStake)
                 strMintWarning = "";
                 printf("CPUMiner : proof-of-stake block found %s\n", pblock->GetHash().ToString().c_str()); 
                 SetThreadPriority(THREAD_PRIORITY_NORMAL);
-                CheckWork(pblock.get(), *pwalletMain, reservekey);
+                CheckWork(pblock.get(), *pwallet, reservekey);
                 SetThreadPriority(THREAD_PRIORITY_LOWEST);
             }
             Sleep(500);
@@ -4031,14 +4055,14 @@ void BitcoinMiner(CWallet *pwallet, bool fProofOfStake)
                     // Found a solution
                     pblock->nNonce = ByteReverse(nNonceFound);
                     assert(hash == pblock->GetHash());
-                    if (!pblock->SignBlock(*pwalletMain))
+                    if (!pblock->SignBlock(*pwallet))
                     {
                         strMintWarning = strMintMessage;
                         break;
                     }
                     strMintWarning = "";
                     SetThreadPriority(THREAD_PRIORITY_NORMAL);
-                    CheckWork(pblock.get(), *pwalletMain, reservekey);
+                    CheckWork(pblock.get(), *pwallet, reservekey);
                     SetThreadPriority(THREAD_PRIORITY_LOWEST);
                     break;
                 }

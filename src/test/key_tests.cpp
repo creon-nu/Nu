@@ -74,10 +74,10 @@ BOOST_AUTO_TEST_CASE(key_test1)
     key1C.SetSecret(secret1, true);
     key2C.SetSecret(secret2, true);
 
-    BOOST_CHECK(CBitcoinAddress(key1.GetPubKey ()).ToString() == "1QFqqMUD55ZV3PJEJZtaKCsQmjLT6JkjvJ");
-    BOOST_CHECK(CBitcoinAddress(key2.GetPubKey ()).ToString() == "1F5y5E5FMc5YzdJtB9hLaUe43GDxEKXENJ");
-    BOOST_CHECK(CBitcoinAddress(key1C.GetPubKey()).ToString() == "1NoJrossxPBKfCHuJXT4HadJrXRE9Fxiqs");
-    BOOST_CHECK(CBitcoinAddress(key2C.GetPubKey()).ToString() == "1CRj2HyM1CXWzHAXLQtiGLyggNT9WQqsDs");
+    BOOST_CHECK(CBitcoinAddress(key1.GetPubKey (), '1').ToString() == "1QFqqMUD55ZV3PJEJZtaKCsQmjLT6JkjvJ");
+    BOOST_CHECK(CBitcoinAddress(key2.GetPubKey (), '1').ToString() == "1F5y5E5FMc5YzdJtB9hLaUe43GDxEKXENJ");
+    BOOST_CHECK(CBitcoinAddress(key1C.GetPubKey(), '1').ToString() == "1NoJrossxPBKfCHuJXT4HadJrXRE9Fxiqs");
+    BOOST_CHECK(CBitcoinAddress(key2C.GetPubKey(), '1').ToString() == "1CRj2HyM1CXWzHAXLQtiGLyggNT9WQqsDs");
 
     for (int n=0; n<16; n++)
     {

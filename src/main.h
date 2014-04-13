@@ -58,6 +58,7 @@ static const int64 nMaxClockDrift = 2 * 60 * 60;        // two hours
 
 extern CScript COINBASE_FLAGS;
 
+static const std::string sAvailableUnits("SB");
 
 
 
@@ -98,8 +99,10 @@ class CReserveKey;
 class CTxDB;
 class CTxIndex;
 
+CWallet *GetWallet(unsigned char cUnit);
 void RegisterWallet(CWallet* pwalletIn);
 void UnregisterWallet(CWallet* pwalletIn);
+void UnregisterAndDeleteAllWallets();
 bool ProcessBlock(CNode* pfrom, CBlock* pblock);
 bool CheckDiskSpace(uint64 nAdditionalBytes=0);
 FILE* OpenBlockFile(unsigned int nFile, unsigned int nBlockPos, const char* pszMode="rb");
@@ -434,6 +437,7 @@ public:
     std::vector<CTxIn> vin;
     std::vector<CTxOut> vout;
     unsigned int nLockTime;
+    unsigned char cUnit;
 
     // Denial-of-service detection:
     mutable int nDoS;
@@ -452,6 +456,7 @@ public:
         READWRITE(vin);
         READWRITE(vout);
         READWRITE(nLockTime);
+        READWRITE(cUnit);
     )
 
     void SetNull()
@@ -461,6 +466,7 @@ public:
         vin.clear();
         vout.clear();
         nLockTime = 0;
+        cUnit = 0;
         nDoS = 0;  // Denial-of-service prevention
     }
 
@@ -535,6 +541,13 @@ public:
         @return True if all outputs (scriptPubKeys) use only standard transaction forms
     */
     bool IsStandard() const;
+
+    /** Check for cross unit transaction
+        @param[in] mapInputs	Map of previous transactions that have outputs we're spending
+        @return True if all inputs have the same unit as the transaction
+        @see CTransaction::FetchInputs
+    */
+    bool AreInputsSameUnit(const MapPrevTx& mapInputs) const;
 
     /** Check for standard transaction types
         @param[in] mapInputs	Map of previous transactions that have outputs we're spending

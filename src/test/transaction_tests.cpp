@@ -43,6 +43,7 @@ SetupDummyInputs(CBasicKeyStore& keystoreRet, MapPrevTx& inputsRet)
     }
 
     // Create some dummy input transactions
+    dummyTransactions[0].cUnit = 'S';
     dummyTransactions[0].vout.resize(2);
     dummyTransactions[0].vout[0].nValue = 11*CENT;
     dummyTransactions[0].vout[0].scriptPubKey << key[0].GetPubKey() << OP_CHECKSIG;
@@ -50,11 +51,12 @@ SetupDummyInputs(CBasicKeyStore& keystoreRet, MapPrevTx& inputsRet)
     dummyTransactions[0].vout[1].scriptPubKey << key[1].GetPubKey() << OP_CHECKSIG;
     inputsRet[dummyTransactions[0].GetHash()] = make_pair(CTxIndex(), dummyTransactions[0]);
 
+    dummyTransactions[1].cUnit = 'S';
     dummyTransactions[1].vout.resize(2);
     dummyTransactions[1].vout[0].nValue = 21*CENT;
-    dummyTransactions[1].vout[0].scriptPubKey.SetBitcoinAddress(key[2].GetPubKey());
+    dummyTransactions[1].vout[0].scriptPubKey.SetBitcoinAddress(key[2].GetPubKey(), 'S');
     dummyTransactions[1].vout[1].nValue = 22*CENT;
-    dummyTransactions[1].vout[1].scriptPubKey.SetBitcoinAddress(key[3].GetPubKey());
+    dummyTransactions[1].vout[1].scriptPubKey.SetBitcoinAddress(key[3].GetPubKey(), 'S');
     inputsRet[dummyTransactions[1].GetHash()] = make_pair(CTxIndex(), dummyTransactions[1]);
 
     return dummyTransactions;

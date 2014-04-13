@@ -68,8 +68,8 @@ void MessagePage::on_signMessage_clicked()
 {
     QString address = ui->signFrom->text();
 
-    CBitcoinAddress addr(address.toStdString());
-    if (!addr.IsValid())
+    CBitcoinAddress addr = model->getWallet()->GetAddress(address.toStdString());
+    if (!model->getWallet()->IsAddressValid(addr))
     {
         QMessageBox::critical(this, tr("Error signing"), tr("%1 is not a valid address.").arg(address),
                               QMessageBox::Abort, QMessageBox::Abort);
@@ -84,7 +84,7 @@ void MessagePage::on_signMessage_clicked()
     }
 
     CKey key;
-    if (!pwalletMain->GetKey(addr, key))
+    if (!model->getWallet()->GetKey(addr, key))
     {
         QMessageBox::critical(this, tr("Error signing"), tr("Private key for %1 is not available.").arg(address),
                               QMessageBox::Abort, QMessageBox::Abort);

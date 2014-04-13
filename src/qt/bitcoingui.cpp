@@ -54,6 +54,7 @@
 #include <QFileDialog>
 #include <QDesktopServices>
 #include <QTimer>
+#include <QSignalMapper>
 
 #include <QDragEnterEvent>
 #include <QUrl>
@@ -298,6 +299,8 @@ void BitcoinGUI::createMenuBar()
     shares->addAction(exportPeercoinKeysAction);
 	shares->addAction(distributeDividendsAction);
 
+    unitMenu = appMenuBar->addMenu(tr("&Unit"));
+
     QMenu *settings = appMenuBar->addMenu(tr("&Settings"));
     settings->addAction(encryptWalletAction);
     settings->addAction(changePassphraseAction);
@@ -390,7 +393,46 @@ void BitcoinGUI::setWalletModel(WalletModel *walletModel)
 
         // Ask for passphrase if needed
         connect(walletModel, SIGNAL(requireUnlock()), this, SLOT(unlockWallet()));
+
+        changeUnitActions.clear();
+        QSignalMapper *mapper = new QSignalMapper();
+
+        BOOST_FOREACH(CWallet *wallet, setpwalletRegistered)
+        {
+            QString unitString(wallet->Unit());
+            QAction *action = new QAction(unitString, this);
+            action->setCheckable(true);
+            if (unitString == QString(walletModel->getWallet()->Unit()))
+                action->setChecked(true);
+
+            changeUnitActions.append(action);
+
+            connect(action, SIGNAL(triggered()), mapper, SLOT(map()));
+            mapper->setMapping(action, QString(wallet->Unit()));
+        }
+        connect(mapper, SIGNAL(mapped(const QString&)), this, SLOT(changeUnit(const QString&)));
+        unitMenu->clear();
+        for (int i=0; i < changeUnitActions.size(); ++i)
+            unitMenu->addAction(changeUnitActions[i]);
+
     }
+}
+
+void BitcoinGUI::changeUnit(const QString &unit)
+{
+    WalletModel *oldWalletModel = this->walletModel;
+    OptionsModel *optionsModel = oldWalletModel->getOptionsModel();
+    WalletModel *newWalletModel;
+
+    BOOST_FOREACH(CWallet *wallet, setpwalletRegistered)
+    {
+        if (QString(wallet->Unit()) == unit)
+        {
+            newWalletModel = new WalletModel(wallet, optionsModel);
+            break;
+        }
+    }
+    setWalletModel(newWalletModel);
 }
 
 void BitcoinGUI::createTrayIcon()

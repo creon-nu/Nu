@@ -64,7 +64,7 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
                         // Generated
                         sub.type = TransactionRecord::Generated;
                     }
-                    else if (ExtractAddress(txout.scriptPubKey, address) && wallet->HaveKey(address))
+                    else if (wallet->ExtractAddress(txout.scriptPubKey, address) && wallet->HaveKey(address))
                     {
                         // Received by Bitcoin Address
                         sub.type = TransactionRecord::RecvWithAddress;
@@ -120,7 +120,7 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
                     }
 
                     CBitcoinAddress address;
-                    if (ExtractAddress(txout.scriptPubKey, address))
+                    if (wallet->ExtractAddress(txout.scriptPubKey, address))
                     {
                         // Sent to Bitcoin Address
                         sub.type = TransactionRecord::SendToAddress;

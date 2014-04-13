@@ -93,6 +93,7 @@ public:
         fFileBacked = false;
         nMasterKeyMaxID = 0;
         pwalletdbEncryption = NULL;
+        cUnit = 0;
     }
     CWallet(std::string strWalletFileIn)
     {
@@ -102,6 +103,7 @@ public:
         fFileBacked = true;
         nMasterKeyMaxID = 0;
         pwalletdbEncryption = NULL;
+        cUnit = 0;
     }
 
     std::map<uint256, CWalletTx> mapWallet;

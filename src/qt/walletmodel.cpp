@@ -74,7 +74,7 @@ void WalletModel::updateAddressList()
 bool WalletModel::validateAddress(const QString &address)
 {
     CBitcoinAddress addressParsed(address.toStdString());
-    return addressParsed.IsValid();
+    return wallet->IsAddressValid(addressParsed);
 }
 
 WalletModel::SendCoinsReturn WalletModel::sendCoins(const QList<SendCoinsRecipient> &recipients)
@@ -127,7 +127,7 @@ WalletModel::SendCoinsReturn WalletModel::sendCoins(const QList<SendCoinsRecipie
         foreach(const SendCoinsRecipient &rcp, recipients)
         {
             CScript scriptPubKey;
-            scriptPubKey.SetBitcoinAddress(rcp.address.toStdString());
+            scriptPubKey.SetBitcoinAddress(rcp.address.toStdString(), wallet->Unit());
             vecSend.push_back(make_pair(scriptPubKey, rcp.amount));
         }
 

@@ -7,7 +7,7 @@
 
 #include "wallet.h"
 
-extern CWallet* pwalletMain;
+extern std::set<CWallet*> setpwalletRegistered;
 
 void StartShutdown();
 void Shutdown(void* parg);
