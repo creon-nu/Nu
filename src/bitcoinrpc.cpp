@@ -165,7 +165,7 @@ Object voteToJSON(const CVote& vote)
     {
         Object object;
         object.push_back(Pair("unit", string(1, custodianVote.cUnit)));
-        object.push_back(Pair("address", CBitcoinAddress(custodianVote.hashAddress).ToString()));
+        object.push_back(Pair("address", CBitcoinAddress(custodianVote.hashAddress, custodianVote.cUnit).ToString()));
         object.push_back(Pair("amount", (double)custodianVote.nAmount / COIN));
         custodianVotes.push_back(object);
     }
