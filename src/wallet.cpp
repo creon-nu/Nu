@@ -1216,12 +1216,13 @@ bool CWallet::CreateTransaction(CScript scriptPubKey, int64 nValue, CWalletTx& w
 }
 
 // ppcoin: create coin stake transaction
-bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int64 nSearchInterval, CTransaction& txNew)
+bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int64 nSearchInterval, CTransaction& txNew, CBlockIndex* pindexprev)
 {
     // The following split & combine thresholds are important to security
     // Should not be adjusted if you don't understand the consequences
     static unsigned int nStakeSplitAge = (60 * 60 * 24 * 90);
     int64 nCombineThreshold = GetProofOfWorkReward(GetLastBlockIndex(pindexBest, false)->nBits) / 3;
+    bool fSplit = false;
 
     CBigNum bnTargetPerCoinDay;
     bnTargetPerCoinDay.SetCompact(nBits);
@@ -1316,7 +1317,10 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
                 vwtxPrev.push_back(pcoin.first);
                 txNew.vout.push_back(CTxOut(0, scriptPubKeyOut));
                 if (block.GetBlockTime() + nStakeSplitAge > txNew.nTime)
+                {
                     txNew.vout.push_back(CTxOut(0, scriptPubKeyOut)); //split stake
+                    fSplit = true;
+                }
                 if (fDebug && GetBoolArg("-printcoinstake"))
                     printf("CreateCoinStake : added kernel type=%d\n", whichType);
                 fKernelFound = true;
@@ -1356,8 +1360,8 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
         }
     }
     // Calculate coin age reward
+    uint64 nCoinAge;
     {
-        uint64 nCoinAge;
         CTxDB txdb("r");
         if (!txNew.GetCoinAge(txdb, nCoinAge))
             return error("CreateCoinStake : failed to calculate coin age");
@@ -1392,18 +1396,20 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
 
     // nubit: The result of the vote is stored in the CoinStake transaction
     CParkRateVote parkRateResult;
-    parkRateResult.cUnit = 'B';
-    parkRateResult.vParkRate.push_back(CParkRate(12, 5));
-    parkRateResult.vParkRate.push_back(CParkRate(13, 8));
-    parkRateResult.vParkRate.push_back(CParkRate(15, 17));
 
-    txNew.vout.push_back(CTxOut(0, parkRateResult.ToParkRateResultScript()));
+    vote.nCoinAgeDestroyed = nCoinAge;
+    vector<CParkRateVote> vParkRateResult;
+    if (!CalculateParkRateResults(vote, pindexprev, vParkRateResult))
+        return error("CalculateParkRateResults failed");
+
+    BOOST_FOREACH(const CParkRateVote& parkRateResult, vParkRateResult)
+        txNew.vout.push_back(CTxOut(0, parkRateResult.ToParkRateResultScript()));
 
     int64 nMinFee = 0;
     loop
     {
         // Set output amount
-        if (txNew.vout.size() == 5)
+        if (fSplit)
         {
             txNew.vout[1].nValue = ((nCredit - nMinFee) / 2 / CENT) * CENT;
             txNew.vout[2].nValue = nCredit - nMinFee - txNew.vout[1].nValue;

@@ -48,6 +48,7 @@ static const int STAKE_MIN_AGE = 60 * 60 * 24 * 3; // minimum age for coin age c
 static const int STAKE_MAX_AGE = 60 * 60 * 24 * 90; // stake age of full weight
 static const int64 IPO_SHARES = 1000000 * COIN; // Total number of shares to create using proof of work (intented for IPO)
 static const int64 PROOF_OF_WORK_BLOCKS = 400; // Block height of the last proof of work block
+static const int64 PARK_RATE_VOTES = 1000; // Number of blocks used in park rate median vote calculation
 
 #ifdef USE_UPNP
 static const int fHaveUPnP = true;
@@ -415,8 +416,6 @@ public:
     std::string ToString() const
     {
         if (IsEmpty()) return "CTxOut(empty)";
-        if (scriptPubKey.size() < 6)
-            return "CTxOut(error)";
         return strprintf("CTxOut(nValue=%s, scriptPubKey=%s)", FormatMoney(nValue).c_str(), scriptPubKey.ToString().c_str());
     }
 
@@ -1212,6 +1211,11 @@ public:
     unsigned int nStakeTime;
     uint256 hashProofOfStake;
 
+    // nubit vote fields
+    CVote vote;
+    std::vector<CParkRateVote> vParkRateResult;
+    uint64 nCoinAgeDestroyed;
+
     // block header
     int nVersion;
     uint256 hashMerkleRoot;
@@ -1237,6 +1241,9 @@ public:
         hashProofOfStake = 0;
         prevoutStake.SetNull();
         nStakeTime = 0;
+        vote.SetNull();
+        vParkRateResult.clear();
+        nCoinAgeDestroyed = 0;
 
         nVersion       = 0;
         hashMerkleRoot = 0;
@@ -1271,6 +1278,9 @@ public:
             prevoutStake.SetNull();
             nStakeTime = 0;
         }
+        vote.SetNull();
+        vParkRateResult.clear();
+        nCoinAgeDestroyed = 0;
 
         nVersion       = block.nVersion;
         hashMerkleRoot = block.hashMerkleRoot;
@@ -1462,12 +1472,18 @@ public:
             READWRITE(prevoutStake);
             READWRITE(nStakeTime);
             READWRITE(hashProofOfStake);
+            READWRITE(vote);
+            READWRITE(vParkRateResult);
+            READWRITE(nCoinAgeDestroyed);
         }
         else if (fRead)
         {
             const_cast<CDiskBlockIndex*>(this)->prevoutStake.SetNull();
             const_cast<CDiskBlockIndex*>(this)->nStakeTime = 0;
             const_cast<CDiskBlockIndex*>(this)->hashProofOfStake = 0;
+            const_cast<CDiskBlockIndex*>(this)->vote.SetNull();
+            const_cast<CDiskBlockIndex*>(this)->vParkRateResult.clear();
+            const_cast<CDiskBlockIndex*>(this)->nCoinAgeDestroyed = 0;
         }
 
         // block header

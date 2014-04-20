@@ -48,6 +48,28 @@ bool ExtractVote(const CScript& scriptPubKey, CVote& voteRet)
     return true;
 }
 
+bool ExtractVote(const CBlock& block, CVote& voteRet)
+{
+    if (!block.IsProofOfStake())
+        return false;
+
+    if (block.vtx.size() < 2)
+        return error("invalid transaction count in proof of stake block");
+
+    const CTransaction& tx = block.vtx[1];
+    if (!tx.IsCoinStake())
+        return error("CoinStake not found in proof of stake block");
+
+    BOOST_FOREACH (const CTxOut& txo, tx.vout)
+    {
+        CVote vote;
+        if (ExtractVote(txo.scriptPubKey, voteRet))
+            return true;
+    }
+
+    return false;
+}
+
 CScript CParkRateVote::ToParkRateResultScript() const
 {
     CScript script;
@@ -90,6 +112,31 @@ bool ExtractParkRateResult(const CScript& scriptPubKey, CParkRateVote& parkRateR
     return true;
 }
 
+bool ExtractParkRateResults(const CBlock& block, vector<CParkRateVote>& vParkRateResultRet)
+{
+    vParkRateResultRet.clear();
+
+    if (!block.IsProofOfStake())
+        return false;
+
+    if (block.vtx.size() < 2)
+        return error("invalid transaction count in proof of stake block");
+
+    const CTransaction& tx = block.vtx[1];
+    if (!tx.IsCoinStake())
+        return error("CoinStake not found in proof of stake block");
+
+    BOOST_FOREACH (const CTxOut& txo, tx.vout)
+    {
+        CParkRateVote result;
+        if (ExtractParkRateResult(txo.scriptPubKey, result))
+            vParkRateResultRet.push_back(result);
+    }
+
+    return true;
+}
+
+
 typedef map<uint64, uint64> RateWeightMap;
 typedef RateWeightMap::value_type RateWeight;
 
@@ -101,20 +148,26 @@ static uint64 AddRateWeight(const uint64& totalWeight, const RateWeight& rateWei
     return totalWeight + rateWeight.second;
 }
 
-bool CVote::CalculateParkRateResult(const std::vector<CVote>& vVote, std::vector<CParkRate> &result)
+bool CalculateParkRateResults(const std::vector<CVote>& vVote, std::vector<CParkRateVote> &results)
 {
-    result.clear();
+    results.clear();
 
     if (vVote.empty())
         return true;
+
+    // Only one unit is supported for now
+    vector<CParkRate> result;
 
     DurationRateWeightMap durationRateWeights;
     uint64 totalVoteWeight = 0;
 
     BOOST_FOREACH(const CVote& vote, vVote)
     {
-        if (!vote.Valid())
+        if (!vote.IsValid())
             return false;
+
+        if (vote.nCoinAgeDestroyed == 0)
+            return error("vote with 0 coin age destroyed");
 
         totalVoteWeight += vote.nCoinAgeDestroyed;
 
@@ -157,15 +210,39 @@ bool CVote::CalculateParkRateResult(const std::vector<CVote>& vVote, std::vector
         }
     }
 
+    CParkRateVote parkRateVote;
+    parkRateVote.cUnit = 'B';
+    parkRateVote.vParkRate = result;
+    results.push_back(parkRateVote);
+
     return true;
 }
 
-bool CVote::Valid() const
+bool CalculateParkRateResults(const CVote &vote, CBlockIndex *pindexprev, std::vector<CParkRateVote> &vParkRateResult)
+{
+    vector<CVote> vVote;
+    vVote.reserve(PARK_RATE_VOTES);
+    vVote.push_back(vote);
+
+    CBlockIndex *pindex = pindexprev;
+    for (int i=0; i<PARK_RATE_VOTES-1 && pindex; i++)
+    {
+        if (pindex->IsProofOfStake())
+            vVote.push_back(pindex->vote);
+        pindex = pindex->pprev;
+    }
+
+    return CalculateParkRateResults(vVote, vParkRateResult);
+}
+
+bool CVote::IsValid() const
 {
     set<unsigned char> seenParkVoteUnits;
     BOOST_FOREACH(const CParkRateVote& parkRateVote, vParkRateVote)
     {
         if (parkRateVote.cUnit == 'S')
+            return false;
+        if (parkRateVote.cUnit != 'B')
             return false;
         if (seenParkVoteUnits.find(parkRateVote.cUnit) != seenParkVoteUnits.end())
             return false;
@@ -179,5 +256,31 @@ bool CVote::Valid() const
             seenDurations.insert(parkRate.nDuration);
         }
     }
+    return true;
+}
+
+bool CheckVote(const CBlock& block, CBlockIndex *pindexprev)
+{
+    CVote vote;
+    if (!ExtractVote(block, vote))
+        return error("CheckVote(): ExtractVote failed");
+
+    if (!vote.IsValid())
+        return error("CheckVote(): Invalid vote");
+
+    if (!block.GetCoinAge(vote.nCoinAgeDestroyed))
+        return error("CheckVote(): Unable to get block coin age");
+
+    vector<CParkRateVote> vParkRateResult;
+    if (!ExtractParkRateResults(block, vParkRateResult))
+        return error("CheckVote(): ExtractParkRateResults failed");
+
+    vector<CParkRateVote> vExpectedParkRateResult;
+    if (!CalculateParkRateResults(vote, pindexprev, vExpectedParkRateResult))
+        return error("CheckVote(): CalculateParkRateResults failed");
+
+    if (vParkRateResult != vExpectedParkRateResult)
+        return error("CheckVote(): Invalid park rate result");
+
     return true;
 }

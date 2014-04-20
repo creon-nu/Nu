@@ -586,6 +586,10 @@ bool CTxDB::LoadBlockIndex()
             pindexNew->prevoutStake   = diskindex.prevoutStake;
             pindexNew->nStakeTime     = diskindex.nStakeTime;
             pindexNew->hashProofOfStake = diskindex.hashProofOfStake;
+            pindexNew->vote                   = diskindex.vote;
+            pindexNew->vote.nCoinAgeDestroyed = diskindex.nCoinAgeDestroyed;
+            pindexNew->vParkRateResult        = diskindex.vParkRateResult;
+            pindexNew->nCoinAgeDestroyed      = diskindex.nCoinAgeDestroyed;
             pindexNew->nVersion       = diskindex.nVersion;
             pindexNew->hashMerkleRoot = diskindex.hashMerkleRoot;
             pindexNew->nTime          = diskindex.nTime;

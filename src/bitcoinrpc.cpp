@@ -225,8 +225,6 @@ Object blockToJSON(const CBlock& block, const CBlockIndex* blockindex, bool fPri
     result.push_back(Pair("modifier", strprintf("%016"PRI64x, blockindex->nStakeModifier)));
     result.push_back(Pair("modifierchecksum", strprintf("%08x", blockindex->nStakeModifierChecksum)));
     Array txinfo;
-    Array votes;
-    Array parkRateResults;
     BOOST_FOREACH (const CTransaction& tx, block.vtx)
     {
         if (fPrintTransactionDetail)
@@ -240,23 +238,13 @@ Object blockToJSON(const CBlock& block, const CBlockIndex* blockindex, bool fPri
         }
         else
             txinfo.push_back(tx.GetHash().GetHex());
-
-        if (tx.IsCoinStake())
-        {
-            BOOST_FOREACH (const CTxOut& txo, tx.vout)
-            {
-                CVote vote;
-                if (ExtractVote(txo.scriptPubKey, vote))
-                    votes.push_back(voteToJSON(vote));
-
-                CParkRateVote parkRateResult;
-                if (ExtractParkRateResult(txo.scriptPubKey, parkRateResult))
-                    parkRateResults.push_back(parkRateVoteToJSON(parkRateResult));
-            }
-        }
     }
     result.push_back(Pair("tx", txinfo));
-    result.push_back(Pair("votes", votes));
+    result.push_back(Pair("coinagedestroyed", (boost::uint64_t)blockindex->nCoinAgeDestroyed));
+    result.push_back(Pair("vote", voteToJSON(blockindex->vote)));
+    Array parkRateResults;
+    BOOST_FOREACH(const CParkRateVote& parkRateResult, blockindex->vParkRateResult)
+        parkRateResults.push_back(parkRateVoteToJSON(parkRateResult));
     result.push_back(Pair("parkrates", parkRateResults));
     return result;
 }

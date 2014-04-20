@@ -1840,6 +1840,16 @@ bool CBlock::AddToBlockIndex(unsigned int nFile, unsigned int nBlockPos)
     if (!CheckStakeModifierCheckpoints(pindexNew->nHeight, pindexNew->nStakeModifierChecksum))
         return error("AddToBlockIndex() : Rejected by stake modifier checkpoint height=%d, modifier=0x%016"PRI64x, pindexNew->nHeight, nStakeModifier);
 
+    // nubit: save vote data
+    if (pindexNew->IsProofOfStake())
+    {
+        ExtractVote(*this, pindexNew->vote);
+        ExtractParkRateResults(*this, pindexNew->vParkRateResult);
+        if (!GetCoinAge(pindexNew->nCoinAgeDestroyed))
+            return error("Unable to get coin age");
+        pindexNew->vote.nCoinAgeDestroyed = pindexNew->nCoinAgeDestroyed;
+    }
+
     // Add to mapBlockIndex
     map<uint256, CBlockIndex*>::iterator mi = mapBlockIndex.insert(make_pair(hash, pindexNew)).first;
     if (pindexNew->IsProofOfStake())
@@ -2008,6 +2018,10 @@ bool CBlock::AcceptBlock()
     // ppcoin: check that the block satisfies synchronized checkpoint
     if (!Checkpoints::CheckSync(hash, pindexPrev))
         return error("AcceptBlock() : rejected by synchronized checkpoint");
+
+    // nubit: check the vote is valid and the results match our own calculations
+    if (IsProofOfStake() && !CheckVote(*this, pindexPrev))
+        return error("AcceptBlock() : rejected by vote check");
 
     // Write block to history file
     if (!CheckDiskSpace(::GetSerializeSize(*this, SER_DISK, CLIENT_VERSION)))
@@ -3671,7 +3685,7 @@ CBlock* CreateNewBlock(CReserveKey& reservekey, CWallet* pwallet, bool fProofOfS
         int64 nSearchTime = txCoinStake.nTime; // search to current time
         if (nSearchTime > nLastCoinStakeSearchTime)
         {
-            if (pwallet->CreateCoinStake(*pwallet, pblock->nBits, nSearchTime-nLastCoinStakeSearchTime, txCoinStake))
+            if (pwallet->CreateCoinStake(*pwallet, pblock->nBits, nSearchTime-nLastCoinStakeSearchTime, txCoinStake, pindexPrev))
             {
                 if (txCoinStake.nTime >= max(pindexPrev->GetMedianTimePast()+1, pindexPrev->GetBlockTime() - nMaxClockDrift))
                 {   // make sure coinstake would meet timestamp protocol
