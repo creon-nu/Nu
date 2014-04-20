@@ -3955,6 +3955,15 @@ static bool fGenerateBitcoins = false;
 static bool fLimitProcessors = false;
 static int nLimitProcessors = -1;
 
+void SetMintWarning(const string& strNewWarning)
+{
+    if (strMintWarning != strNewWarning)
+    {
+        strMintWarning = strNewWarning;
+        MainFrameRepaint();
+    }
+}
+
 void BitcoinMiner(CWallet *pwallet, bool fProofOfStake)
 {
     printf("CPUMiner started for proof-of-%s\n", fProofOfStake? "stake" : "work");
@@ -3979,10 +3988,10 @@ void BitcoinMiner(CWallet *pwallet, bool fProofOfStake)
 
         while (pwallet->IsLocked())
         {
-            strMintWarning = strMintMessage;
+            SetMintWarning(strMintMessage);
             Sleep(1000);
         }
-        strMintWarning = "";
+        SetMintWarning("");
 
         //
         // Create new block
@@ -4003,10 +4012,10 @@ void BitcoinMiner(CWallet *pwallet, bool fProofOfStake)
             {
                 if (!pblock->SignBlock(*pwallet))
                 {
-                    strMintWarning = strMintMessage;
+                    SetMintWarning(strMintMessage);
                     continue;
                 }
-                strMintWarning = "";
+                SetMintWarning("");
                 printf("CPUMiner : proof-of-stake block found %s\n", pblock->GetHash().ToString().c_str()); 
                 SetThreadPriority(THREAD_PRIORITY_NORMAL);
                 CheckWork(pblock.get(), *pwallet, reservekey);
@@ -4061,10 +4070,10 @@ void BitcoinMiner(CWallet *pwallet, bool fProofOfStake)
                     assert(hash == pblock->GetHash());
                     if (!pblock->SignBlock(*pwallet))
                     {
-                        strMintWarning = strMintMessage;
+                        SetMintWarning(strMintMessage);
                         break;
                     }
-                    strMintWarning = "";
+                    SetMintWarning("");
                     SetThreadPriority(THREAD_PRIORITY_NORMAL);
                     CheckWork(pblock.get(), *pwallet, reservekey);
                     SetThreadPriority(THREAD_PRIORITY_LOWEST);

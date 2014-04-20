@@ -86,6 +86,7 @@ private:
     QAction *exportAction;
     QAction *exportPeercoinKeysAction;
     QAction *encryptWalletAction;
+    QAction *unlockForMintingAction;
     QAction *backupWalletAction;
     QAction *changePassphraseAction;
     QAction *aboutQtAction;
@@ -167,6 +168,8 @@ private slots:
     void incomingTransaction(const QModelIndex & parent, int start, int end);
     /** Encrypt the wallet */
     void encryptWallet(bool status);
+    /** Decrypt wallet for minting only */
+    void unlockForMinting(bool status);
     /** Backup the wallet */
     void backupWallet();
     /** Change encrypted wallet passphrase */
