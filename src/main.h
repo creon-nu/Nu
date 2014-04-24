@@ -49,6 +49,8 @@ static const int STAKE_MAX_AGE = 60 * 60 * 24 * 90; // stake age of full weight
 static const int64 IPO_SHARES = 1000000 * COIN; // Total number of shares to create using proof of work (intented for IPO)
 static const int64 PROOF_OF_WORK_BLOCKS = 400; // Block height of the last proof of work block
 static const int64 PARK_RATE_VOTES = 1000; // Number of blocks used in park rate median vote calculation
+static const unsigned int CUSTODIAN_VOTES = 10000;
+
 
 #ifdef USE_UPNP
 static const int fHaveUPnP = true;
@@ -539,13 +541,18 @@ public:
 
     bool IsCoinBase() const
     {
-        return (vin.size() == 1 && vin[0].prevout.IsNull() && vout.size() >= 1);
+        return (cUnit == 'S' && vin.size() == 1 && vin[0].prevout.IsNull() && vout.size() >= 1);
     }
 
     bool IsCoinStake() const
     {
         // ppcoin: the coin stake transaction is marked with the first output empty
         return (vin.size() > 0 && (!vin[0].prevout.IsNull()) && vout.size() >= 2 && vout[0].IsEmpty());
+    }
+
+    bool IsCurrencyCoinBase() const
+    {
+        return (cUnit != 'S' && vin.size() == 1 && vin[0].prevout.IsNull() && vout.size() >= 1);
     }
 
     /** Check for standard transaction types

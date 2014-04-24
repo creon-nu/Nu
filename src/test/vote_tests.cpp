@@ -267,4 +267,50 @@ BOOST_AUTO_TEST_CASE(vote_validity_tests)
     BOOST_CHECK(!vote.IsValid());
 }
 
+BOOST_AUTO_TEST_CASE(create_currency_coin_bases)
+{
+    vector<CVote> vVote;
+
+    // Zero vote results in no new currency
+    vector<CTransaction> vCurrencyCoinBase;
+    BOOST_CHECK(GenerateCurrencyCoinBases(vVote, vCurrencyCoinBase));
+    BOOST_CHECK_EQUAL(0, vCurrencyCoinBase.size());
+
+    // Add a vote without custodian vote
+    CVote vote;
+    vote.nCoinAgeDestroyed = 1000;
+    vVote.push_back(vote);
+
+    // Still no currency created
+    BOOST_CHECK(GenerateCurrencyCoinBases(vVote, vCurrencyCoinBase));
+    BOOST_CHECK_EQUAL(0, vCurrencyCoinBase.size());
+
+    // Add a custodian vote with the same coin age
+    CCustodianVote custodianVote;
+    custodianVote.cUnit = 'B';
+    custodianVote.hashAddress = uint160(1);
+    custodianVote.nAmount = 8 * COIN;
+    vote.vCustodianVote.push_back(custodianVote);
+    vVote.push_back(vote);
+
+    // Still no currency created
+    BOOST_CHECK(GenerateCurrencyCoinBases(vVote, vCurrencyCoinBase));
+    BOOST_CHECK_EQUAL(0, vCurrencyCoinBase.size());
+
+    // The last vote has a little more weight
+    vVote.back().nCoinAgeDestroyed++;
+
+    // It should win and currecy is created
+    BOOST_CHECK(GenerateCurrencyCoinBases(vVote, vCurrencyCoinBase));
+    BOOST_CHECK_EQUAL(1, vCurrencyCoinBase.size());
+    CTransaction& tx = vCurrencyCoinBase[0];
+    BOOST_CHECK(tx.IsCurrencyCoinBase());
+    BOOST_CHECK_EQUAL('B', tx.cUnit);
+    BOOST_CHECK_EQUAL(1, tx.vout.size());
+    BOOST_CHECK_EQUAL(8 * COIN, tx.vout[0].nValue);
+    CBitcoinAddress address;
+    BOOST_CHECK(ExtractAddress(tx.vout[0].scriptPubKey, address, tx.cUnit));
+    BOOST_CHECK_EQUAL(uint160(1).ToString(), address.GetHash160().ToString());
+}
+
 BOOST_AUTO_TEST_SUITE_END()

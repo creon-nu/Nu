@@ -259,6 +259,31 @@ bool CVote::IsValid() const
     return true;
 }
 
+bool ExtractVotes(const CBlock& block, CBlockIndex *pindexprev, unsigned int nCount, std::vector<CVote> &vVoteRet)
+{
+    CVote vote;
+    if (!ExtractVote(block, vote))
+        return error("ExtractVotes(): ExtractVote failed");
+
+    if (!vote.IsValid())
+        return error("ExtractVotes(): Invalid vote");
+
+    if (!block.GetCoinAge(vote.nCoinAgeDestroyed))
+        return error("ExtractVotes(): Unable to get block coin age");
+
+    vVoteRet.reserve(nCount);
+    vVoteRet.push_back(vote);
+
+    CBlockIndex *pindex = pindexprev;
+    for (int i=0; i<nCount-1 && pindex; i++)
+    {
+        if (pindex->IsProofOfStake())
+            vVoteRet.push_back(pindex->vote);
+        pindex = pindex->pprev;
+    }
+    return true;
+}
+
 bool CheckVote(const CBlock& block, CBlockIndex *pindexprev)
 {
     CVote vote;
@@ -281,6 +306,60 @@ bool CheckVote(const CBlock& block, CBlockIndex *pindexprev)
 
     if (vParkRateResult != vExpectedParkRateResult)
         return error("CheckVote(): Invalid park rate result");
+
+    return true;
+}
+
+typedef map<CCustodianVote, uint64> CustodianVoteMap;
+
+bool GenerateCurrencyCoinBases(const std::vector<CVote> vVote, std::vector<CTransaction>& vCurrencyCoinBaseRet)
+{
+    vCurrencyCoinBaseRet.clear();
+
+    if (vVote.empty())
+        return true;
+
+    CustodianVoteMap custodianVoteWeights;
+    uint64 totalVoteWeight = 0;
+
+    BOOST_FOREACH(const CVote& vote, vVote)
+    {
+        if (!vote.IsValid())
+            return false;
+
+        if (vote.nCoinAgeDestroyed == 0)
+            return error("vote with 0 coin age destroyed");
+
+        totalVoteWeight += vote.nCoinAgeDestroyed;
+
+        BOOST_FOREACH(const CCustodianVote& custodianVote, vote.vCustodianVote)
+        {
+            custodianVoteWeights[custodianVote] += vote.nCoinAgeDestroyed;
+        }
+    }
+
+    uint64 halfWeight = totalVoteWeight / 2;
+
+    BOOST_FOREACH(const CustodianVoteMap::value_type& value, custodianVoteWeights)
+    {
+        const CCustodianVote &custodianVote = value.first;
+        uint64 weight = value.second;
+
+        if (weight > halfWeight)
+        {
+            CTransaction tx;
+            tx.cUnit = 'B';
+
+            CBitcoinAddress address(custodianVote.hashAddress, 'B');
+            CScript scriptPubKey;
+            scriptPubKey.SetBitcoinAddress(address, 'B');
+
+            tx.vin.push_back(CTxIn());
+            tx.vout.push_back(CTxOut(custodianVote.nAmount, scriptPubKey));
+
+            vCurrencyCoinBaseRet.push_back(tx);
+        }
+    }
 
     return true;
 }

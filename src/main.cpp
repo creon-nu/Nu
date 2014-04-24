@@ -2023,6 +2023,35 @@ bool CBlock::AcceptBlock()
     if (IsProofOfStake() && !CheckVote(*this, pindexPrev))
         return error("AcceptBlock() : rejected by vote check");
 
+    // nubit: check the expansion transactions match the expected ones
+    if (IsProofOfStake())
+    {
+        vector<CVote> vVote;
+        if (!ExtractVotes(*this, pindexPrev, CUSTODIAN_VOTES, vVote))
+            return error("AcceptBlock() : unable to extract votes");
+
+        vector<CTransaction> vExpectedTx;
+        if (!GenerateCurrencyCoinBases(vVote, vExpectedTx))
+            return error("AcceptBlock() : unable to generate currency coin bases");
+
+        int matching = 0;
+        BOOST_FOREACH(const CTransaction& tx, vtx)
+        {
+            if (tx.IsCurrencyCoinBase())
+            {
+                if (tx == vExpectedTx[matching])
+                    matching++;
+                else
+                    return error("AcceptBlock() : invalid expansion transaction found");
+            }
+            if (matching == vExpectedTx.size())
+                break;
+        }
+
+        if (matching != vExpectedTx.size())
+            return("AcceptBlock() : not enough expansion transaction");
+    }
+
     // Write block to history file
     if (!CheckDiskSpace(::GetSerializeSize(*this, SER_DISK, CLIENT_VERSION)))
         return error("AcceptBlock() : out of disk space");
@@ -3701,6 +3730,27 @@ CBlock* CreateNewBlock(CReserveKey& reservekey, CWallet* pwallet, bool fProofOfS
     }
 
     pblock->nBits = GetNextTargetRequired(pindexPrev, pblock->IsProofOfStake());
+
+    // nubit: Add expansion transactions
+    if (pblock->IsProofOfStake())
+    {
+        vector<CVote> vVote;
+        if (!ExtractVotes(*pblock, pindexPrev, CUSTODIAN_VOTES, vVote))
+        {
+            printf("CreateNewBlock(): unable to extract votes");
+            return NULL;
+        }
+
+        vector<CTransaction> vCurrencyCoinBase;
+        if (!GenerateCurrencyCoinBases(vVote, vCurrencyCoinBase))
+        {
+            printf("CreateNewBlock(): unable to generate currency coin bases");
+            return NULL;
+        }
+
+        BOOST_FOREACH(const CTransaction& tx, vCurrencyCoinBase)
+            pblock->vtx.push_back(tx);
+    }
 
     // Collect memory pool transactions into the block
     int64 nFees = 0;

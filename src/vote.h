@@ -19,6 +19,8 @@ public:
         READWRITE(hashAddress);
         READWRITE(nAmount);
     )
+
+    bool operator< (const CCustodianVote& other) const { return hashAddress < other.hashAddress || nAmount < other.nAmount; }
 };
 
 class CParkRate
@@ -118,6 +120,7 @@ public:
 bool IsVote(const CScript& scriptPubKey);
 bool ExtractVote(const CScript& scriptPubKey, CVote& voteRet);
 bool ExtractVote(const CBlock& block, CVote& voteRet);
+bool ExtractVotes(const CBlock &block, CBlockIndex *pindexprev, unsigned int nCount, std::vector<CVote> &vVoteResult);
 
 bool IsParkRateResult(const CScript& scriptPubKey);
 bool ExtractParkRateResult(const CScript& scriptPubKey, CParkRateVote& parkRateResultRet);
@@ -127,5 +130,7 @@ bool CalculateParkRateResults(const std::vector<CVote>& vVote, std::vector<CPark
 bool CalculateParkRateResults(const CVote &vote, CBlockIndex *pindexprev, std::vector<CParkRateVote> &vParkRateResult);
 
 bool CheckVote(const CBlock& block, CBlockIndex *pindexprev);
+
+bool GenerateCurrencyCoinBases(const std::vector<CVote> vVote, std::vector<CTransaction>& vCurrencyCoinBaseRet);
 
 #endif
