@@ -1899,6 +1899,24 @@ bool CBlock::AddToBlockIndex(unsigned int nFile, unsigned int nBlockPos)
         pindexNew->vote.nCoinAgeDestroyed = pindexNew->nCoinAgeDestroyed;
     }
 
+    // nubit: save elected custodians
+    BOOST_FOREACH(const CTransaction& tx, vtx)
+    {
+        if (tx.IsCurrencyCoinBase())
+        {
+            CCustodianVote electedCustodian;
+            electedCustodian.cUnit = tx.cUnit;
+            CBitcoinAddress address;
+            if (tx.vout.size() < 1)
+                return error("Not enough outputs in currency coinbase");
+            if (!ExtractAddress(tx.vout[0].scriptPubKey, address, tx.cUnit))
+                return error("Unable to extract address from currency coinbase");
+            electedCustodian.hashAddress = address.GetHash160();
+            electedCustodian.nAmount = tx.GetValueOut();
+            pindexNew->vElectedCustodian.push_back(electedCustodian);
+        }
+    }
+
     // Add to mapBlockIndex
     map<uint256, CBlockIndex*>::iterator mi = mapBlockIndex.insert(make_pair(hash, pindexNew)).first;
     if (pindexNew->IsProofOfStake())

@@ -1224,6 +1224,9 @@ public:
     std::vector<CParkRateVote> vParkRateResult;
     uint64 nCoinAgeDestroyed;
 
+    // nubit: elected custodians
+    std::vector<CCustodianVote> vElectedCustodian;
+
     // block header
     int nVersion;
     uint256 hashMerkleRoot;
@@ -1252,6 +1255,7 @@ public:
         vote.SetNull();
         vParkRateResult.clear();
         nCoinAgeDestroyed = 0;
+        vElectedCustodian.clear();
 
         nVersion       = 0;
         hashMerkleRoot = 0;
@@ -1289,6 +1293,7 @@ public:
         vote.SetNull();
         vParkRateResult.clear();
         nCoinAgeDestroyed = 0;
+        vElectedCustodian.clear();
 
         nVersion       = block.nVersion;
         hashMerkleRoot = block.hashMerkleRoot;
@@ -1483,6 +1488,7 @@ public:
             READWRITE(vote);
             READWRITE(vParkRateResult);
             READWRITE(nCoinAgeDestroyed);
+            READWRITE(vElectedCustodian);
         }
         else if (fRead)
         {
@@ -1492,6 +1498,7 @@ public:
             const_cast<CDiskBlockIndex*>(this)->vote.SetNull();
             const_cast<CDiskBlockIndex*>(this)->vParkRateResult.clear();
             const_cast<CDiskBlockIndex*>(this)->nCoinAgeDestroyed = 0;
+            const_cast<CDiskBlockIndex*>(this)->vElectedCustodian.clear();
         }
 
         // block header
