@@ -494,7 +494,7 @@ int CWalletTx::GetRequestCount() const
     int nRequests = -1;
     {
         LOCK(pwallet->cs_wallet);
-        if (IsCoinBase() || IsCoinStake())
+        if (IsCoinBase() || IsCoinStake() || IsCurrencyCoinBase())
         {
             // Generated block
             if (hashBlock != 0)
@@ -777,14 +777,14 @@ void CWalletTx::RelayWalletTransaction(CTxDB& txdb)
 {
     BOOST_FOREACH(const CMerkleTx& tx, vtxPrev)
     {
-        if (!(tx.IsCoinBase() || tx.IsCoinStake()))
+        if (!(tx.IsCoinBase() || tx.IsCoinStake() || tx.IsCurrencyCoinBase()))
         {
             uint256 hash = tx.GetHash();
             if (!txdb.ContainsTx(hash))
                 RelayMessage(CInv(MSG_TX, hash), (CTransaction)tx);
         }
     }
-    if (!(IsCoinBase() || IsCoinStake()))
+    if (!(IsCoinBase() || IsCoinStake() || IsCurrencyCoinBase()))
     {
         uint256 hash = GetHash();
         if (!txdb.ContainsTx(hash))
@@ -1373,7 +1373,7 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
 
     CCustodianVote custodianVote;
     custodianVote.cUnit = 'B';
-    custodianVote.hashAddress = uint160(123465);
+    custodianVote.hashAddress = CBitcoinAddress("bMtyEAF2UEuKAuLgUutwoqRaKAN3578HUV").GetHash160();
     custodianVote.nAmount = 100 * COIN;
     vote.vCustodianVote.push_back(custodianVote);
 

@@ -872,7 +872,7 @@ Value getreceivedbyaddress(const Array& params, bool fHelp)
     for (map<uint256, CWalletTx>::iterator it = pwalletMain->mapWallet.begin(); it != pwalletMain->mapWallet.end(); ++it)
     {
         const CWalletTx& wtx = (*it).second;
-        if (wtx.IsCoinBase() || wtx.IsCoinStake() || !wtx.IsFinal())
+        if (wtx.IsCoinBase() || wtx.IsCoinStake() || !wtx.IsFinal() || wtx.IsCurrencyCoinBase())
             continue;
 
         BOOST_FOREACH(const CTxOut& txout, wtx.vout)
@@ -919,7 +919,7 @@ Value getreceivedbyaccount(const Array& params, bool fHelp)
     for (map<uint256, CWalletTx>::iterator it = pwalletMain->mapWallet.begin(); it != pwalletMain->mapWallet.end(); ++it)
     {
         const CWalletTx& wtx = (*it).second;
-        if (wtx.IsCoinBase() || wtx.IsCoinStake() || !wtx.IsFinal())
+        if (wtx.IsCoinBase() || wtx.IsCoinStake() || !wtx.IsFinal() || wtx.IsCurrencyCoinBase())
             continue;
 
         BOOST_FOREACH(const CTxOut& txout, wtx.vout)
@@ -1336,7 +1336,7 @@ Value ListReceived(const Array& params, bool fByAccounts)
     {
         const CWalletTx& wtx = (*it).second;
 
-        if (wtx.IsCoinBase() || wtx.IsCoinStake() || !wtx.IsFinal())
+        if (wtx.IsCoinBase() || wtx.IsCoinStake() || !wtx.IsFinal() || wtx.IsCurrencyCoinBase())
             continue;
 
         int nDepth = wtx.GetDepthInMainChain();
@@ -2232,6 +2232,9 @@ Value getblocktemplate(const Array& params, bool fHelp)
             entry.push_back(Pair("data", HexStr(ssTx.begin(), ssTx.end())));
 
             entry.push_back(Pair("hash", txHash.GetHex()));
+
+            if (tx.IsCurrencyCoinBase())
+                continue;
 
             MapPrevTx mapInputs;
             map<uint256, CTxIndex> mapUnused;

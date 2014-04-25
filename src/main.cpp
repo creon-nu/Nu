@@ -373,7 +373,7 @@ bool CTransaction::AreInputsSameUnit(const MapPrevTx& mapInputs) const
 //
 bool CTransaction::AreInputsStandard(const MapPrevTx& mapInputs) const
 {
-    if (IsCoinBase())
+    if (IsCoinBase() || IsCurrencyCoinBase())
         return true; // Coinbases don't use vin normally
 
     for (unsigned int i = 0; i < vin.size(); i++)
@@ -520,7 +520,7 @@ bool CTransaction::CheckTransaction() const
     for (int i = 0; i < vout.size(); i++)
     {
         const CTxOut& txout = vout[i];
-        if (txout.IsEmpty() && (!IsCoinBase()) && (!IsCoinStake()))
+        if (txout.IsEmpty() && (!IsCoinBase()) && (!IsCoinStake()) && (!IsCurrencyCoinBase()))
             return DoS(100, error("CTransaction::CheckTransaction() : txout empty for user transaction"));
         // ppcoin: enforce minimum output amount
         if ((!txout.IsEmpty()) && !(IsCoinStake() && (txout.IsVote() || txout.IsParkRateResult())) && txout.nValue < MIN_TXOUT_AMOUNT)
@@ -550,6 +550,12 @@ bool CTransaction::CheckTransaction() const
         if (vin[0].scriptSig.size() < 2 || vin[0].scriptSig.size() > 100)
             return DoS(100, error("CTransaction::CheckTransaction() : coinbase script size"));
     }
+    else if (IsCurrencyCoinBase())
+    {
+        // nubit: no script allowed in currency coinbase
+        if (vin[0].scriptSig.size() != 0)
+            return DoS(100, error("CTransaction::CheckTransaction() : currency coinbase script size"));
+    }
     else
     {
         BOOST_FOREACH(const CTxIn& txin, vin)
@@ -575,6 +581,9 @@ bool CTxMemPool::accept(CTxDB& txdb, CTransaction &tx, bool fCheckInputs,
     // ppcoin: coinstake is also only valid in a block, not as a loose transaction
     if (tx.IsCoinStake())
         return tx.DoS(100, error("CTxMemPool::accept() : coinstake as individual tx"));
+    // nubit: CurrencyCoinBase is also only valid in a block
+    if (tx.IsCurrencyCoinBase())
+        return tx.DoS(100, error("CTxMemPool::accept() : currency coinbase as individual tx"));
 
     // To help v0.1.5 clients who would see it as a negative number
     if ((int64)tx.nLockTime > std::numeric_limits<int>::max())
@@ -818,7 +827,7 @@ bool CWalletTx::AcceptWalletTransaction(CTxDB& txdb, bool fCheckInputs)
         // Add previous supporting transactions first
         BOOST_FOREACH(CMerkleTx& tx, vtxPrev)
         {
-            if (!(tx.IsCoinBase() || tx.IsCoinStake()))
+            if (!(tx.IsCoinBase() || tx.IsCoinStake() || tx.IsCurrencyCoinBase()))
             {
                 uint256 hash = tx.GetHash();
                 if (!mempool.exists(hash) && !txdb.ContainsTx(hash))
@@ -1048,7 +1057,7 @@ void CBlock::UpdateTime(const CBlockIndex* pindexPrev)
 bool CTransaction::DisconnectInputs(CTxDB& txdb)
 {
     // Relinquish previous transactions' spent pointers
-    if (!IsCoinBase())
+    if (!IsCoinBase() && !IsCurrencyCoinBase())
     {
         BOOST_FOREACH(const CTxIn& txin, vin)
         {
@@ -1090,7 +1099,7 @@ bool CTransaction::FetchInputs(CTxDB& txdb, const map<uint256, CTxIndex>& mapTes
     // be dropped).  If tx is definitely invalid, fInvalid will be set to true.
     fInvalid = false;
 
-    if (IsCoinBase())
+    if (IsCoinBase() || IsCurrencyCoinBase())
         return true; // Coinbase transactions have no inputs to fetch.
 
     for (unsigned int i = 0; i < vin.size(); i++)
@@ -1171,7 +1180,7 @@ const CTxOut& CTransaction::GetOutputFor(const CTxIn& input, const MapPrevTx& in
 
 int64 CTransaction::GetValueIn(const MapPrevTx& inputs) const
 {
-    if (IsCoinBase())
+    if (IsCoinBase() || IsCurrencyCoinBase())
         return 0;
 
     int64 nResult = 0;
@@ -1185,7 +1194,7 @@ int64 CTransaction::GetValueIn(const MapPrevTx& inputs) const
 
 unsigned int CTransaction::GetP2SHSigOpCount(const MapPrevTx& inputs) const
 {
-    if (IsCoinBase())
+    if (IsCoinBase() || IsCurrencyCoinBase())
         return 0;
 
     unsigned int nSigOps = 0;
@@ -1206,7 +1215,7 @@ bool CTransaction::ConnectInputs(CTxDB& txdb, MapPrevTx inputs,
     // fBlock is true when this is called from AcceptBlock when a new best-block is added to the blockchain
     // fMiner is true when called from the internal bitcoin miner
     // ... both are false when called from CTransaction::AcceptToMemoryPool
-    if (!IsCoinBase())
+    if (!IsCoinBase() && !IsCurrencyCoinBase())
     {
         int64 nValueIn = 0;
         int64 nFees = 0;
@@ -1313,7 +1322,7 @@ bool CTransaction::ConnectInputs(CTxDB& txdb, MapPrevTx inputs,
 
 bool CTransaction::ClientConnectInputs()
 {
-    if (IsCoinBase())
+    if (IsCoinBase() || IsCurrencyCoinBase())
         return false;
 
     // Take over previous transactions' spent pointers
@@ -1455,7 +1464,7 @@ bool CBlock::ConnectBlock(CTxDB& txdb, CBlockIndex* pindex)
         nTxPos += ::GetSerializeSize(tx, SER_DISK, CLIENT_VERSION);
 
         MapPrevTx mapInputs;
-        if (tx.IsCoinBase())
+        if (tx.IsCoinBase() || tx.IsCurrencyCoinBase())
             nValueOut += tx.GetValueOut();
         else
         {
@@ -1585,7 +1594,7 @@ bool Reorganize(CTxDB& txdb, CBlockIndex* pindexNew)
 
         // Queue memory transactions to resurrect
         BOOST_FOREACH(const CTransaction& tx, block.vtx)
-            if (!(tx.IsCoinBase() || tx.IsCoinStake()))
+            if (!(tx.IsCoinBase() || tx.IsCoinStake() || tx.IsCurrencyCoinBase()))
                 vResurrect.push_back(tx);
     }
 
@@ -1778,7 +1787,7 @@ bool CTransaction::GetCoinAge(CTxDB& txdb, uint64& nCoinAge) const
     CBigNum bnCentSecond = 0;  // coin age in the unit of cent-seconds
     nCoinAge = 0;
 
-    if (IsCoinBase())
+    if (IsCoinBase() || IsCurrencyCoinBase())
         return true;
 
     BOOST_FOREACH(const CTxIn& txin, vin)
@@ -2079,10 +2088,17 @@ bool CBlock::AcceptBlock()
         {
             if (tx.IsCurrencyCoinBase())
             {
-                if (tx == vExpectedTx[matching])
+                CTransaction& expectedTx = vExpectedTx[matching];
+                expectedTx.nTime = tx.nTime;
+
+                if (tx == expectedTx)
                     matching++;
                 else
+                {
+                    printf("expected tx: %s\n", expectedTx.ToString().c_str());
+                    printf("actual tx:   %s\n", tx.ToString().c_str());
                     return error("AcceptBlock() : invalid expansion transaction found");
+                }
             }
             if (matching == vExpectedTx.size())
                 break;
@@ -3805,7 +3821,7 @@ CBlock* CreateNewBlock(CReserveKey& reservekey, CWallet* pwallet, bool fProofOfS
         for (map<uint256, CTransaction>::iterator mi = mempool.mapTx.begin(); mi != mempool.mapTx.end(); ++mi)
         {
             CTransaction& tx = (*mi).second;
-            if (tx.IsCoinBase() || tx.IsCoinStake() || !tx.IsFinal())
+            if (tx.IsCoinBase() || tx.IsCoinStake() || tx.IsCurrencyCoinBase() || !tx.IsFinal())
                 continue;
 
             COrphan* porphan = NULL;

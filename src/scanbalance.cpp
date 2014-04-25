@@ -19,7 +19,7 @@ using namespace boost;
 
 static void ScanTransactionInputs(CTxDB& txdb, const CTransaction& tx, BalanceMap& mapBalance)
 {
-    if (tx.IsCoinBase()) return;
+    if (tx.IsCoinBase() || tx.IsCurrencyCoinBase()) return;
 
     BOOST_FOREACH(const CTxIn& txi, tx.vin)
     {
