@@ -312,7 +312,7 @@ bool CheckVote(const CBlock& block, CBlockIndex *pindexprev)
 
 typedef map<CCustodianVote, uint64> CustodianVoteMap;
 
-bool GenerateCurrencyCoinBases(const std::vector<CVote> vVote, std::vector<CTransaction>& vCurrencyCoinBaseRet)
+bool GenerateCurrencyCoinBases(const std::vector<CVote> vVote, std::set<CBitcoinAddress> setAlreadyElected, std::vector<CTransaction>& vCurrencyCoinBaseRet)
 {
     vCurrencyCoinBaseRet.clear();
 
@@ -334,7 +334,8 @@ bool GenerateCurrencyCoinBases(const std::vector<CVote> vVote, std::vector<CTran
 
         BOOST_FOREACH(const CCustodianVote& custodianVote, vote.vCustodianVote)
         {
-            custodianVoteWeights[custodianVote] += vote.nCoinAgeDestroyed;
+            if (!setAlreadyElected.count(custodianVote.GetAddress()))
+                custodianVoteWeights[custodianVote] += vote.nCoinAgeDestroyed;
         }
     }
 
@@ -350,9 +351,8 @@ bool GenerateCurrencyCoinBases(const std::vector<CVote> vVote, std::vector<CTran
             CTransaction tx;
             tx.cUnit = 'B';
 
-            CBitcoinAddress address(custodianVote.hashAddress, 'B');
             CScript scriptPubKey;
-            scriptPubKey.SetBitcoinAddress(address, 'B');
+            scriptPubKey.SetBitcoinAddress(custodianVote.GetAddress(), 'B');
 
             tx.vin.push_back(CTxIn());
             tx.vout.push_back(CTxOut(custodianVote.nAmount, scriptPubKey));

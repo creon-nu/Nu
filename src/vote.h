@@ -2,6 +2,7 @@
 #define VOTE_H
 
 #include "serialize.h"
+#include "base58.h"
 
 class CBlock;
 class CBlockIndex;
@@ -19,6 +20,11 @@ public:
         READWRITE(hashAddress);
         READWRITE(nAmount);
     )
+
+    CBitcoinAddress GetAddress() const
+    {
+        return CBitcoinAddress(hashAddress, cUnit);
+    }
 
     bool operator< (const CCustodianVote& other) const { return hashAddress < other.hashAddress || nAmount < other.nAmount; }
 };
@@ -131,6 +137,6 @@ bool CalculateParkRateResults(const CVote &vote, CBlockIndex *pindexprev, std::v
 
 bool CheckVote(const CBlock& block, CBlockIndex *pindexprev);
 
-bool GenerateCurrencyCoinBases(const std::vector<CVote> vVote, std::vector<CTransaction>& vCurrencyCoinBaseRet);
+bool GenerateCurrencyCoinBases(const std::vector<CVote> vVote, std::set<CBitcoinAddress> setAlreadyElected, std::vector<CTransaction>& vCurrencyCoinBaseRet);
 
 #endif

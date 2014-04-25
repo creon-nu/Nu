@@ -58,6 +58,8 @@ map<uint256, uint256> mapProofOfStake;
 map<uint256, CDataStream*> mapOrphanTransactions;
 map<uint256, map<uint256, CDataStream*> > mapOrphanTransactionsByPrev;
 
+set<CBitcoinAddress> setElectedCustodian;
+
 // Constant stuff for coinbase transactions we create:
 CScript COINBASE_FLAGS;
 
@@ -1365,6 +1367,25 @@ bool CBlock::DisconnectBlock(CTxDB& txdb, CBlockIndex* pindex)
         if (!vtx[i].DisconnectInputs(txdb))
             return false;
 
+    // nubit: forget elected custodians
+    BOOST_FOREACH(const CTransaction& tx, vtx)
+    {
+        if (tx.IsCurrencyCoinBase())
+        {
+            if (tx.vout.size() < 1)
+                return error("Connect() : not output in CurrencyCoinBase");
+
+            CBitcoinAddress address;
+            if (!ExtractAddress(tx.vout[0].scriptPubKey, address, tx.cUnit))
+                return error("Connect() : ExtractAddress on CurrencyCoinBase failed");
+
+            if (!setElectedCustodian.count(address))
+                return error("Connect() : custodian was not elected");
+
+            setElectedCustodian.erase(address);
+        }
+    }
+
     // Update block index on disk without changing it in memory.
     // The memory index structure will be changed after the db commits.
     if (pindex->pprev)
@@ -1471,6 +1492,25 @@ bool CBlock::ConnectBlock(CTxDB& txdb, CBlockIndex* pindex)
     pindex->nMoneySupply = (pindex->pprev? pindex->pprev->nMoneySupply : 0) + nValueOut - nValueIn;
     if (!txdb.WriteBlockIndex(CDiskBlockIndex(pindex)))
         return error("Connect() : WriteBlockIndex for pindex failed");
+
+    // nubit: track elected custodians
+    BOOST_FOREACH(const CTransaction& tx, vtx)
+    {
+        if (tx.IsCurrencyCoinBase())
+        {
+            if (tx.vout.size() < 1)
+                return error("Connect() : not output in CurrencyCoinBase");
+
+            CBitcoinAddress address;
+            if (!ExtractAddress(tx.vout[0].scriptPubKey, address, tx.cUnit))
+                return error("Connect() : ExtractAddress on CurrencyCoinBase failed");
+
+            if (setElectedCustodian.count(address))
+                return error("Connect() : custodian has already been elected");
+
+            setElectedCustodian.insert(address);
+        }
+    }
 
     // Write queued txindex changes
     for (map<uint256, CTxIndex>::iterator mi = mapQueuedChanges.begin(); mi != mapQueuedChanges.end(); ++mi)
@@ -2031,7 +2071,7 @@ bool CBlock::AcceptBlock()
             return error("AcceptBlock() : unable to extract votes");
 
         vector<CTransaction> vExpectedTx;
-        if (!GenerateCurrencyCoinBases(vVote, vExpectedTx))
+        if (!GenerateCurrencyCoinBases(vVote, setElectedCustodian, vExpectedTx))
             return error("AcceptBlock() : unable to generate currency coin bases");
 
         int matching = 0;
@@ -3742,7 +3782,7 @@ CBlock* CreateNewBlock(CReserveKey& reservekey, CWallet* pwallet, bool fProofOfS
         }
 
         vector<CTransaction> vCurrencyCoinBase;
-        if (!GenerateCurrencyCoinBases(vVote, vCurrencyCoinBase))
+        if (!GenerateCurrencyCoinBases(vVote, setElectedCustodian, vCurrencyCoinBase))
         {
             printf("CreateNewBlock(): unable to generate currency coin bases");
             return NULL;

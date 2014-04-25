@@ -92,6 +92,7 @@ extern int64 nTimeBestReceived;
 extern CCriticalSection cs_setpwalletRegistered;
 extern std::set<CWallet*> setpwalletRegistered;
 extern std::map<uint256, CBlock*> mapOrphanBlocks;
+extern std::set<CBitcoinAddress> setElectedCustodian;
 
 // Settings
 extern int64 nTransactionFee;
