@@ -379,22 +379,22 @@ bool GenerateCurrencyCoinBases(const std::vector<CVote> vVote, std::set<CBitcoin
         unsigned char cUnit = grantedAmountPerUnit.first;
         const GrantedAmountMap& mapGrantedAmount = grantedAmountPerUnit.second;
 
+        CTransaction tx;
+        tx.cUnit = cUnit;
+        tx.vin.push_back(CTxIn());
+
         BOOST_FOREACH(const GrantedAmountMap::value_type& grantedAmount, mapGrantedAmount)
         {
             const CBitcoinAddress& address = grantedAmount.first;
             uint64 amount = grantedAmount.second;
 
-            CTransaction tx;
-            tx.cUnit = cUnit;
-
             CScript scriptPubKey;
             scriptPubKey.SetBitcoinAddress(address, cUnit);
 
-            tx.vin.push_back(CTxIn());
             tx.vout.push_back(CTxOut(amount, scriptPubKey));
-
-            vCurrencyCoinBaseRet.push_back(tx);
         }
+
+        vCurrencyCoinBaseRet.push_back(tx);
     }
 
     return true;

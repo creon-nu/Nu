@@ -340,22 +340,16 @@ BOOST_AUTO_TEST_CASE(create_currency_coin_bases)
 
     // Both should receive new currency
     BOOST_CHECK(GenerateCurrencyCoinBases(vVote, setElected, vCurrencyCoinBase));
-    BOOST_CHECK_EQUAL(2, vCurrencyCoinBase.size());
-
+    BOOST_CHECK_EQUAL(1, vCurrencyCoinBase.size());
     tx = vCurrencyCoinBase[0];
     BOOST_CHECK(tx.IsCurrencyCoinBase());
     BOOST_CHECK_EQUAL('B', tx.cUnit);
-    BOOST_CHECK_EQUAL(1, tx.vout.size());
+    BOOST_CHECK_EQUAL(2, tx.vout.size());
     BOOST_CHECK_EQUAL(8 * COIN, tx.vout[0].nValue);
     BOOST_CHECK(ExtractAddress(tx.vout[0].scriptPubKey, address, tx.cUnit));
     BOOST_CHECK_EQUAL(uint160(1).ToString(), address.GetHash160().ToString());
-
-    tx = vCurrencyCoinBase[1];
-    BOOST_CHECK(tx.IsCurrencyCoinBase());
-    BOOST_CHECK_EQUAL('B', tx.cUnit);
-    BOOST_CHECK_EQUAL(1, tx.vout.size());
-    BOOST_CHECK_EQUAL(5 * COIN, tx.vout[0].nValue);
-    BOOST_CHECK(ExtractAddress(tx.vout[0].scriptPubKey, address, tx.cUnit));
+    BOOST_CHECK_EQUAL(5 * COIN, tx.vout[1].nValue);
+    BOOST_CHECK(ExtractAddress(tx.vout[1].scriptPubKey, address, tx.cUnit));
     BOOST_CHECK_EQUAL(uint160(2).ToString(), address.GetHash160().ToString());
 
     // But if they have the same address
