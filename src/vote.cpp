@@ -320,6 +320,7 @@ bool GenerateCurrencyCoinBases(const std::vector<CVote> vVote, std::set<CBitcoin
         return true;
 
     CustodianVoteMap custodianVoteWeights;
+    CustodianVoteMap custodianVoteCounts;
     uint64 totalVoteWeight = 0;
 
     BOOST_FOREACH(const CVote& vote, vVote)
@@ -335,18 +336,23 @@ bool GenerateCurrencyCoinBases(const std::vector<CVote> vVote, std::set<CBitcoin
         BOOST_FOREACH(const CCustodianVote& custodianVote, vote.vCustodianVote)
         {
             if (!setAlreadyElected.count(custodianVote.GetAddress()))
+            {
                 custodianVoteWeights[custodianVote] += vote.nCoinAgeDestroyed;
+                custodianVoteCounts[custodianVote] += 1;
+            }
         }
     }
 
     uint64 halfWeight = totalVoteWeight / 2;
+    uint64 halfCount = vVote.size() / 2;
 
     BOOST_FOREACH(const CustodianVoteMap::value_type& value, custodianVoteWeights)
     {
         const CCustodianVote &custodianVote = value.first;
         uint64 weight = value.second;
+        uint64 count = custodianVoteCounts[custodianVote];
 
-        if (weight > halfWeight)
+        if (weight > halfWeight && count > halfCount)
         {
             CTransaction tx;
             tx.cUnit = 'B';

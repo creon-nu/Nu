@@ -301,7 +301,16 @@ BOOST_AUTO_TEST_CASE(create_currency_coin_bases)
     // The last vote has a little more weight
     vVote.back().nCoinAgeDestroyed++;
 
-    // It should win and currecy is created
+    // Still no currency created because this vote does not have the majority of blocks (we have 2 votes)
+    BOOST_CHECK(GenerateCurrencyCoinBases(vVote, setElected, vCurrencyCoinBase));
+    BOOST_CHECK_EQUAL(0, vCurrencyCoinBase.size());
+
+    // Add a 3rd vote for the same custodian
+    vVote.back().nCoinAgeDestroyed--;
+    vote.nCoinAgeDestroyed = 1;
+    vVote.push_back(vote);
+
+    // This custodian should win and currecy should be created
     BOOST_CHECK(GenerateCurrencyCoinBases(vVote, setElected, vCurrencyCoinBase));
     BOOST_CHECK_EQUAL(1, vCurrencyCoinBase.size());
     CTransaction& tx = vCurrencyCoinBase[0];
