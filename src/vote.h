@@ -26,7 +26,20 @@ public:
         return CBitcoinAddress(hashAddress, cUnit);
     }
 
-    bool operator< (const CCustodianVote& other) const { return hashAddress < other.hashAddress || nAmount < other.nAmount; }
+    bool operator< (const CCustodianVote& other) const
+    {
+        if (cUnit < other.cUnit)
+            return true;
+        if (cUnit > other.cUnit)
+            return false;
+        if (nAmount < other.nAmount)
+            return true;
+        if (nAmount > other.nAmount)
+            return false;
+        if (hashAddress < other.hashAddress)
+            return true;
+        return false;
+    }
 };
 
 class CParkRate
