@@ -265,6 +265,21 @@ BOOST_AUTO_TEST_CASE(vote_validity_tests)
     parkRate.nRate = 200;
     vote.vParkRateVote[0].vParkRate.push_back(parkRate);
     BOOST_CHECK(!vote.IsValid());
+    vote.vParkRateVote[0].vParkRate.pop_back();
+
+    // A valid custodian vote
+    CCustodianVote custodianVote;
+    custodianVote.cUnit = 'B';
+    custodianVote.hashAddress = uint160(1);
+    custodianVote.nAmount = 8 * COIN;
+    vote.vCustodianVote.push_back(custodianVote);
+    BOOST_CHECK(vote.IsValid());
+
+    // Another unit is invalid
+    vote.vCustodianVote[0].cUnit = 'S';
+    BOOST_CHECK(!vote.IsValid());
+    vote.vCustodianVote[0].cUnit = 'A';
+    BOOST_CHECK(!vote.IsValid());
 }
 
 BOOST_AUTO_TEST_CASE(create_currency_coin_bases)
@@ -375,6 +390,11 @@ BOOST_AUTO_TEST_CASE(create_currency_coin_bases)
     BOOST_CHECK_EQUAL(5 * COIN, tx.vout[0].nValue);
     BOOST_CHECK(ExtractAddress(tx.vout[0].scriptPubKey, address, tx.cUnit));
     BOOST_CHECK_EQUAL(uint160(1).ToString(), address.GetHash160().ToString());
+
+    // If any vote is invalid the generation should fail
+    vVote[1].vCustodianVote.back().cUnit = 'S';
+    BOOST_CHECK(!GenerateCurrencyCoinBases(vVote, setElected, vCurrencyCoinBase));
+    BOOST_CHECK_EQUAL(0, vCurrencyCoinBase.size());
 }
 
 BOOST_AUTO_TEST_SUITE_END()
