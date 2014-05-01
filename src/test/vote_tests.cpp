@@ -346,15 +346,39 @@ BOOST_AUTO_TEST_CASE(create_currency_coin_bases)
     BOOST_CHECK(tx.IsCurrencyCoinBase());
     BOOST_CHECK_EQUAL('B', tx.cUnit);
     BOOST_CHECK_EQUAL(1, tx.vout.size());
-    BOOST_CHECK_EQUAL(5 * COIN, tx.vout[0].nValue);
+    BOOST_CHECK_EQUAL(8 * COIN, tx.vout[0].nValue);
     BOOST_CHECK(ExtractAddress(tx.vout[0].scriptPubKey, address, tx.cUnit));
-    BOOST_CHECK_EQUAL(uint160(2).ToString(), address.GetHash160().ToString());
+    BOOST_CHECK_EQUAL(uint160(1).ToString(), address.GetHash160().ToString());
 
     tx = vCurrencyCoinBase[1];
     BOOST_CHECK(tx.IsCurrencyCoinBase());
     BOOST_CHECK_EQUAL('B', tx.cUnit);
     BOOST_CHECK_EQUAL(1, tx.vout.size());
-    BOOST_CHECK_EQUAL(8 * COIN, tx.vout[0].nValue);
+    BOOST_CHECK_EQUAL(5 * COIN, tx.vout[0].nValue);
+    BOOST_CHECK(ExtractAddress(tx.vout[0].scriptPubKey, address, tx.cUnit));
+    BOOST_CHECK_EQUAL(uint160(2).ToString(), address.GetHash160().ToString());
+
+    // But if they have the same address
+    uint160 hashAddress = vVote[1].vCustodianVote.front().hashAddress;
+    vVote[0].vCustodianVote.back().hashAddress = hashAddress;
+    vVote[1].vCustodianVote.back().hashAddress = hashAddress;
+    vVote[2].vCustodianVote.back().hashAddress = hashAddress;
+
+    /*
+    BOOST_FOREACH(const CVote& vote, vVote)
+        BOOST_FOREACH(const CCustodianVote& custodianVote, vote.vCustodianVote)
+            printf("addr=%d, amount=%d, weight=%d\n", custodianVote.hashAddress.Get64(), custodianVote.nAmount, vote.nCoinAgeDestroyed);
+    */
+
+    // Only the amount with the highest coin age is granted
+    BOOST_CHECK(GenerateCurrencyCoinBases(vVote, setElected, vCurrencyCoinBase));
+    BOOST_CHECK_EQUAL(1, vCurrencyCoinBase.size());
+
+    tx = vCurrencyCoinBase[0];
+    BOOST_CHECK(tx.IsCurrencyCoinBase());
+    BOOST_CHECK_EQUAL('B', tx.cUnit);
+    BOOST_CHECK_EQUAL(1, tx.vout.size());
+    BOOST_CHECK_EQUAL(5 * COIN, tx.vout[0].nValue);
     BOOST_CHECK(ExtractAddress(tx.vout[0].scriptPubKey, address, tx.cUnit));
     BOOST_CHECK_EQUAL(uint160(1).ToString(), address.GetHash160().ToString());
 }

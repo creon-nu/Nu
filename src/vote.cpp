@@ -310,7 +310,16 @@ bool CheckVote(const CBlock& block, CBlockIndex *pindexprev)
     return true;
 }
 
-typedef map<CCustodianVote, uint64> CustodianVoteMap;
+class CCustodianVoteCounter
+{
+public:
+    uint64 nWeight;
+    int nCount;
+};
+
+typedef map<CCustodianVote, CCustodianVoteCounter> CustodianVoteCounterMap;
+typedef map<CBitcoinAddress, uint64> GrantedAmountMap;
+typedef map<unsigned char, GrantedAmountMap> GrantedAmountPerUnitMap;
 
 bool GenerateCurrencyCoinBases(const std::vector<CVote> vVote, std::set<CBitcoinAddress> setAlreadyElected, std::vector<CTransaction>& vCurrencyCoinBaseRet)
 {
@@ -319,8 +328,7 @@ bool GenerateCurrencyCoinBases(const std::vector<CVote> vVote, std::set<CBitcoin
     if (vVote.empty())
         return true;
 
-    CustodianVoteMap custodianVoteWeights;
-    CustodianVoteMap custodianVoteCounts;
+    CustodianVoteCounterMap mapCustodianVoteCounter;
     uint64 totalVoteWeight = 0;
 
     BOOST_FOREACH(const CVote& vote, vVote)
@@ -337,8 +345,9 @@ bool GenerateCurrencyCoinBases(const std::vector<CVote> vVote, std::set<CBitcoin
         {
             if (!setAlreadyElected.count(custodianVote.GetAddress()))
             {
-                custodianVoteWeights[custodianVote] += vote.nCoinAgeDestroyed;
-                custodianVoteCounts[custodianVote] += 1;
+                CCustodianVoteCounter& counter = mapCustodianVoteCounter[custodianVote];
+                counter.nWeight += vote.nCoinAgeDestroyed;
+                counter.nCount++;
             }
         }
     }
@@ -346,22 +355,43 @@ bool GenerateCurrencyCoinBases(const std::vector<CVote> vVote, std::set<CBitcoin
     uint64 halfWeight = totalVoteWeight / 2;
     uint64 halfCount = vVote.size() / 2;
 
-    BOOST_FOREACH(const CustodianVoteMap::value_type& value, custodianVoteWeights)
+    map<CBitcoinAddress, uint64> mapGrantedAddressWeight;
+    GrantedAmountPerUnitMap mapGrantedCustodians;
+
+    BOOST_FOREACH(const CustodianVoteCounterMap::value_type& value, mapCustodianVoteCounter)
     {
         const CCustodianVote &custodianVote = value.first;
-        uint64 weight = value.second;
-        uint64 count = custodianVoteCounts[custodianVote];
+        const CCustodianVoteCounter& counter = value.second;
 
-        if (weight > halfWeight && count > halfCount)
+        if (counter.nWeight > halfWeight && counter.nCount > halfCount)
         {
+            CBitcoinAddress address = custodianVote.GetAddress();
+            if (counter.nWeight > mapGrantedAddressWeight[address])
+            {
+                mapGrantedAddressWeight[address] = counter.nWeight;
+                mapGrantedCustodians[custodianVote.cUnit][address] = custodianVote.nAmount;
+            }
+        }
+    }
+
+    BOOST_FOREACH(const GrantedAmountPerUnitMap::value_type& grantedAmountPerUnit, mapGrantedCustodians)
+    {
+        unsigned char cUnit = grantedAmountPerUnit.first;
+        const GrantedAmountMap& mapGrantedAmount = grantedAmountPerUnit.second;
+
+        BOOST_FOREACH(const GrantedAmountMap::value_type& grantedAmount, mapGrantedAmount)
+        {
+            const CBitcoinAddress& address = grantedAmount.first;
+            uint64 amount = grantedAmount.second;
+
             CTransaction tx;
-            tx.cUnit = 'B';
+            tx.cUnit = cUnit;
 
             CScript scriptPubKey;
-            scriptPubKey.SetBitcoinAddress(custodianVote.GetAddress(), 'B');
+            scriptPubKey.SetBitcoinAddress(address, cUnit);
 
             tx.vin.push_back(CTxIn());
-            tx.vout.push_back(CTxOut(custodianVote.nAmount, scriptPubKey));
+            tx.vout.push_back(CTxOut(amount, scriptPubKey));
 
             vCurrencyCoinBaseRet.push_back(tx);
         }
