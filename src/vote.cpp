@@ -256,12 +256,18 @@ bool CVote::IsValid() const
             seenDurations.insert(parkRate.nDuration);
         }
     }
+
+    set<CCustodianVote> seenCustodianVotes;
     BOOST_FOREACH(const CCustodianVote& custodianVote, vCustodianVote)
     {
         if (custodianVote.cUnit == 'S')
             return false;
         if (custodianVote.cUnit != 'B')
             return false;
+
+        if (seenCustodianVotes.count(custodianVote))
+            return false;
+        seenCustodianVotes.insert(custodianVote);
     }
     return true;
 }

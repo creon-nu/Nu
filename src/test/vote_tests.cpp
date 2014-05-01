@@ -280,6 +280,21 @@ BOOST_AUTO_TEST_CASE(vote_validity_tests)
     BOOST_CHECK(!vote.IsValid());
     vote.vCustodianVote[0].cUnit = 'A';
     BOOST_CHECK(!vote.IsValid());
+    vote.vCustodianVote[0].cUnit = 'B';
+
+    // Voting for the same custodian and amount twice is invalid
+    vote.vCustodianVote.push_back(custodianVote);
+    BOOST_CHECK(!vote.IsValid());
+
+    // If the amount is different it is valid
+    vote.vCustodianVote[0].nAmount++;
+    BOOST_CHECK(vote.IsValid());
+    vote.vCustodianVote[0].nAmount--;
+
+    // If the address is different it is valid
+    vote.vCustodianVote[0].hashAddress++;
+    BOOST_CHECK(vote.IsValid());
+    vote.vCustodianVote[0].hashAddress--;
 }
 
 BOOST_AUTO_TEST_CASE(create_currency_coin_bases)
