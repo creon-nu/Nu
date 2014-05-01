@@ -328,6 +328,35 @@ BOOST_AUTO_TEST_CASE(create_currency_coin_bases)
     // He should not receive any new currency
     BOOST_CHECK(GenerateCurrencyCoinBases(vVote, setElected, vCurrencyCoinBase));
     BOOST_CHECK_EQUAL(0, vCurrencyCoinBase.size());
+
+    // Add a vote for another custodian to the existing votes
+    custodianVote.hashAddress = uint160(2);
+    custodianVote.nAmount = 1000 * COIN;
+    vVote[0].vCustodianVote.push_back(custodianVote);
+    vVote[1].vCustodianVote.push_back(custodianVote);
+
+    // And clear the already elected
+    setElected.clear();
+
+    // Both should receive new currency
+    BOOST_CHECK(GenerateCurrencyCoinBases(vVote, setElected, vCurrencyCoinBase));
+    BOOST_CHECK_EQUAL(2, vCurrencyCoinBase.size());
+
+    tx = vCurrencyCoinBase[0];
+    BOOST_CHECK(tx.IsCurrencyCoinBase());
+    BOOST_CHECK_EQUAL('B', tx.cUnit);
+    BOOST_CHECK_EQUAL(1, tx.vout.size());
+    BOOST_CHECK_EQUAL(8 * COIN, tx.vout[0].nValue);
+    BOOST_CHECK(ExtractAddress(tx.vout[0].scriptPubKey, address, tx.cUnit));
+    BOOST_CHECK_EQUAL(uint160(1).ToString(), address.GetHash160().ToString());
+
+    tx = vCurrencyCoinBase[1];
+    BOOST_CHECK(tx.IsCurrencyCoinBase());
+    BOOST_CHECK_EQUAL('B', tx.cUnit);
+    BOOST_CHECK_EQUAL(1, tx.vout.size());
+    BOOST_CHECK_EQUAL(1000 * COIN, tx.vout[0].nValue);
+    BOOST_CHECK(ExtractAddress(tx.vout[0].scriptPubKey, address, tx.cUnit));
+    BOOST_CHECK_EQUAL(uint160(2).ToString(), address.GetHash160().ToString());
 }
 
 BOOST_AUTO_TEST_SUITE_END()
