@@ -156,6 +156,24 @@ string AccountFromValue(const Value& value)
     return strAccount;
 }
 
+Object parkRateVoteToJSON(const CParkRateVote& parkRateVote)
+{
+    Object object;
+    object.push_back(Pair("unit", string(1, parkRateVote.cUnit)));
+
+    Array rates;
+    BOOST_FOREACH(const CParkRate& parkRate, parkRateVote.vParkRate)
+    {
+        Array rate;
+        rate.push_back(1 << parkRate.nDuration);
+        rate.push_back((double)parkRate.nRate / COIN);
+        rates.push_back(rate);
+    }
+    object.push_back(Pair("rates", rates));
+
+    return object;
+}
+
 Object voteToJSON(const CVote& vote)
 {
     Object result;
@@ -174,19 +192,7 @@ Object voteToJSON(const CVote& vote)
     Array parkRateVotes;
     BOOST_FOREACH(const CParkRateVote& parkRateVote, vote.vParkRateVote)
     {
-        Object object;
-        object.push_back(Pair("unit", string(1, parkRateVote.cUnit)));
-
-        Array rates;
-        BOOST_FOREACH(const CParkRate& parkRate, parkRateVote.vParkRate)
-        {
-            Array rate;
-            rate.push_back(1 << parkRate.nDuration);
-            rate.push_back((double)parkRate.nRate / COIN);
-            rates.push_back(rate);
-        }
-        object.push_back(Pair("rates", rates));
-
+        Object object = parkRateVoteToJSON(parkRateVote);
         parkRateVotes.push_back(object);
     }
     result.push_back(Pair("parkrates", parkRateVotes));
@@ -219,7 +225,6 @@ Object blockToJSON(const CBlock& block, const CBlockIndex* blockindex, bool fPri
     result.push_back(Pair("modifier", strprintf("%016"PRI64x, blockindex->nStakeModifier)));
     result.push_back(Pair("modifierchecksum", strprintf("%08x", blockindex->nStakeModifierChecksum)));
     Array txinfo;
-    Array votes;
     BOOST_FOREACH (const CTransaction& tx, block.vtx)
     {
         if (fPrintTransactionDetail)
@@ -233,19 +238,14 @@ Object blockToJSON(const CBlock& block, const CBlockIndex* blockindex, bool fPri
         }
         else
             txinfo.push_back(tx.GetHash().GetHex());
-
-        if (tx.IsCoinStake())
-        {
-            BOOST_FOREACH (const CTxOut& txo, tx.vout)
-            {
-                CVote vote;
-                if (ExtractVote(txo.scriptPubKey, vote))
-                    votes.push_back(voteToJSON(vote));
-            }
-        }
     }
     result.push_back(Pair("tx", txinfo));
-    result.push_back(Pair("votes", votes));
+    result.push_back(Pair("coinagedestroyed", (boost::uint64_t)blockindex->nCoinAgeDestroyed));
+    result.push_back(Pair("vote", voteToJSON(blockindex->vote)));
+    Array parkRateResults;
+    BOOST_FOREACH(const CParkRateVote& parkRateResult, blockindex->vParkRateResult)
+        parkRateResults.push_back(parkRateVoteToJSON(parkRateResult));
+    result.push_back(Pair("parkrates", parkRateResults));
     return result;
 }
 
@@ -872,7 +872,7 @@ Value getreceivedbyaddress(const Array& params, bool fHelp)
     for (map<uint256, CWalletTx>::iterator it = pwalletMain->mapWallet.begin(); it != pwalletMain->mapWallet.end(); ++it)
     {
         const CWalletTx& wtx = (*it).second;
-        if (wtx.IsCoinBase() || wtx.IsCoinStake() || !wtx.IsFinal())
+        if (wtx.IsCoinBase() || wtx.IsCoinStake() || !wtx.IsFinal() || wtx.IsCurrencyCoinBase())
             continue;
 
         BOOST_FOREACH(const CTxOut& txout, wtx.vout)
@@ -919,7 +919,7 @@ Value getreceivedbyaccount(const Array& params, bool fHelp)
     for (map<uint256, CWalletTx>::iterator it = pwalletMain->mapWallet.begin(); it != pwalletMain->mapWallet.end(); ++it)
     {
         const CWalletTx& wtx = (*it).second;
-        if (wtx.IsCoinBase() || wtx.IsCoinStake() || !wtx.IsFinal())
+        if (wtx.IsCoinBase() || wtx.IsCoinStake() || !wtx.IsFinal() || wtx.IsCurrencyCoinBase())
             continue;
 
         BOOST_FOREACH(const CTxOut& txout, wtx.vout)
@@ -1336,7 +1336,7 @@ Value ListReceived(const Array& params, bool fByAccounts)
     {
         const CWalletTx& wtx = (*it).second;
 
-        if (wtx.IsCoinBase() || wtx.IsCoinStake() || !wtx.IsFinal())
+        if (wtx.IsCoinBase() || wtx.IsCoinStake() || !wtx.IsFinal() || wtx.IsCurrencyCoinBase())
             continue;
 
         int nDepth = wtx.GetDepthInMainChain();
@@ -2232,6 +2232,9 @@ Value getblocktemplate(const Array& params, bool fHelp)
             entry.push_back(Pair("data", HexStr(ssTx.begin(), ssTx.end())));
 
             entry.push_back(Pair("hash", txHash.GetHex()));
+
+            if (tx.IsCurrencyCoinBase())
+                continue;
 
             MapPrevTx mapInputs;
             map<uint256, CTxIndex> mapUnused;

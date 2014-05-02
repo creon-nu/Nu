@@ -48,6 +48,9 @@ static const int STAKE_MIN_AGE = 60 * 60 * 24 * 3; // minimum age for coin age c
 static const int STAKE_MAX_AGE = 60 * 60 * 24 * 90; // stake age of full weight
 static const int64 IPO_SHARES = 1000000 * COIN; // Total number of shares to create using proof of work (intented for IPO)
 static const int64 PROOF_OF_WORK_BLOCKS = 400; // Block height of the last proof of work block
+static const int64 PARK_RATE_VOTES = 1000; // Number of blocks used in park rate median vote calculation
+static const unsigned int CUSTODIAN_VOTES = 10000;
+
 
 #ifdef USE_UPNP
 static const int fHaveUPnP = true;
@@ -89,6 +92,7 @@ extern int64 nTimeBestReceived;
 extern CCriticalSection cs_setpwalletRegistered;
 extern std::set<CWallet*> setpwalletRegistered;
 extern std::map<uint256, CBlock*> mapOrphanBlocks;
+extern std::set<CBitcoinAddress> setElectedCustodian;
 
 // Settings
 extern int64 nTransactionFee;
@@ -386,6 +390,11 @@ public:
         return (nValue == 0 && ::IsVote(scriptPubKey));
     }
 
+    bool IsParkRateResult() const
+    {
+        return (nValue == 0 && ::IsParkRateResult(scriptPubKey));
+    }
+
     uint256 GetHash() const
     {
         return SerializeHash(*this);
@@ -410,8 +419,6 @@ public:
     std::string ToString() const
     {
         if (IsEmpty()) return "CTxOut(empty)";
-        if (scriptPubKey.size() < 6)
-            return "CTxOut(error)";
         return strprintf("CTxOut(nValue=%s, scriptPubKey=%s)", FormatMoney(nValue).c_str(), scriptPubKey.ToString().c_str());
     }
 
@@ -535,13 +542,18 @@ public:
 
     bool IsCoinBase() const
     {
-        return (vin.size() == 1 && vin[0].prevout.IsNull() && vout.size() >= 1);
+        return (cUnit == 'S' && vin.size() == 1 && vin[0].prevout.IsNull() && vout.size() >= 1);
     }
 
     bool IsCoinStake() const
     {
         // ppcoin: the coin stake transaction is marked with the first output empty
         return (vin.size() > 0 && (!vin[0].prevout.IsNull()) && vout.size() >= 2 && vout[0].IsEmpty());
+    }
+
+    bool IsCurrencyCoinBase() const
+    {
+        return (cUnit != 'S' && vin.size() == 1 && vin[0].prevout.IsNull() && vout.size() >= 1);
     }
 
     /** Check for standard transaction types
@@ -1207,6 +1219,14 @@ public:
     unsigned int nStakeTime;
     uint256 hashProofOfStake;
 
+    // nubit vote fields
+    CVote vote;
+    std::vector<CParkRateVote> vParkRateResult;
+    uint64 nCoinAgeDestroyed;
+
+    // nubit: elected custodians
+    std::vector<CCustodianVote> vElectedCustodian;
+
     // block header
     int nVersion;
     uint256 hashMerkleRoot;
@@ -1232,6 +1252,10 @@ public:
         hashProofOfStake = 0;
         prevoutStake.SetNull();
         nStakeTime = 0;
+        vote.SetNull();
+        vParkRateResult.clear();
+        nCoinAgeDestroyed = 0;
+        vElectedCustodian.clear();
 
         nVersion       = 0;
         hashMerkleRoot = 0;
@@ -1266,6 +1290,10 @@ public:
             prevoutStake.SetNull();
             nStakeTime = 0;
         }
+        vote.SetNull();
+        vParkRateResult.clear();
+        nCoinAgeDestroyed = 0;
+        vElectedCustodian.clear();
 
         nVersion       = block.nVersion;
         hashMerkleRoot = block.hashMerkleRoot;
@@ -1457,12 +1485,20 @@ public:
             READWRITE(prevoutStake);
             READWRITE(nStakeTime);
             READWRITE(hashProofOfStake);
+            READWRITE(vote);
+            READWRITE(vParkRateResult);
+            READWRITE(nCoinAgeDestroyed);
+            READWRITE(vElectedCustodian);
         }
         else if (fRead)
         {
             const_cast<CDiskBlockIndex*>(this)->prevoutStake.SetNull();
             const_cast<CDiskBlockIndex*>(this)->nStakeTime = 0;
             const_cast<CDiskBlockIndex*>(this)->hashProofOfStake = 0;
+            const_cast<CDiskBlockIndex*>(this)->vote.SetNull();
+            const_cast<CDiskBlockIndex*>(this)->vParkRateResult.clear();
+            const_cast<CDiskBlockIndex*>(this)->nCoinAgeDestroyed = 0;
+            const_cast<CDiskBlockIndex*>(this)->vElectedCustodian.clear();
         }
 
         // block header

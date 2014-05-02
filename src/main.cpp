@@ -58,6 +58,8 @@ map<uint256, uint256> mapProofOfStake;
 map<uint256, CDataStream*> mapOrphanTransactions;
 map<uint256, map<uint256, CDataStream*> > mapOrphanTransactionsByPrev;
 
+set<CBitcoinAddress> setElectedCustodian;
+
 // Constant stuff for coinbase transactions we create:
 CScript COINBASE_FLAGS;
 
@@ -371,7 +373,7 @@ bool CTransaction::AreInputsSameUnit(const MapPrevTx& mapInputs) const
 //
 bool CTransaction::AreInputsStandard(const MapPrevTx& mapInputs) const
 {
-    if (IsCoinBase())
+    if (IsCoinBase() || IsCurrencyCoinBase())
         return true; // Coinbases don't use vin normally
 
     for (unsigned int i = 0; i < vin.size(); i++)
@@ -518,10 +520,10 @@ bool CTransaction::CheckTransaction() const
     for (int i = 0; i < vout.size(); i++)
     {
         const CTxOut& txout = vout[i];
-        if (txout.IsEmpty() && (!IsCoinBase()) && (!IsCoinStake()))
+        if (txout.IsEmpty() && (!IsCoinBase()) && (!IsCoinStake()) && (!IsCurrencyCoinBase()))
             return DoS(100, error("CTransaction::CheckTransaction() : txout empty for user transaction"));
         // ppcoin: enforce minimum output amount
-        if ((!txout.IsEmpty()) && !(IsCoinStake() && txout.IsVote()) && txout.nValue < MIN_TXOUT_AMOUNT)
+        if ((!txout.IsEmpty()) && !(IsCoinStake() && (txout.IsVote() || txout.IsParkRateResult())) && txout.nValue < MIN_TXOUT_AMOUNT)
             return DoS(100, error("CTransaction::CheckTransaction() : txout.nValue below minimum"));
         if (txout.nValue > MAX_MONEY)
             return DoS(100, error("CTransaction::CheckTransaction() : txout.nValue too high"));
@@ -548,6 +550,12 @@ bool CTransaction::CheckTransaction() const
         if (vin[0].scriptSig.size() < 2 || vin[0].scriptSig.size() > 100)
             return DoS(100, error("CTransaction::CheckTransaction() : coinbase script size"));
     }
+    else if (IsCurrencyCoinBase())
+    {
+        // nubit: no script allowed in currency coinbase
+        if (vin[0].scriptSig.size() != 0)
+            return DoS(100, error("CTransaction::CheckTransaction() : currency coinbase script size"));
+    }
     else
     {
         BOOST_FOREACH(const CTxIn& txin, vin)
@@ -573,6 +581,9 @@ bool CTxMemPool::accept(CTxDB& txdb, CTransaction &tx, bool fCheckInputs,
     // ppcoin: coinstake is also only valid in a block, not as a loose transaction
     if (tx.IsCoinStake())
         return tx.DoS(100, error("CTxMemPool::accept() : coinstake as individual tx"));
+    // nubit: CurrencyCoinBase is also only valid in a block
+    if (tx.IsCurrencyCoinBase())
+        return tx.DoS(100, error("CTxMemPool::accept() : currency coinbase as individual tx"));
 
     // To help v0.1.5 clients who would see it as a negative number
     if ((int64)tx.nLockTime > std::numeric_limits<int>::max())
@@ -816,7 +827,7 @@ bool CWalletTx::AcceptWalletTransaction(CTxDB& txdb, bool fCheckInputs)
         // Add previous supporting transactions first
         BOOST_FOREACH(CMerkleTx& tx, vtxPrev)
         {
-            if (!(tx.IsCoinBase() || tx.IsCoinStake()))
+            if (!(tx.IsCoinBase() || tx.IsCoinStake() || tx.IsCurrencyCoinBase()))
             {
                 uint256 hash = tx.GetHash();
                 if (!mempool.exists(hash) && !txdb.ContainsTx(hash))
@@ -1046,7 +1057,7 @@ void CBlock::UpdateTime(const CBlockIndex* pindexPrev)
 bool CTransaction::DisconnectInputs(CTxDB& txdb)
 {
     // Relinquish previous transactions' spent pointers
-    if (!IsCoinBase())
+    if (!IsCoinBase() && !IsCurrencyCoinBase())
     {
         BOOST_FOREACH(const CTxIn& txin, vin)
         {
@@ -1088,7 +1099,7 @@ bool CTransaction::FetchInputs(CTxDB& txdb, const map<uint256, CTxIndex>& mapTes
     // be dropped).  If tx is definitely invalid, fInvalid will be set to true.
     fInvalid = false;
 
-    if (IsCoinBase())
+    if (IsCoinBase() || IsCurrencyCoinBase())
         return true; // Coinbase transactions have no inputs to fetch.
 
     for (unsigned int i = 0; i < vin.size(); i++)
@@ -1169,7 +1180,7 @@ const CTxOut& CTransaction::GetOutputFor(const CTxIn& input, const MapPrevTx& in
 
 int64 CTransaction::GetValueIn(const MapPrevTx& inputs) const
 {
-    if (IsCoinBase())
+    if (IsCoinBase() || IsCurrencyCoinBase())
         return 0;
 
     int64 nResult = 0;
@@ -1183,7 +1194,7 @@ int64 CTransaction::GetValueIn(const MapPrevTx& inputs) const
 
 unsigned int CTransaction::GetP2SHSigOpCount(const MapPrevTx& inputs) const
 {
-    if (IsCoinBase())
+    if (IsCoinBase() || IsCurrencyCoinBase())
         return 0;
 
     unsigned int nSigOps = 0;
@@ -1204,7 +1215,7 @@ bool CTransaction::ConnectInputs(CTxDB& txdb, MapPrevTx inputs,
     // fBlock is true when this is called from AcceptBlock when a new best-block is added to the blockchain
     // fMiner is true when called from the internal bitcoin miner
     // ... both are false when called from CTransaction::AcceptToMemoryPool
-    if (!IsCoinBase())
+    if (!IsCoinBase() && !IsCurrencyCoinBase())
     {
         int64 nValueIn = 0;
         int64 nFees = 0;
@@ -1311,7 +1322,7 @@ bool CTransaction::ConnectInputs(CTxDB& txdb, MapPrevTx inputs,
 
 bool CTransaction::ClientConnectInputs()
 {
-    if (IsCoinBase())
+    if (IsCoinBase() || IsCurrencyCoinBase())
         return false;
 
     // Take over previous transactions' spent pointers
@@ -1364,6 +1375,25 @@ bool CBlock::DisconnectBlock(CTxDB& txdb, CBlockIndex* pindex)
     for (int i = vtx.size()-1; i >= 0; i--)
         if (!vtx[i].DisconnectInputs(txdb))
             return false;
+
+    // nubit: forget elected custodians
+    BOOST_FOREACH(const CTransaction& tx, vtx)
+    {
+        if (tx.IsCurrencyCoinBase())
+        {
+            if (tx.vout.size() < 1)
+                return error("Connect() : not output in CurrencyCoinBase");
+
+            CBitcoinAddress address;
+            if (!ExtractAddress(tx.vout[0].scriptPubKey, address, tx.cUnit))
+                return error("Connect() : ExtractAddress on CurrencyCoinBase failed");
+
+            if (!setElectedCustodian.count(address))
+                return error("Connect() : custodian was not elected");
+
+            setElectedCustodian.erase(address);
+        }
+    }
 
     // Update block index on disk without changing it in memory.
     // The memory index structure will be changed after the db commits.
@@ -1434,7 +1464,7 @@ bool CBlock::ConnectBlock(CTxDB& txdb, CBlockIndex* pindex)
         nTxPos += ::GetSerializeSize(tx, SER_DISK, CLIENT_VERSION);
 
         MapPrevTx mapInputs;
-        if (tx.IsCoinBase())
+        if (tx.IsCoinBase() || tx.IsCurrencyCoinBase())
             nValueOut += tx.GetValueOut();
         else
         {
@@ -1471,6 +1501,25 @@ bool CBlock::ConnectBlock(CTxDB& txdb, CBlockIndex* pindex)
     pindex->nMoneySupply = (pindex->pprev? pindex->pprev->nMoneySupply : 0) + nValueOut - nValueIn;
     if (!txdb.WriteBlockIndex(CDiskBlockIndex(pindex)))
         return error("Connect() : WriteBlockIndex for pindex failed");
+
+    // nubit: track elected custodians
+    BOOST_FOREACH(const CTransaction& tx, vtx)
+    {
+        if (tx.IsCurrencyCoinBase())
+        {
+            if (tx.vout.size() < 1)
+                return error("Connect() : not output in CurrencyCoinBase");
+
+            CBitcoinAddress address;
+            if (!ExtractAddress(tx.vout[0].scriptPubKey, address, tx.cUnit))
+                return error("Connect() : ExtractAddress on CurrencyCoinBase failed");
+
+            if (setElectedCustodian.count(address))
+                return error("Connect() : custodian has already been elected");
+
+            setElectedCustodian.insert(address);
+        }
+    }
 
     // Write queued txindex changes
     for (map<uint256, CTxIndex>::iterator mi = mapQueuedChanges.begin(); mi != mapQueuedChanges.end(); ++mi)
@@ -1545,7 +1594,7 @@ bool Reorganize(CTxDB& txdb, CBlockIndex* pindexNew)
 
         // Queue memory transactions to resurrect
         BOOST_FOREACH(const CTransaction& tx, block.vtx)
-            if (!(tx.IsCoinBase() || tx.IsCoinStake()))
+            if (!(tx.IsCoinBase() || tx.IsCoinStake() || tx.IsCurrencyCoinBase()))
                 vResurrect.push_back(tx);
     }
 
@@ -1738,7 +1787,7 @@ bool CTransaction::GetCoinAge(CTxDB& txdb, uint64& nCoinAge) const
     CBigNum bnCentSecond = 0;  // coin age in the unit of cent-seconds
     nCoinAge = 0;
 
-    if (IsCoinBase())
+    if (IsCoinBase() || IsCurrencyCoinBase())
         return true;
 
     BOOST_FOREACH(const CTxIn& txin, vin)
@@ -1839,6 +1888,34 @@ bool CBlock::AddToBlockIndex(unsigned int nFile, unsigned int nBlockPos)
     pindexNew->nStakeModifierChecksum = GetStakeModifierChecksum(pindexNew);
     if (!CheckStakeModifierCheckpoints(pindexNew->nHeight, pindexNew->nStakeModifierChecksum))
         return error("AddToBlockIndex() : Rejected by stake modifier checkpoint height=%d, modifier=0x%016"PRI64x, pindexNew->nHeight, nStakeModifier);
+
+    // nubit: save vote data
+    if (pindexNew->IsProofOfStake())
+    {
+        ExtractVote(*this, pindexNew->vote);
+        ExtractParkRateResults(*this, pindexNew->vParkRateResult);
+        if (!GetCoinAge(pindexNew->nCoinAgeDestroyed))
+            return error("Unable to get coin age");
+        pindexNew->vote.nCoinAgeDestroyed = pindexNew->nCoinAgeDestroyed;
+    }
+
+    // nubit: save elected custodians
+    BOOST_FOREACH(const CTransaction& tx, vtx)
+    {
+        if (tx.IsCurrencyCoinBase())
+        {
+            CCustodianVote electedCustodian;
+            electedCustodian.cUnit = tx.cUnit;
+            CBitcoinAddress address;
+            if (tx.vout.size() < 1)
+                return error("Not enough outputs in currency coinbase");
+            if (!ExtractAddress(tx.vout[0].scriptPubKey, address, tx.cUnit))
+                return error("Unable to extract address from currency coinbase");
+            electedCustodian.hashAddress = address.GetHash160();
+            electedCustodian.nAmount = tx.GetValueOut();
+            pindexNew->vElectedCustodian.push_back(electedCustodian);
+        }
+    }
 
     // Add to mapBlockIndex
     map<uint256, CBlockIndex*>::iterator mi = mapBlockIndex.insert(make_pair(hash, pindexNew)).first;
@@ -2008,6 +2085,46 @@ bool CBlock::AcceptBlock()
     // ppcoin: check that the block satisfies synchronized checkpoint
     if (!Checkpoints::CheckSync(hash, pindexPrev))
         return error("AcceptBlock() : rejected by synchronized checkpoint");
+
+    // nubit: check the vote is valid and the results match our own calculations
+    if (IsProofOfStake() && !CheckVote(*this, pindexPrev))
+        return error("AcceptBlock() : rejected by vote check");
+
+    // nubit: check the expansion transactions match the expected ones
+    if (IsProofOfStake())
+    {
+        vector<CVote> vVote;
+        if (!ExtractVotes(*this, pindexPrev, CUSTODIAN_VOTES, vVote))
+            return error("AcceptBlock() : unable to extract votes");
+
+        vector<CTransaction> vExpectedTx;
+        if (!GenerateCurrencyCoinBases(vVote, setElectedCustodian, vExpectedTx))
+            return error("AcceptBlock() : unable to generate currency coin bases");
+
+        int matching = 0;
+        BOOST_FOREACH(const CTransaction& tx, vtx)
+        {
+            if (tx.IsCurrencyCoinBase())
+            {
+                CTransaction& expectedTx = vExpectedTx[matching];
+                expectedTx.nTime = tx.nTime;
+
+                if (tx == expectedTx)
+                    matching++;
+                else
+                {
+                    printf("expected tx: %s\n", expectedTx.ToString().c_str());
+                    printf("actual tx:   %s\n", tx.ToString().c_str());
+                    return error("AcceptBlock() : invalid expansion transaction found");
+                }
+            }
+            if (matching == vExpectedTx.size())
+                break;
+        }
+
+        if (matching != vExpectedTx.size())
+            return("AcceptBlock() : not enough expansion transaction");
+    }
 
     // Write block to history file
     if (!CheckDiskSpace(::GetSerializeSize(*this, SER_DISK, CLIENT_VERSION)))
@@ -3671,7 +3788,7 @@ CBlock* CreateNewBlock(CReserveKey& reservekey, CWallet* pwallet, bool fProofOfS
         int64 nSearchTime = txCoinStake.nTime; // search to current time
         if (nSearchTime > nLastCoinStakeSearchTime)
         {
-            if (pwallet->CreateCoinStake(*pwallet, pblock->nBits, nSearchTime-nLastCoinStakeSearchTime, txCoinStake))
+            if (pwallet->CreateCoinStake(*pwallet, pblock->nBits, nSearchTime-nLastCoinStakeSearchTime, txCoinStake, pindexPrev))
             {
                 if (txCoinStake.nTime >= max(pindexPrev->GetMedianTimePast()+1, pindexPrev->GetBlockTime() - nMaxClockDrift))
                 {   // make sure coinstake would meet timestamp protocol
@@ -3688,6 +3805,27 @@ CBlock* CreateNewBlock(CReserveKey& reservekey, CWallet* pwallet, bool fProofOfS
 
     pblock->nBits = GetNextTargetRequired(pindexPrev, pblock->IsProofOfStake());
 
+    // nubit: Add expansion transactions
+    if (pblock->IsProofOfStake())
+    {
+        vector<CVote> vVote;
+        if (!ExtractVotes(*pblock, pindexPrev, CUSTODIAN_VOTES, vVote))
+        {
+            printf("CreateNewBlock(): unable to extract votes");
+            return NULL;
+        }
+
+        vector<CTransaction> vCurrencyCoinBase;
+        if (!GenerateCurrencyCoinBases(vVote, setElectedCustodian, vCurrencyCoinBase))
+        {
+            printf("CreateNewBlock(): unable to generate currency coin bases");
+            return NULL;
+        }
+
+        BOOST_FOREACH(const CTransaction& tx, vCurrencyCoinBase)
+            pblock->vtx.push_back(tx);
+    }
+
     // Collect memory pool transactions into the block
     int64 nFees = 0;
     {
@@ -3701,7 +3839,7 @@ CBlock* CreateNewBlock(CReserveKey& reservekey, CWallet* pwallet, bool fProofOfS
         for (map<uint256, CTransaction>::iterator mi = mempool.mapTx.begin(); mi != mempool.mapTx.end(); ++mi)
         {
             CTransaction& tx = (*mi).second;
-            if (tx.IsCoinBase() || tx.IsCoinStake() || !tx.IsFinal())
+            if (tx.IsCoinBase() || tx.IsCoinStake() || tx.IsCurrencyCoinBase() || !tx.IsFinal())
                 continue;
 
             COrphan* porphan = NULL;

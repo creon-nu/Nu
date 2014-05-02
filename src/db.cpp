@@ -586,6 +586,11 @@ bool CTxDB::LoadBlockIndex()
             pindexNew->prevoutStake   = diskindex.prevoutStake;
             pindexNew->nStakeTime     = diskindex.nStakeTime;
             pindexNew->hashProofOfStake = diskindex.hashProofOfStake;
+            pindexNew->vote                   = diskindex.vote;
+            pindexNew->vote.nCoinAgeDestroyed = diskindex.nCoinAgeDestroyed;
+            pindexNew->vParkRateResult        = diskindex.vParkRateResult;
+            pindexNew->nCoinAgeDestroyed      = diskindex.nCoinAgeDestroyed;
+            pindexNew->vElectedCustodian      = diskindex.vElectedCustodian;
             pindexNew->nVersion       = diskindex.nVersion;
             pindexNew->hashMerkleRoot = diskindex.hashMerkleRoot;
             pindexNew->nTime          = diskindex.nTime;
@@ -657,6 +662,13 @@ bool CTxDB::LoadBlockIndex()
 
     // Load bnBestInvalidTrust, OK if it doesn't exist
     ReadBestInvalidTrust(bnBestInvalidTrust);
+
+    // nubit: rebuild list of elected custodians
+    for (CBlockIndex* pindex = pindexBest; pindex && pindex->pprev; pindex = pindex->pprev)
+    {
+        BOOST_FOREACH(const CCustodianVote& custodianVote, pindex->vElectedCustodian)
+            setElectedCustodian.insert(custodianVote.GetAddress());
+    }
 
     // Verify blocks in the best chain
     int nCheckLevel = GetArg("-checklevel", 1);

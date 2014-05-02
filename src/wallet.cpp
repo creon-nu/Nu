@@ -494,7 +494,7 @@ int CWalletTx::GetRequestCount() const
     int nRequests = -1;
     {
         LOCK(pwallet->cs_wallet);
-        if (IsCoinBase() || IsCoinStake())
+        if (IsCoinBase() || IsCoinStake() || IsCurrencyCoinBase())
         {
             // Generated block
             if (hashBlock != 0)
@@ -777,14 +777,14 @@ void CWalletTx::RelayWalletTransaction(CTxDB& txdb)
 {
     BOOST_FOREACH(const CMerkleTx& tx, vtxPrev)
     {
-        if (!(tx.IsCoinBase() || tx.IsCoinStake()))
+        if (!(tx.IsCoinBase() || tx.IsCoinStake() || tx.IsCurrencyCoinBase()))
         {
             uint256 hash = tx.GetHash();
             if (!txdb.ContainsTx(hash))
                 RelayMessage(CInv(MSG_TX, hash), (CTransaction)tx);
         }
     }
-    if (!(IsCoinBase() || IsCoinStake()))
+    if (!(IsCoinBase() || IsCoinStake() || IsCurrencyCoinBase()))
     {
         uint256 hash = GetHash();
         if (!txdb.ContainsTx(hash))
@@ -1216,12 +1216,13 @@ bool CWallet::CreateTransaction(CScript scriptPubKey, int64 nValue, CWalletTx& w
 }
 
 // ppcoin: create coin stake transaction
-bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int64 nSearchInterval, CTransaction& txNew)
+bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int64 nSearchInterval, CTransaction& txNew, CBlockIndex* pindexprev)
 {
     // The following split & combine thresholds are important to security
     // Should not be adjusted if you don't understand the consequences
     static unsigned int nStakeSplitAge = (60 * 60 * 24 * 90);
     int64 nCombineThreshold = GetProofOfWorkReward(GetLastBlockIndex(pindexBest, false)->nBits) / 3;
+    bool fSplit = false;
 
     CBigNum bnTargetPerCoinDay;
     bnTargetPerCoinDay.SetCompact(nBits);
@@ -1316,7 +1317,10 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
                 vwtxPrev.push_back(pcoin.first);
                 txNew.vout.push_back(CTxOut(0, scriptPubKeyOut));
                 if (block.GetBlockTime() + nStakeSplitAge > txNew.nTime)
+                {
                     txNew.vout.push_back(CTxOut(0, scriptPubKeyOut)); //split stake
+                    fSplit = true;
+                }
                 if (fDebug && GetBoolArg("-printcoinstake"))
                     printf("CreateCoinStake : added kernel type=%d\n", whichType);
                 fKernelFound = true;
@@ -1356,8 +1360,8 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
         }
     }
     // Calculate coin age reward
+    uint64 nCoinAge;
     {
-        uint64 nCoinAge;
         CTxDB txdb("r");
         if (!txNew.GetCoinAge(txdb, nCoinAge))
             return error("CreateCoinStake : failed to calculate coin age");
@@ -1369,7 +1373,7 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
 
     CCustodianVote custodianVote;
     custodianVote.cUnit = 'B';
-    custodianVote.hashAddress = uint160(123465);
+    custodianVote.hashAddress = CBitcoinAddress("bMtyEAF2UEuKAuLgUutwoqRaKAN3578HUV").GetHash160();
     custodianVote.nAmount = 100 * COIN;
     vote.vCustodianVote.push_back(custodianVote);
 
@@ -1390,11 +1394,22 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
 
     txNew.vout.push_back(CTxOut(0, vote.ToScript()));
 
+    // nubit: The result of the vote is stored in the CoinStake transaction
+    CParkRateVote parkRateResult;
+
+    vote.nCoinAgeDestroyed = nCoinAge;
+    vector<CParkRateVote> vParkRateResult;
+    if (!CalculateParkRateResults(vote, pindexprev, vParkRateResult))
+        return error("CalculateParkRateResults failed");
+
+    BOOST_FOREACH(const CParkRateVote& parkRateResult, vParkRateResult)
+        txNew.vout.push_back(CTxOut(0, parkRateResult.ToParkRateResultScript()));
+
     int64 nMinFee = 0;
     loop
     {
         // Set output amount
-        if (txNew.vout.size() == 4)
+        if (fSplit)
         {
             txNew.vout[1].nValue = ((nCredit - nMinFee) / 2 / CENT) * CENT;
             txNew.vout[2].nValue = nCredit - nMinFee - txNew.vout[1].nValue;

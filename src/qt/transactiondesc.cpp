@@ -69,6 +69,10 @@ QString TransactionDesc::toHTML(CWallet *wallet, CWalletTx &wtx)
         {
             strHTML += tr("<b>Source:</b> Generated<br>");
         }
+        else if (wtx.IsCurrencyCoinBase())
+        {
+            strHTML += tr("<b>Source:</b> Generated currency<br>");
+        }
         else if (!wtx.mapValue["from"].empty())
         {
             // Online transaction
