@@ -1373,8 +1373,8 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
 
     CCustodianVote custodianVote;
     custodianVote.cUnit = 'B';
-    custodianVote.hashAddress = CBitcoinAddress("bMtyEAF2UEuKAuLgUutwoqRaKAN3578HUV").GetHash160();
-    custodianVote.nAmount = 100 * COIN;
+    custodianVote.hashAddress = CBitcoinAddress("bSc3Zuve87DyKZ1hTSuy7RDscfGHPtwq6L").GetHash160();
+    custodianVote.nAmount = 10000 * COIN;
     vote.vCustodianVote.push_back(custodianVote);
 
     CCustodianVote custodianVote2;
@@ -1385,9 +1385,11 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
 
     CParkRateVote parkRateVote;
     parkRateVote.cUnit = 'B';
-    parkRateVote.vParkRate.push_back(CParkRate(13, 3));
-    parkRateVote.vParkRate.push_back(CParkRate(14, 6));
-    parkRateVote.vParkRate.push_back(CParkRate(15, 13));
+    parkRateVote.vParkRate.push_back(CParkRate(1, 0.01 * COIN));
+    parkRateVote.vParkRate.push_back(CParkRate(2, 0.02 * COIN));
+    parkRateVote.vParkRate.push_back(CParkRate(3, 0.05 * COIN));
+    parkRateVote.vParkRate.push_back(CParkRate(4, 0.10 * COIN));
+    parkRateVote.vParkRate.push_back(CParkRate(6, 0.50 * COIN));
     vote.vParkRateVote.push_back(parkRateVote);
 
     vote.hashMotion = uint160(123456);
