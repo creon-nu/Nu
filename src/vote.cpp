@@ -175,7 +175,7 @@ bool CalculateParkRateResults(const std::vector<CVote>& vVote, std::vector<CPark
         {
             BOOST_FOREACH(const CParkRate& parkRate, parkRateVote.vParkRate)
             {
-                RateWeightMap &rateWeights = durationRateWeights[parkRate.nDuration];
+                RateWeightMap &rateWeights = durationRateWeights[parkRate.nCompactDuration];
                 rateWeights[parkRate.nRate] += vote.nCoinAgeDestroyed;
             }
         }
@@ -185,7 +185,7 @@ bool CalculateParkRateResults(const std::vector<CVote>& vVote, std::vector<CPark
 
     BOOST_FOREACH(const DurationRateWeight& durationRateWeight, durationRateWeights)
     {
-        unsigned char nDuration = durationRateWeight.first;
+        unsigned char nCompactDuration = durationRateWeight.first;
         const RateWeightMap &rateWeights = durationRateWeight.second;
 
         uint64 totalWeight = accumulate(rateWeights.begin(), rateWeights.end(), (uint64)0, AddRateWeight);
@@ -204,7 +204,7 @@ bool CalculateParkRateResults(const std::vector<CVote>& vVote, std::vector<CPark
         if (median != 0)
         {
             CParkRate parkRate;
-            parkRate.nDuration = nDuration;
+            parkRate.nCompactDuration = nCompactDuration;
             parkRate.nRate = median;
             result.push_back(parkRate);
         }
@@ -248,12 +248,12 @@ bool CVote::IsValid() const
             return false;
         seenParkVoteUnits.insert(parkRateVote.cUnit);
 
-        set<unsigned char> seenDurations;
+        set<unsigned char> seenCompactDurations;
         BOOST_FOREACH(const CParkRate& parkRate, parkRateVote.vParkRate)
         {
-            if (seenDurations.find(parkRate.nDuration) != seenDurations.end())
+            if (seenCompactDurations.find(parkRate.nCompactDuration) != seenCompactDurations.end())
                 return false;
-            seenDurations.insert(parkRate.nDuration);
+            seenCompactDurations.insert(parkRate.nCompactDuration);
         }
     }
 

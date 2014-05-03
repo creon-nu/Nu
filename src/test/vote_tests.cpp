@@ -54,7 +54,7 @@ BOOST_AUTO_TEST_CASE(reload_vote_from_script_tests)
         CHECK_VOTE_EQUAL(vParkRateVote[i].vParkRate.size());
         for (int j=0; j<vote.vParkRateVote[i].vParkRate.size(); j++)
         {
-            CHECK_VOTE_EQUAL(vParkRateVote[i].vParkRate[j].nDuration);
+            CHECK_VOTE_EQUAL(vParkRateVote[i].vParkRate[j].nCompactDuration);
             CHECK_VOTE_EQUAL(vParkRateVote[i].vParkRate[j].nRate);
         }
     }
@@ -83,7 +83,7 @@ BOOST_AUTO_TEST_CASE(reload_park_rates_from_script_tests)
     CHECK_PARK_RATE_EQUAL(vParkRate.size());
     for (int i=0; i<parkRateVote.vParkRate.size(); i++)
     {
-        CHECK_PARK_RATE_EQUAL(vParkRate[i].nDuration);
+        CHECK_PARK_RATE_EQUAL(vParkRate[i].nCompactDuration);
         CHECK_PARK_RATE_EQUAL(vParkRate[i].nRate);
     }
 #undef CHECK_PARK_RATE_EQUAL
@@ -112,7 +112,7 @@ BOOST_AUTO_TEST_CASE(premium_calculation_from_vote_tests)
     BOOST_CHECK(CalculateParkRateResults(vVote, results));
     BOOST_CHECK_EQUAL(  1, results.size());
     BOOST_CHECK_EQUAL(  1, results[0].vParkRate.size());
-    BOOST_CHECK_EQUAL(  8, results[0].vParkRate[0].nDuration);
+    BOOST_CHECK_EQUAL(  8, results[0].vParkRate[0].nCompactDuration);
     BOOST_CHECK_EQUAL(100, results[0].vParkRate[0].nRate);
 
     // New vote with same weight and bigger rate
@@ -126,7 +126,7 @@ BOOST_AUTO_TEST_CASE(premium_calculation_from_vote_tests)
     BOOST_CHECK(CalculateParkRateResults(vVote, results));
     BOOST_CHECK_EQUAL(  1, results.size());
     BOOST_CHECK_EQUAL(  1, results[0].vParkRate.size());
-    BOOST_CHECK_EQUAL(  8, results[0].vParkRate[0].nDuration);
+    BOOST_CHECK_EQUAL(  8, results[0].vParkRate[0].nCompactDuration);
     BOOST_CHECK_EQUAL(100, results[0].vParkRate[0].nRate);
 
     // Vote 2 has a little more weight
@@ -136,7 +136,7 @@ BOOST_AUTO_TEST_CASE(premium_calculation_from_vote_tests)
     BOOST_CHECK(CalculateParkRateResults(vVote, results));
     BOOST_CHECK_EQUAL(  1, results.size());
     BOOST_CHECK_EQUAL(  1, results[0].vParkRate.size());
-    BOOST_CHECK_EQUAL(  8, results[0].vParkRate[0].nDuration);
+    BOOST_CHECK_EQUAL(  8, results[0].vParkRate[0].nCompactDuration);
     BOOST_CHECK_EQUAL(200, results[0].vParkRate[0].nRate);
 
     // New vote with small weight and rate between the 2 first
@@ -151,7 +151,7 @@ BOOST_AUTO_TEST_CASE(premium_calculation_from_vote_tests)
     BOOST_CHECK(CalculateParkRateResults(vVote, results));
     BOOST_CHECK_EQUAL(  1, results.size());
     BOOST_CHECK_EQUAL(  1, results[0].vParkRate.size());
-    BOOST_CHECK_EQUAL(  8, results[0].vParkRate[0].nDuration);
+    BOOST_CHECK_EQUAL(  8, results[0].vParkRate[0].nCompactDuration);
     BOOST_CHECK_EQUAL(160, results[0].vParkRate[0].nRate);
 
     // New vote with another duration
@@ -167,7 +167,7 @@ BOOST_AUTO_TEST_CASE(premium_calculation_from_vote_tests)
     BOOST_CHECK(CalculateParkRateResults(vVote, results));
     BOOST_CHECK_EQUAL(  1, results.size());
     BOOST_CHECK_EQUAL(  1, results[0].vParkRate.size());
-    BOOST_CHECK_EQUAL(  8, results[0].vParkRate[0].nDuration);
+    BOOST_CHECK_EQUAL(  8, results[0].vParkRate[0].nCompactDuration);
     BOOST_CHECK_EQUAL(100, results[0].vParkRate[0].nRate);
 
     // New vote with multiple durations unordered
@@ -185,12 +185,12 @@ BOOST_AUTO_TEST_CASE(premium_calculation_from_vote_tests)
     // On duration 8:
     // Vote weights: 0: 100, 100: 1000, 160: 3, 200: 3051
     // So median is 200
-    BOOST_CHECK_EQUAL(  8, results[0].vParkRate[0].nDuration);
+    BOOST_CHECK_EQUAL(  8, results[0].vParkRate[0].nCompactDuration);
     BOOST_CHECK_EQUAL(200, results[0].vParkRate[0].nRate);
     // On duration 9:
     // Vote weights: 0: 2004, 300: 100, 400: 2050
     // So median is 300
-    BOOST_CHECK_EQUAL(  9, results[0].vParkRate[1].nDuration);
+    BOOST_CHECK_EQUAL(  9, results[0].vParkRate[1].nCompactDuration);
     BOOST_CHECK_EQUAL(300, results[0].vParkRate[1].nRate);
     // On duration 13: only last vote is positive and it has not the majority, so median is 0
     BOOST_CHECK_EQUAL(  2, results[0].vParkRate.size());
@@ -249,19 +249,19 @@ BOOST_AUTO_TEST_CASE(vote_validity_tests)
     // Park rate with duration and 0 rate is valid
     vote.vParkRateVote.erase(vote.vParkRateVote.end());
     CParkRate parkRate;
-    parkRate.nDuration = 0;
+    parkRate.nCompactDuration = 0;
     parkRate.nRate = 0;
     vote.vParkRateVote[0].vParkRate.push_back(parkRate);
     BOOST_CHECK(vote.IsValid());
 
     // Two valid park rates
-    parkRate.nDuration = 4;
+    parkRate.nCompactDuration = 4;
     parkRate.nRate = 100;
     vote.vParkRateVote[0].vParkRate.push_back(parkRate);
     BOOST_CHECK(vote.IsValid());
 
     // Two times the same duration is invalid
-    parkRate.nDuration = 4;
+    parkRate.nCompactDuration = 4;
     parkRate.nRate = 200;
     vote.vParkRateVote[0].vParkRate.push_back(parkRate);
     BOOST_CHECK(!vote.IsValid());
