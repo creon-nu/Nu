@@ -89,7 +89,7 @@ BOOST_AUTO_TEST_CASE(reload_park_rates_from_script_tests)
 #undef CHECK_PARK_RATE_EQUAL
 }
 
-BOOST_AUTO_TEST_CASE(premium_calculation_from_vote_tests)
+BOOST_AUTO_TEST_CASE(rate_calculation_from_votes)
 {
     vector<CVote> vVote;
     vector<CParkRateVote> results;
