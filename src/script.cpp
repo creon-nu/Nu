@@ -88,6 +88,7 @@ const char* GetTxnOutputType(txnouttype t)
     case TX_SCRIPTHASH: return "scripthash";
     case TX_MULTISIG: return "multisig";
     case TX_NULL_DATA: return "nulldata";
+    case TX_PARK: return "park";
     }
     return NULL;
 }
@@ -1216,6 +1217,9 @@ bool Solver(const CScript& scriptPubKey, txnouttype& typeRet, vector<vector<unsi
         // Bitcoin address tx, sender provides hash of pubkey, receiver provides signature and pubkey
         mTemplates.insert(make_pair(TX_PUBKEYHASH, CScript() << OP_DUP << OP_HASH160 << OP_PUBKEYHASH << OP_EQUALVERIFY << OP_CHECKSIG));
 
+        // Parked coins
+        mTemplates.insert(make_pair(TX_PARK, CScript() << OP_RETURN << OP_3 << OP_INTEGER << OP_PUBKEYHASH));
+
         // Sender provides N pubkeys, receivers provides M signatures
         mTemplates.insert(make_pair(TX_MULTISIG, CScript() << OP_SMALLINTEGER << OP_PUBKEYS << OP_SMALLINTEGER << OP_CHECKMULTISIG));
     }
@@ -1299,6 +1303,19 @@ bool Solver(const CScript& scriptPubKey, txnouttype& typeRet, vector<vector<unsi
                     char n = (char)CScript::DecodeOP_N(opcode1);
                     vSolutionsRet.push_back(valtype(1, n));
                 }
+                else
+                    break;
+            }
+            else if (opcode2 == OP_INTEGER)
+            {   // Any integer pushed onto vSolutions
+                if (opcode1 == OP_0 ||
+                    (opcode1 >= OP_1 && opcode1 <= OP_16))
+                {
+                    char n = (char)CScript::DecodeOP_N(opcode1);
+                    vSolutionsRet.push_back(valtype(1, n));
+                }
+                else if (vch1.size() >= 1 && vch1.size() <= 4)
+                    vSolutionsRet.push_back(vch1);
                 else
                     break;
             }
@@ -1389,6 +1406,17 @@ bool Solver(const CKeyStore& keystore, const CScript& scriptPubKey, uint256 hash
             scriptSigRet << vch;
         }
         return true;
+    case TX_PARK:
+        address = keystore.GetAddress(uint160(vSolutions[1]));
+        if (!Sign1(address, keystore, hash, nHashType, scriptSigRet))
+            return false;
+        else
+        {
+            valtype vch;
+            keystore.GetPubKey(address, vch);
+            scriptSigRet << vch;
+        }
+        return true;
     case TX_SCRIPTHASH:
         return keystore.GetCScript(uint160(vSolutions[0]), scriptSigRet);
 
@@ -1410,6 +1438,7 @@ int ScriptSigArgsExpected(txnouttype t, const std::vector<std::vector<unsigned c
     case TX_PUBKEY:
         return 1;
     case TX_PUBKEYHASH:
+    case TX_PARK:
         return 2;
     case TX_MULTISIG:
         if (vSolutions.size() < 1 || vSolutions[0].size() < 1)
@@ -1473,6 +1502,9 @@ bool IsMine(const CKeyStore &keystore, const CScript& scriptPubKey)
     case TX_PUBKEYHASH:
         address = keystore.GetAddress(uint160(vSolutions[0]));
         return keystore.HaveKey(address);
+    case TX_PARK:
+        address = keystore.GetAddress(uint160(vSolutions[1]));
+        return keystore.HaveKey(address);
     case TX_SCRIPTHASH:
     {
         CScript subscript;
@@ -1511,6 +1543,11 @@ bool ExtractAddress(const CScript& scriptPubKey, CBitcoinAddress& addressRet, un
     else if (whichType == TX_PUBKEYHASH)
     {
         addressRet.SetHash160(uint160(vSolutions[0]), cUnit);
+        return true;
+    }
+    else if (whichType == TX_PARK)
+    {
+        addressRet.SetHash160(uint160(vSolutions[1]), cUnit);
         return true;
     }
     else if (whichType == TX_SCRIPTHASH)
@@ -1552,6 +1589,32 @@ bool ExtractAddresses(const CScript& scriptPubKey, txnouttype& typeRet, vector<C
             address.SetPubKey(vSolutions.front(), cUnit);
         addressRet.push_back(address);
     }
+
+    return true;
+}
+
+bool IsPark(const CScript& scriptPubKey)
+{
+    vector<valtype> vSolutions;
+    txnouttype whichType;
+    if (!Solver(scriptPubKey, whichType, vSolutions))
+        return false;
+
+    return whichType == TX_PARK;
+}
+
+bool ExtractPark(const CScript& scriptPubKey, unsigned char cUnit, uint64& nDurationRet, CBitcoinAddress& unparkAddressRet)
+{
+    vector<valtype> vSolutions;
+    txnouttype whichType;
+    if (!Solver(scriptPubKey, whichType, vSolutions))
+        return false;
+
+    if (whichType != TX_PARK)
+        return false;
+
+    nDurationRet = CBigNum(vSolutions[0]).getint();
+    unparkAddressRet.SetHash160(uint160(vSolutions[1]), cUnit);
 
     return true;
 }
