@@ -1,4 +1,5 @@
 #include <boost/test/unit_test.hpp>
+#include <algorithm>
 
 #include "main.h"
 #include "vote.h"
@@ -87,6 +88,12 @@ BOOST_AUTO_TEST_CASE(reload_park_rates_from_script_tests)
         CHECK_PARK_RATE_EQUAL(vParkRate[i].nRate);
     }
 #undef CHECK_PARK_RATE_EQUAL
+}
+
+template< class T >
+static void shuffle(vector<T> v)
+{
+    random_shuffle(v.begin(), v.end());
 }
 
 BOOST_AUTO_TEST_CASE(rate_calculation_from_votes)
@@ -194,6 +201,21 @@ BOOST_AUTO_TEST_CASE(rate_calculation_from_votes)
     BOOST_CHECK_EQUAL(300, results[0].vParkRate[1].nRate);
     // On duration 13: only last vote is positive and it has not the majority, so median is 0
     BOOST_CHECK_EQUAL(  2, results[0].vParkRate.size());
+
+    // Shuffle all the votes
+    srand(1234);
+    BOOST_FOREACH(const CVote& vote, vVote)
+    {
+        BOOST_FOREACH(const CParkRateVote& parkRateVote, vote.vParkRateVote)
+            shuffle(parkRateVote.vParkRate);
+        shuffle(vote.vParkRateVote);
+    }
+    shuffle(vVote);
+
+    // The result should not be changed
+    vector<CParkRateVote> newResults;
+    BOOST_CHECK(CalculateParkRateResults(vVote, newResults));
+    BOOST_CHECK(results == newResults);
 
     // New vote with duplicate duration makes the result invalid
     parkRateVote.vParkRate.clear();
