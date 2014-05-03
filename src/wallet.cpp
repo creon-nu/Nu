@@ -1464,6 +1464,35 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
     return true;
 }
 
+bool CWallet::CreateUnparkTransaction(CWalletTx& wtxParked, unsigned int nOut, const CBitcoinAddress& unparkAddress, uint64 nAmount, CWalletTx& wtxNew)
+{
+    wtxNew.BindWallet(this);
+
+    {
+        LOCK2(cs_main, cs_wallet);
+        // txdb must be opened before the mapWallet lock
+        CTxDB txdb("r");
+        {
+            wtxNew.vin.clear();
+            wtxNew.vout.clear();
+            wtxNew.fFromMe = true;
+            wtxNew.cUnit = cUnit;
+
+            CScript scriptPubKey;
+            scriptPubKey.SetBitcoinAddress(unparkAddress, cUnit);
+            wtxNew.vout.push_back(CTxOut(nAmount, scriptPubKey));
+
+            wtxNew.vin.push_back(CTxIn(wtxParked.GetHash(), nOut));
+
+            // Fill vtxPrev by copying from previous transactions vtxPrev
+            wtxNew.AddSupportingTransactions(txdb);
+            wtxNew.fTimeReceivedIsTxTime = true;
+        }
+    }
+    return true;
+}
+
+
 // Call after CreateTransaction unless you want to abort
 bool CWallet::CommitTransaction(CWalletTx& wtxNew, CReserveKey& reservekey)
 {
