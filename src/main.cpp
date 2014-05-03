@@ -856,7 +856,7 @@ bool CWalletTx::AcceptWalletTransaction()
     return AcceptWalletTransaction(txdb);
 }
 
-int CTxIndex::GetDepthInMainChain() const
+int CTxIndex::GetDepthInMainChain(CBlockIndex* &pindexRet) const
 {
     // Read block header
     CBlock block;
@@ -869,6 +869,7 @@ int CTxIndex::GetDepthInMainChain() const
     CBlockIndex* pindex = (*mi).second;
     if (!pindex || !pindex->IsInMainChain())
         return 0;
+    pindexRet = pindex;
     return 1 + nBestHeight - pindex->nHeight;
 }
 

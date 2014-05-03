@@ -897,7 +897,8 @@ public:
     {
         return !(a == b);
     }
-    int GetDepthInMainChain() const;
+    int GetDepthInMainChain(CBlockIndex* &pindexRet) const;
+    int GetDepthInMainChain() const { CBlockIndex *pindexRet; return GetDepthInMainChain(pindexRet); }
  
 };
 
