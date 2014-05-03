@@ -1704,6 +1704,73 @@ Value listtransactions(const Array& params, bool fHelp)
     return ret;
 }
 
+Value listparked(const Array& params, bool fHelp)
+{
+    if (fHelp || params.size() > 1)
+        throw runtime_error(
+            "listparked [account]\n"
+            "Returns the list of parked coins.");
+
+    string strAccount = "*";
+    if (params.size() > 0)
+        strAccount = params[0].get_str();
+
+    bool fAllAccounts = (strAccount == string("*"));
+
+    Array ret;
+    for (map<uint256, CWalletTx>::iterator it = pwalletMain->mapWallet.begin(); it != pwalletMain->mapWallet.end(); ++it)
+    {
+        const CWalletTx& wtx = it->second;
+        for (unsigned int i = 0; i < wtx.vout.size(); i++)
+        {
+            if (wtx.IsSpent(i))
+                continue;
+
+            const CTxOut& txo = wtx.vout[i];
+
+            if (!pwalletMain->IsMine(txo))
+                continue;
+
+            Object park;
+            uint64 nDuration;
+            CBitcoinAddress unparkAddress;
+
+            if (!ExtractPark(txo.scriptPubKey, wtx.cUnit, nDuration, unparkAddress))
+                continue;
+
+            if (!fAllAccounts && pwalletMain->mapAddressBook[unparkAddress] != strAccount)
+                continue;
+
+            park.push_back(Pair("txid", wtx.GetHash().GetHex()));
+            park.push_back(Pair("output", (boost::int64_t)i));
+            park.push_back(Pair("time", DateTimeStrFormat(wtx.GetTxTime())));
+            park.push_back(Pair("amount", ValueFromAmount(txo.nValue)));
+            park.push_back(Pair("duration", (boost::int64_t)nDuration));
+
+            CBlockIndex* pindex = NULL;
+            uint64 nDepth = wtx.GetDepthInMainChain(pindex);
+            park.push_back(Pair("depth", (boost::int64_t)nDepth));
+
+            boost::int64_t nRemaining = nDuration;
+            nRemaining -= nDepth;
+            if (nRemaining < 0)
+                nRemaining = 0;
+
+            park.push_back(Pair("remainingblocks", nRemaining));
+
+            if (pindex)
+            {
+                uint64 nPremium = pindex->GetPremium(txo.nValue, nDuration, wtx.cUnit);
+                park.push_back(Pair("premium", ValueFromAmount(nPremium)));
+            }
+
+            ret.push_back(park);
+        }
+    }
+
+    return ret;
+}
+
 Value listaccounts(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() > 1)
@@ -2719,6 +2786,7 @@ static const CRPCCommand vRPCCommands[] =
     { "getblockhash",           &getblockhash,           false },
     { "gettransaction",         &gettransaction,         false },
     { "listtransactions",       &listtransactions,       false },
+    { "listparked",             &listparked,             false },
     { "signmessage",            &signmessage,            false },
     { "verifymessage",          &verifymessage,          false },
     { "getwork",                &getwork,                true },
