@@ -157,7 +157,7 @@ static uint64 AddRateWeight(const uint64& totalWeight, const RateWeight& rateWei
     return totalWeight + rateWeight.second;
 }
 
-bool CalculateParkRateResults(const std::vector<CVote>& vVote, std::vector<CParkRateVote> &results)
+bool CalculateParkRateResults(const std::vector<CVote>& vVote, std::vector<CParkRateVote>& results)
 {
     results.clear();
 
@@ -227,7 +227,7 @@ bool CalculateParkRateResults(const std::vector<CVote>& vVote, std::vector<CPark
     return true;
 }
 
-bool CalculateParkRateResults(const CVote &vote, CBlockIndex *pindexprev, std::vector<CParkRateVote> &vParkRateResult)
+bool CalculateParkRateResults(const CVote &vote, CBlockIndex *pindexprev, std::vector<CParkRateVote>& vParkRateResult)
 {
     vector<CVote> vVote;
     vVote.reserve(PARK_RATE_VOTES);
