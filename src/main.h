@@ -1428,6 +1428,11 @@ public:
             nFlags |= BLOCK_STAKE_MODIFIER;
     }
 
+    uint64 GetPremium(uint64 nValue, uint64 nDuration, unsigned char cUnit)
+    {
+        return ::GetPremium(nValue, nDuration, cUnit, vParkRateResult);
+    }
+
     std::string ToString() const
     {
         return strprintf("CBlockIndex(nprev=%08x, pnext=%08x, nFile=%d, nBlockPos=%-6d nHeight=%d, nMint=%s, nMoneySupply=%s, nFlags=(%s)(%d)(%s), nStakeModifier=%016"PRI64x", nStakeModifierChecksum=%08x, hashProofOfStake=%s, prevoutStake=(%s), nStakeTime=%d merkle=%s, hashBlock=%s)",

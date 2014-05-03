@@ -421,3 +421,33 @@ bool GenerateCurrencyCoinBases(const std::vector<CVote> vVote, std::set<CBitcoin
 
     return true;
 }
+
+uint64 GetPremium(uint64 nValue, uint64 nDuration, unsigned char cUnit, const std::vector<CParkRateVote>& vParkRateResult)
+{
+    BOOST_FOREACH(const CParkRateVote& parkRateVote, vParkRateResult)
+    {
+        if (parkRateVote.cUnit != cUnit)
+            continue;
+
+        for (unsigned int i = 0; i < parkRateVote.vParkRate.size(); i++)
+        {
+            const CParkRate& parkRate = parkRateVote.vParkRate[i];
+
+            if (nDuration == parkRate.GetDuration())
+                return nValue * parkRate.nRate / COIN;
+
+            if (nDuration < parkRate.GetDuration())
+            {
+                if (i == 0)
+                    return 0;
+
+                const CParkRate& prevParkRate = parkRateVote.vParkRate[i-1];
+
+                double ratio = (double)(parkRate.nRate - prevParkRate.nRate) / (parkRate.GetDuration() - prevParkRate.GetDuration());
+                double rate = prevParkRate.nRate + (nDuration - prevParkRate.GetDuration()) * ratio;
+                return nValue * rate / COIN;
+            }
+        }
+    }
+    return 0;
+}

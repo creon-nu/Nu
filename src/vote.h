@@ -154,6 +154,7 @@ bool ExtractParkRateResults(const CBlock& block, std::vector<CParkRateVote>& vPa
 
 bool CalculateParkRateResults(const std::vector<CVote>& vVote, std::vector<CParkRateVote>& results);
 bool CalculateParkRateResults(const CVote &vote, CBlockIndex *pindexprev, std::vector<CParkRateVote>& vParkRateResult);
+uint64 GetPremium(uint64 nValue, uint64 nDuration, unsigned char cUnit, const std::vector<CParkRateVote>& vParkRateResult);
 
 bool CheckVote(const CBlock& block, CBlockIndex *pindexprev);
 
