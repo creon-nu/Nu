@@ -1613,7 +1613,11 @@ bool ExtractPark(const CScript& scriptPubKey, unsigned char cUnit, uint64& nDura
     if (whichType != TX_PARK)
         return false;
 
-    nDurationRet = CBigNum(vSolutions[0]).getint();
+    int64 nDuration = CBigNum(vSolutions[0]).getint();
+    if (nDuration <= 0)
+        return false;
+    nDurationRet = nDuration;
+
     unparkAddressRet.SetHash160(uint160(vSolutions[1]), cUnit);
 
     return true;
