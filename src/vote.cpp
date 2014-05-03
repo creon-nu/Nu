@@ -86,6 +86,15 @@ CScript CParkRateVote::ToParkRateResultScript() const
     return script;
 }
 
+string CParkRateVote::ToString() const
+{
+    std::stringstream stream;
+    stream << "ParkRateVote unit=" << cUnit;
+    BOOST_FOREACH(const CParkRate& parkRate, vParkRate)
+        stream << " " << (int)parkRate.nCompactDuration << ":" << parkRate.nRate;
+    return stream.str();
+}
+
 bool IsParkRateResult(const CScript& scriptPubKey)
 {
     return (scriptPubKey.size() > 2 && scriptPubKey[0] == OP_RETURN && scriptPubKey[1] == OP_2);

@@ -101,6 +101,8 @@ public:
         return (a.cUnit     == b.cUnit &&
                 a.vParkRate == b.vParkRate);
     }
+
+    std::string ToString() const;
 };
 
 class CVote
