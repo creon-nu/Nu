@@ -529,6 +529,30 @@ Value getinfo(const Array& params, bool fHelp)
 }
 
 
+Value getparkrates(const Array& params, bool fHelp)
+{
+    if (fHelp || params.size() != 0)
+        throw runtime_error(
+            "getparkrates\n"
+            "Returns an object containing the park rates in the last block.");
+
+    Object obj;
+
+    BOOST_FOREACH(const CParkRateVote& parkRateVote, pindexBest->vParkRateResult)
+    {
+        if (parkRateVote.cUnit != pwalletMain->Unit())
+            continue;
+
+        BOOST_FOREACH(const CParkRate& parkRate, parkRateVote.vParkRate)
+        {
+            string label = boost::lexical_cast<std::string>(parkRate.GetDuration()) + " blocks";
+            obj.push_back(Pair(label, ValueFromAmount(parkRate.nRate)));
+        }
+    }
+    return obj;
+}
+
+
 Value getmininginfo(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 0)
@@ -2591,6 +2615,7 @@ static const CRPCCommand vRPCCommands[] =
     { "gethashespersec",        &gethashespersec,        true },
     { "getnetworkghps",         &getnetworkghps,         true },
     { "getinfo",                &getinfo,                true },
+    { "getparkrates",           &getparkrates,           true },
     { "getmininginfo",          &getmininginfo,          true },
     { "getnewaddress",          &getnewaddress,          true },
     { "getaccountaddress",      &getaccountaddress,      true },
