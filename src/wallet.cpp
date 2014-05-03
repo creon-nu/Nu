@@ -916,6 +916,20 @@ int64 CWallet::GetNewMint() const
     return nTotal;
 }
 
+int64 CWallet::GetParked() const
+{
+    int64 nTotal = 0;
+    LOCK(cs_wallet);
+    for (map<uint256, CWalletTx>::const_iterator it = mapWallet.begin(); it != mapWallet.end(); ++it)
+    {
+        const CWalletTx* pcoin = &(*it).second;
+        for (unsigned int i = 0; i < pcoin->vout.size(); i++)
+            if (!pcoin->IsSpent(i) && pcoin->IsParked(i))
+                nTotal += pcoin->vout[i].nValue;
+    }
+    return nTotal;
+}
+
 
 bool CWallet::SelectCoinsMinConf(int64 nTargetValue, unsigned int nSpendTime, int nConfMine, int nConfTheirs, set<pair<const CWalletTx*,unsigned int> >& setCoinsRet, int64& nValueRet) const
 {
