@@ -1171,6 +1171,7 @@ public:
     bool CheckBlock() const;
     bool AcceptBlock();
     bool GetCoinAge(uint64& nCoinAge) const; // ppcoin: calculate total coin age spent in block
+    bool GetCoinStakeAge(uint64& nCoinAge) const;
     bool SignBlock(const CKeyStore& keystore);
     bool CheckBlockSignature() const;
 

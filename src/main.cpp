@@ -1843,6 +1843,16 @@ bool CBlock::GetCoinAge(uint64& nCoinAge) const
     return true;
 }
 
+bool CBlock::GetCoinStakeAge(uint64& nCoinAge) const
+{
+    nCoinAge = 0;
+
+    if (!IsProofOfStake())
+        return false;
+
+    CTxDB txdb("r");
+    return vtx[1].GetCoinAge(txdb, nCoinAge);
+}
 
 bool CBlock::AddToBlockIndex(unsigned int nFile, unsigned int nBlockPos)
 {
@@ -1894,7 +1904,7 @@ bool CBlock::AddToBlockIndex(unsigned int nFile, unsigned int nBlockPos)
     {
         ExtractVote(*this, pindexNew->vote);
         ExtractParkRateResults(*this, pindexNew->vParkRateResult);
-        if (!GetCoinAge(pindexNew->nCoinAgeDestroyed))
+        if (!GetCoinStakeAge(pindexNew->nCoinAgeDestroyed))
             return error("Unable to get coin age");
         pindexNew->vote.nCoinAgeDestroyed = pindexNew->nCoinAgeDestroyed;
     }

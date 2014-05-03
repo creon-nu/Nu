@@ -306,8 +306,8 @@ bool CheckVote(const CBlock& block, CBlockIndex *pindexprev)
     if (!vote.IsValid())
         return error("CheckVote(): Invalid vote");
 
-    if (!block.GetCoinAge(vote.nCoinAgeDestroyed))
-        return error("CheckVote(): Unable to get block coin age");
+    if (!block.GetCoinStakeAge(vote.nCoinAgeDestroyed))
+        return error("CheckVote(): Unable to get coin stake coin age");
 
     vector<CParkRateVote> vParkRateResult;
     if (!ExtractParkRateResults(block, vParkRateResult))
