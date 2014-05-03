@@ -553,8 +553,10 @@ void CWalletTx::GetAmounts(int64& nGeneratedImmature, int64& nGeneratedMature, l
     }
 
     // Sent/received.
-    BOOST_FOREACH(const CTxOut& txout, vout)
+    for (unsigned int i = 0; i < vout.size(); i++)
     {
+        const CTxOut& txout = vout[i];
+
         CBitcoinAddress address;
         vector<unsigned char> vchPubKey;
         if (!pwallet->ExtractAddress(txout.scriptPubKey, address))
@@ -570,6 +572,10 @@ void CWalletTx::GetAmounts(int64& nGeneratedImmature, int64& nGeneratedMature, l
 
         if (nDebit > 0)
             listSent.push_back(make_pair(address, txout.nValue));
+
+        // Do not count parked amount as received unless it was unparked
+        if (IsParked(i) && !IsSpent(i))
+            continue;
 
         if (pwallet->IsMine(txout))
             listReceived.push_back(make_pair(address, txout.nValue));
