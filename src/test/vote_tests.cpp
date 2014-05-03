@@ -440,8 +440,8 @@ BOOST_AUTO_TEST_CASE(premium_calculation)
     CParkRateVote parkRateResult;
     parkRateResult.cUnit = 'B';
     parkRateResult.vParkRate.push_back(CParkRate( 2,  5));
-    parkRateResult.vParkRate.push_back(CParkRate( 3, 10));
     parkRateResult.vParkRate.push_back(CParkRate( 5, 50));
+    parkRateResult.vParkRate.push_back(CParkRate( 3, 10));
     parkRateResult.vParkRate.push_back(CParkRate(10,  1 * COIN));
     parkRateResult.vParkRate.push_back(CParkRate(12,  2 * COIN));
     parkRateResult.vParkRate.push_back(CParkRate(13,  5 * COIN));

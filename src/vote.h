@@ -74,6 +74,15 @@ public:
         return (a.nCompactDuration == b.nCompactDuration &&
                 a.nRate == b.nRate);
     }
+
+    bool operator<(const CParkRate& other) const
+    {
+        if (nCompactDuration < other.nCompactDuration)
+            return true;
+        if (nCompactDuration > other.nCompactDuration)
+            return false;
+        return nRate < other.nRate;
+    }
 };
 
 class CParkRateVote

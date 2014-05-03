@@ -429,9 +429,12 @@ uint64 GetPremium(uint64 nValue, uint64 nDuration, unsigned char cUnit, const st
         if (parkRateVote.cUnit != cUnit)
             continue;
 
-        for (unsigned int i = 0; i < parkRateVote.vParkRate.size(); i++)
+        vector<CParkRate> vSortedParkRate = parkRateVote.vParkRate;
+        sort(vSortedParkRate.begin(), vSortedParkRate.end());
+
+        for (unsigned int i = 0; i < vSortedParkRate.size(); i++)
         {
-            const CParkRate& parkRate = parkRateVote.vParkRate[i];
+            const CParkRate& parkRate = vSortedParkRate[i];
 
             if (nDuration == parkRate.GetDuration())
                 return nValue * parkRate.nRate / COIN;
@@ -441,7 +444,7 @@ uint64 GetPremium(uint64 nValue, uint64 nDuration, unsigned char cUnit, const st
                 if (i == 0)
                     return 0;
 
-                const CParkRate& prevParkRate = parkRateVote.vParkRate[i-1];
+                const CParkRate& prevParkRate = vSortedParkRate[i-1];
 
                 double ratio = (double)(parkRate.nRate - prevParkRate.nRate) / (parkRate.GetDuration() - prevParkRate.GetDuration());
                 double rate = prevParkRate.nRate + (nDuration - prevParkRate.GetDuration()) * ratio;
