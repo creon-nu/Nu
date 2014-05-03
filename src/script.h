@@ -527,6 +527,7 @@ public:
     }
     void SetMultisig(int nRequired, const std::vector<CKey>& keys);
     void SetPayToScriptHash(const CScript& subscript);
+    void SetPark(int64 nDuration, const CBitcoinAddress& unparkAddress, unsigned char cUnit);
 
 
     void PrintHex() const

@@ -1717,6 +1717,14 @@ void CScript::SetBitcoinAddress(const CBitcoinAddress& address, unsigned char cU
         *this << OP_DUP << OP_HASH160 << address.GetHash160() << OP_EQUALVERIFY << OP_CHECKSIG;
 }
 
+void CScript::SetPark(int64 nDuration, const CBitcoinAddress& unparkAddress, unsigned char cUnit)
+{
+    this->clear();
+    if (unparkAddress.IsScript(cUnit))
+        throw runtime_error("CScript::SetPark() : cannot set park on a script address");
+    *this << OP_RETURN << OP_3 << nDuration << unparkAddress.GetHash160();
+}
+
 void CScript::SetMultisig(int nRequired, const std::vector<CKey>& keys)
 {
     this->clear();

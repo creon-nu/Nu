@@ -1138,6 +1138,59 @@ Value sendfrom(const Array& params, bool fHelp)
     return wtx.GetHash().GetHex();
 }
 
+Value park(const Array& params, bool fHelp)
+{
+    if (pwalletMain->IsCrypted() && (fHelp || params.size() < 2 || params.size() > 5))
+        throw runtime_error(
+            "park <amount> <duration> [account=\"\"] [unparkaddress] [minconf=1]\n"
+            "<amount> is a real and is rounded to the nearest 0.000001\n"
+            "<duration> is the number of blocks during which the amount will be parked\n"
+            "<unparkaddress> is the address to which the amount will be returned when they are unparked (default is the main address of the account)\n"
+            "requires wallet passphrase to be set with walletpassphrase first");
+    if (!pwalletMain->IsCrypted() && (fHelp || params.size() < 2 || params.size() > 5))
+        throw runtime_error(
+            "park <amount> <duration> [account=\"\"] [unparkaddress] [minconf=1]\n"
+            "<amount> is a real and is rounded to the nearest 0.000001\n"
+            "<duration> is the number of blocks during which the amount will be parked\n"
+            "<unparkaddress> is the address to which the amount will be returned when they are unparked (default is the main address of the account)\n");
+
+    int64 nAmount = AmountFromValue(params[0]);
+
+    int64 nDuration = params[1].get_int();
+    if (nDuration <= 0)
+        throw JSONRPCError(-5, "Invalid duration");
+
+    string strAccount;
+    if (params.size() > 2)
+        strAccount = AccountFromValue(params[2]);
+    else
+        strAccount = "";
+
+    CBitcoinAddress unparkAddress(params.size() > 3 ? params[3].get_str() : GetAccountAddress(strAccount));
+    if (!pwalletMain->IsAddressValid(unparkAddress))
+        throw JSONRPCError(-5, "Invalid address");
+
+    int nMinDepth = 1;
+    if (params.size() > 4)
+        nMinDepth = params[4].get_int();
+
+    if (pwalletMain->IsLocked())
+        throw JSONRPCError(-13, "Error: Please enter the wallet passphrase with walletpassphrase first.");
+
+    // Check funds
+    int64 nBalance = GetAccountBalance(strAccount, nMinDepth);
+    if (nAmount > nBalance)
+        throw JSONRPCError(-6, "Account has insufficient funds");
+
+    CWalletTx wtx;
+    wtx.strFromAccount = strAccount;
+
+    string strError = pwalletMain->Park(nAmount, nDuration, unparkAddress, wtx);
+    if (strError != "")
+        throw JSONRPCError(-4, strError);
+
+    return wtx.GetHash().GetHex();
+}
 
 Value sendmany(const Array& params, bool fHelp)
 {
@@ -2639,6 +2692,7 @@ static const CRPCCommand vRPCCommands[] =
     { "move",                   &movecmd,                false },
     { "sendfrom",               &sendfrom,               false },
     { "sendmany",               &sendmany,               false },
+    { "park",                   &park,                   false },
     { "distribute",             &distribute,             true },
     { "addmultisigaddress",     &addmultisigaddress,     false },
     { "getblock",               &getblock,               false },
@@ -3360,6 +3414,9 @@ Array RPCConvertValues(const std::string &strMethod, const std::vector<std::stri
     if (strMethod == "move"                   && n > 3) ConvertTo<boost::int64_t>(params[3]);
     if (strMethod == "sendfrom"               && n > 2) ConvertTo<double>(params[2]);
     if (strMethod == "sendfrom"               && n > 3) ConvertTo<boost::int64_t>(params[3]);
+    if (strMethod == "park"                   && n > 0) ConvertTo<double>(params[0]);
+    if (strMethod == "park"                   && n > 1) ConvertTo<boost::int64_t>(params[1]);
+    if (strMethod == "park"                   && n > 4) ConvertTo<boost::int64_t>(params[4]);
     if (strMethod == "listtransactions"       && n > 1) ConvertTo<boost::int64_t>(params[1]);
     if (strMethod == "listtransactions"       && n > 2) ConvertTo<boost::int64_t>(params[2]);
     if (strMethod == "listaccounts"           && n > 0) ConvertTo<boost::int64_t>(params[0]);

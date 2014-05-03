@@ -1559,6 +1559,32 @@ string CWallet::SendMoneyToBitcoinAddress(const CBitcoinAddress& address, int64 
 }
 
 
+std::string CWallet::Park(int64 nValue, int64 nDuration, const CBitcoinAddress& unparkAddress, CWalletTx& wtxNew, bool fAskFee)
+{
+    if (cUnit == 'S')
+        return _("Cannot park shares");
+
+    // Check amount
+    if (nValue <= 0)
+        return _("Invalid amount");
+    if (nValue + nTransactionFee > GetBalance())
+        return _("Insufficient funds");
+
+    uint64 nPremium = pindexBest->GetPremium(nValue, nDuration, cUnit);
+
+    if (nPremium == 0)
+        return _("No premium for this duration");
+
+    if (!MoneyRange(nValue + nPremium))
+        return _("Expected return is out of range");
+
+    // Generate parking output script
+    CScript script;
+    script.SetPark(nDuration, unparkAddress, cUnit);
+
+    return SendMoney(script, nValue, wtxNew, fAskFee);
+}
+
 
 
 int CWallet::LoadWallet(bool& fFirstRunRet)
