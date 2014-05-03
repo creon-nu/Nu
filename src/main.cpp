@@ -563,6 +563,17 @@ bool CTransaction::CheckTransaction() const
                 return DoS(10, error("CTransaction::CheckTransaction() : prevout is null"));
     }
 
+    // nubit: parking shares is not allowed
+    if (cUnit == 'S')
+    {
+        for (unsigned int i = 0; i < vout.size(); i++)
+        {
+            const CTxOut& txout = vout[i];
+            if (IsPark(txout.scriptPubKey))
+                return DoS(100, error("CTransaction::CheckTransaction() : parking of shares"));
+        }
+    }
+
     return true;
 }
 
