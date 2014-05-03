@@ -674,13 +674,13 @@ bool CTxMemPool::accept(CTxDB& txdb, CTransaction &tx, bool fCheckInputs,
         unsigned int nSize = ::GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION);
 
         // Don't accept it if it can't get into a block
-        if (nFees < tx.GetMinFee(1000, false, GMF_RELAY))
+        if (!tx.IsUnpark() && nFees < tx.GetMinFee(1000, false, GMF_RELAY))
             return error("CTxMemPool::accept() : not enough fees");
 
         // Continuously rate-limit free transactions
         // This mitigates 'penny-flooding' -- sending thousands of free transactions just to
         // be annoying or make other's transactions take longer to confirm.
-        if (nFees < MIN_RELAY_TX_FEE)
+        if (!tx.IsUnpark() && nFees < MIN_RELAY_TX_FEE)
         {
             static CCriticalSection cs;
             static double dFreeCount;
@@ -1257,6 +1257,10 @@ bool CTransaction::ConnectInputs(CTxDB& txdb, MapPrevTx inputs,
                 return DoS(100, error("ConnectInputs() : txin values out of range"));
 
         }
+
+        // nubit: Is the whole transaction is a valid unpark transaction
+        bool fValidUnpark = false;
+
         // The first loop above does all the inexpensive checks.
         // Only if ALL inputs pass do we perform expensive ECDSA signature checks.
         // Helps prevent CPU exhaustion attacks.
@@ -1273,10 +1277,52 @@ bool CTransaction::ConnectInputs(CTxDB& txdb, MapPrevTx inputs,
             if (!txindex.vSpent[prevout.n].IsNull())
                 return fMiner ? false : error("ConnectInputs() : %s prev tx already used at %s", GetHash().ToString().substr(0,10).c_str(), txindex.vSpent[prevout.n].ToString().c_str());
 
+            // nubit: Check unpark transaction
+            if (IsUnpark())
+            {
+                if (!txPrev.IsParked(prevout.n))
+                    return error("ConnectInputs() : prevout is not parked");
+
+                if (vin.size() != 1)
+                    return error("ConnectInputs() : unpark transaction with too many inputs");
+
+                if (vout.size() != 1)
+                    return error("ConnectInputs() : unpark transaction with too many outputs");
+
+                uint64 nDuration;
+                CBitcoinAddress unparkAddress;
+                if (!ExtractPark(txPrev.vout[prevout.n].scriptPubKey, txPrev.cUnit, nDuration, unparkAddress))
+                    return error("ConnectInputs() : ExtractPark failed");
+
+                CBlockIndex *pindex = NULL;
+                if (txindex.GetDepthInMainChain(pindex) < nDuration)
+                    return error("ConnectInputs() : parking duration has not passed");
+
+                if (!pindex)
+                    return error("ConnectInputs() : parked transaction not in main chain");
+
+                uint64 nValue = txPrev.vout[prevout.n].nValue;
+                uint64 nPremium = pindex->GetPremium(nValue, nDuration, cUnit);
+                uint64 nMaxValueOut = nValue + nPremium;
+
+                if (GetValueOut() > nMaxValueOut)
+                    return error("ConnectInputs() : invalid unpark value");
+
+                CBitcoinAddress outAddress;
+                if (!ExtractAddress(vout[0].scriptPubKey, outAddress, cUnit))
+                    return error("ConnectInputs() : ExtractAddress failed");
+
+                if (outAddress.GetHash160() != unparkAddress.GetHash160())
+                    return error("ConnectInputs() : invalid unpark address");
+
+                fValidUnpark = true;
+            }
+
             // Skip ECDSA signature verification when connecting blocks (fBlock=true)
             // before the last blockchain checkpoint. This is safe because block merkle hashes are
             // still computed and checked, and any change will be caught at the next checkpoint.
-            if (!(fBlock && (nBestHeight < Checkpoints::GetTotalBlocksEstimate())))
+            // nubit: Skip signature on unpark transaction
+            if (!fValidUnpark && !(fBlock && (nBestHeight < Checkpoints::GetTotalBlocksEstimate())))
             {
                 // Verify signature
                 if (!VerifySignature(txPrev, *this, i, fStrictPayToScriptHash, 0))
@@ -1310,7 +1356,7 @@ bool CTransaction::ConnectInputs(CTxDB& txdb, MapPrevTx inputs,
             if (nStakeReward > GetProofOfStakeReward(nCoinAge) - GetMinFee() + MIN_TX_FEE)
                 return DoS(100, error("ConnectInputs() : %s stake reward exceeded", GetHash().ToString().substr(0,10).c_str()));
         }
-        else
+        else if (!fValidUnpark)
         {
             if (nValueIn < GetValueOut())
                 return DoS(100, error("ConnectInputs() : %s value in < value out", GetHash().ToString().substr(0,10).c_str()));

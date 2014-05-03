@@ -563,6 +563,11 @@ public:
         return IsPark(vout[nOut].scriptPubKey);
     }
 
+    bool IsUnpark() const
+    {
+        return (vin.size() == 1 && !vin[0].prevout.IsNull() && vin[0].scriptSig.empty() && vout.size() == 1);
+    }
+
     /** Check for standard transaction types
         @return True if all outputs (scriptPubKeys) use only standard transaction forms
     */
