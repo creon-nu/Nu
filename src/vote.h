@@ -45,29 +45,34 @@ public:
 class CParkRate
 {
 public:
-    unsigned char nDuration;
+    unsigned char nCompactDuration;
     unsigned int nRate;
 
     CParkRate()
     {
     }
 
-    CParkRate(unsigned char nDuration, unsigned int nRate) :
-        nDuration(nDuration),
+    CParkRate(unsigned char nCompactDuration, unsigned int nRate) :
+        nCompactDuration(nCompactDuration),
         nRate(nRate)
     {
     }
 
     IMPLEMENT_SERIALIZE
     (
-        READWRITE(nDuration);
+        READWRITE(nCompactDuration);
         READWRITE(nRate);
     )
 
+    uint64 GetDuration() const
+    {
+        return 1 << nCompactDuration;
+    }
+
     friend bool operator==(const CParkRate& a, const CParkRate& b)
     {
-        return (a.nDuration == b.nDuration &&
-                a.nRate     == b.nRate);
+        return (a.nCompactDuration == b.nCompactDuration &&
+                a.nRate == b.nRate);
     }
 };
 

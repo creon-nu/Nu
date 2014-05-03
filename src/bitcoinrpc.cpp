@@ -165,8 +165,8 @@ Object parkRateVoteToJSON(const CParkRateVote& parkRateVote)
     BOOST_FOREACH(const CParkRate& parkRate, parkRateVote.vParkRate)
     {
         Array rate;
-        rate.push_back(1 << parkRate.nDuration);
-        rate.push_back((double)parkRate.nRate / COIN);
+        rate.push_back((boost::uint64_t)parkRate.GetDuration());
+        rate.push_back(ValueFromAmount(parkRate.nRate));
         rates.push_back(rate);
     }
     object.push_back(Pair("rates", rates));
