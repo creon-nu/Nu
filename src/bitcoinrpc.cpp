@@ -144,6 +144,25 @@ void WalletTxToJSON(const CWalletTx& wtx, Object& entry)
     }
     entry.push_back(Pair("txid", wtx.GetHash().GetHex()));
     entry.push_back(Pair("time", (boost::int64_t)wtx.GetTxTime()));
+
+    Array parked;
+    BOOST_FOREACH(const CTxOut& txo, wtx.vout)
+    {
+        Object park;
+        uint64 nDuration;
+        CBitcoinAddress unparkAddress;
+
+        if (!ExtractPark(txo.scriptPubKey, wtx.cUnit, nDuration, unparkAddress))
+            continue;
+
+        park.push_back(Pair("amount", ValueFromAmount(txo.nValue)));
+        park.push_back(Pair("duration", (boost::int64_t)nDuration));
+        park.push_back(Pair("unparkaddress", unparkAddress.ToString()));
+        parked.push_back(park);
+    }
+    if (parked.size() > 0)
+        entry.push_back(Pair("parked", parked));
+
     BOOST_FOREACH(const PAIRTYPE(string,string)& item, wtx.mapValue)
         entry.push_back(Pair(item.first, item.second));
 }
