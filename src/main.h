@@ -556,6 +556,13 @@ public:
         return (cUnit != 'S' && vin.size() == 1 && vin[0].prevout.IsNull() && vout.size() >= 1);
     }
 
+    bool IsParked(unsigned int nOut) const
+    {
+        if (nOut >= vout.size())
+            throw std::runtime_error("CTransaction::IsParked() : nOut out of range");
+        return IsPark(vout[nOut].scriptPubKey);
+    }
+
     /** Check for standard transaction types
         @return True if all outputs (scriptPubKeys) use only standard transaction forms
     */

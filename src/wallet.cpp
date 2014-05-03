@@ -951,7 +951,7 @@ bool CWallet::SelectCoinsMinConf(int64 nTargetValue, unsigned int nSpendTime, in
 
             for (unsigned int i = 0; i < pcoin->vout.size(); i++)
             {
-                if (pcoin->IsSpent(i) || !IsMine(pcoin->vout[i]))
+                if (pcoin->IsSpent(i) || !IsMine(pcoin->vout[i]) || pcoin->IsParked(i))
                     continue;
 
                 if (pcoin->nTime > nSpendTime)
