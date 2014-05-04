@@ -530,6 +530,7 @@ public:
     void SetMultisig(int nRequired, const std::vector<CKey>& keys);
     void SetPayToScriptHash(const CScript& subscript);
     void SetPark(int64 nDuration, const CBitcoinAddress& unparkAddress, unsigned char cUnit);
+    void SetUnpark();
 
 
     void PrintHex() const
@@ -581,5 +582,6 @@ bool SignSignature(const CKeyStore& keystore, const CTransaction& txFrom, CTrans
 bool VerifySignature(const CTransaction& txFrom, const CTransaction& txTo, unsigned int nIn, bool fValidatePayToScriptHash, int nHashType);
 bool IsPark(const CScript& scriptPubKey);
 bool ExtractPark(const CScript& scriptPubKey, unsigned char cUnit, uint64& nDurationRet, CBitcoinAddress& unparkAddressRet);
+bool IsUnpark(const CScript& scriptSig);
 
 #endif

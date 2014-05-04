@@ -1623,6 +1623,11 @@ bool ExtractPark(const CScript& scriptPubKey, unsigned char cUnit, uint64& nDura
     return true;
 }
 
+bool IsUnpark(const CScript& scriptSig)
+{
+    return scriptSig.size() == 1 && scriptSig[0] == OP_3;
+}
+
 bool VerifyScript(const CScript& scriptSig, const CScript& scriptPubKey, const CTransaction& txTo, unsigned int nIn,
                   bool fValidatePayToScriptHash, int nHashType)
 {
@@ -1790,6 +1795,12 @@ void CScript::SetPark(int64 nDuration, const CBitcoinAddress& unparkAddress, uns
     if (unparkAddress.IsScript(cUnit))
         throw runtime_error("CScript::SetPark() : cannot set park on a script address");
     *this << OP_RETURN << OP_3 << nDuration << unparkAddress.GetHash160();
+}
+
+void CScript::SetUnpark()
+{
+    this->clear();
+    *this << OP_3;
 }
 
 void CScript::SetMultisig(int nRequired, const std::vector<CKey>& keys)

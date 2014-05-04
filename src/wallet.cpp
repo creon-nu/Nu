@@ -1488,7 +1488,9 @@ bool CWallet::CreateUnparkTransaction(CWalletTx& wtxParked, unsigned int nOut, c
             scriptPubKey.SetBitcoinAddress(unparkAddress, cUnit);
             wtxNew.vout.push_back(CTxOut(nAmount, scriptPubKey));
 
-            wtxNew.vin.push_back(CTxIn(wtxParked.GetHash(), nOut));
+            CScript scriptSig;
+            scriptSig.SetUnpark();
+            wtxNew.vin.push_back(CTxIn(wtxParked.GetHash(), nOut, scriptSig));
 
             // Fill vtxPrev by copying from previous transactions vtxPrev
             wtxNew.AddSupportingTransactions(txdb);

@@ -565,7 +565,7 @@ public:
 
     bool IsUnpark() const
     {
-        return (vin.size() == 1 && !vin[0].prevout.IsNull() && vin[0].scriptSig.empty() && vout.size() == 1);
+        return (vin.size() == 1 && !vin[0].prevout.IsNull() && ::IsUnpark(vin[0].scriptSig) && vout.size() == 1);
     }
 
     /** Check for standard transaction types
