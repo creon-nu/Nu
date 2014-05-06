@@ -378,6 +378,9 @@ void BitcoinGUI::setWalletModel(WalletModel *walletModel)
     this->walletModel = walletModel;
     if(walletModel)
     {
+        // nubit: set current base unit
+        BitcoinUnits::baseUnit = walletModel->getUnit();
+
         // Report errors from wallet thread
         connect(walletModel, SIGNAL(error(QString,QString,bool)), this, SLOT(error(QString,QString,bool)));
 

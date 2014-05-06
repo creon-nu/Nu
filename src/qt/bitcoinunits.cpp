@@ -2,6 +2,8 @@
 
 #include <QStringList>
 
+unsigned char BitcoinUnits::baseUnit = 0;
+
 BitcoinUnits::BitcoinUnits(QObject *parent):
         QAbstractListModel(parent),
         unitlist(availableUnits())
@@ -32,24 +34,46 @@ bool BitcoinUnits::valid(int unit)
 
 QString BitcoinUnits::name(int unit)
 {
-    switch(unit)
+    switch (baseUnit)
     {
-    case BTC: return QString("PPC");
-    case mBTC: return QString("mPPC");
-    case uBTC: return QString::fromUtf8("μPPC");
-    default: return QString("???");
+        case 'S':
+            switch(unit)
+            {
+                case BTC: return QString("NSR");
+                case mBTC: return QString("mNSR");
+                case uBTC: return QString::fromUtf8("μNSR");
+            }
+        case 'B':
+            switch(unit)
+            {
+                case BTC: return QString("NBT");
+                case mBTC: return QString("mNBT");
+                case uBTC: return QString::fromUtf8("μNBT");
+            }
     }
+    return QString("???");
 }
 
 QString BitcoinUnits::description(int unit)
 {
-    switch(unit)
+    switch (baseUnit)
     {
-    case BTC: return QString("PPCoins");
-    case mBTC: return QString("Milli-PPCoins (1 / 1,000)");
-    case uBTC: return QString("Micro-PPCoins (1 / 1,000,000)");
-    default: return QString("???");
+        case 'S':
+            switch(unit)
+            {
+                case BTC: return QString("NuShares");
+                case mBTC: return QString("Milli-NuShares (1 / 1,000)");
+                case uBTC: return QString("Micro-NuShares (1 / 1,000,000)");
+            }
+        case 'B':
+            switch(unit)
+            {
+                case BTC: return QString("NuBits");
+                case mBTC: return QString("Milli-NuBits (1 / 1,000)");
+                case uBTC: return QString("Micro-NuBits (1 / 1,000,000)");
+            }
     }
+    return QString("???");
 }
 
 qint64 BitcoinUnits::factor(int unit)

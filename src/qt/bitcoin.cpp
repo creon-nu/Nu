@@ -7,6 +7,7 @@
 #include "walletmodel.h"
 #include "optionsmodel.h"
 #include "guiutil.h"
+#include "bitcoinunits.h"
 
 #include "init.h"
 #include "ui_interface.h"

@@ -57,6 +57,7 @@ public:
     qint64 getUnconfirmedBalance() const;
     int getNumTransactions() const;
     EncryptionStatus getEncryptionStatus() const;
+    unsigned char getUnit() const;
 
     // Check address for validity
     bool validateAddress(const QString &address);

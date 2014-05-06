@@ -48,6 +48,8 @@ public:
     static bool parse(int unit, const QString &value, qint64 *val_out);
     ///@}
 
+    static unsigned char baseUnit;
+
     //! @name AbstractListModel implementation
     //! List model for unit dropdown selection box.
     ///@{

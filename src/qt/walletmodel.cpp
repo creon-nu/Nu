@@ -3,6 +3,7 @@
 #include "optionsmodel.h"
 #include "addresstablemodel.h"
 #include "transactiontablemodel.h"
+#include "bitcoinunits.h"
 
 #include "ui_interface.h"
 #include "wallet.h"
@@ -43,6 +44,11 @@ int WalletModel::getNumTransactions() const
         numTransactions = wallet->mapWallet.size();
     }
     return numTransactions;
+}
+
+unsigned char WalletModel::getUnit() const
+{
+    return wallet->Unit();
 }
 
 void WalletModel::update()
