@@ -439,6 +439,7 @@ void BitcoinGUI::changeUnit(const QString &unit)
         }
     }
     setWalletModel(newWalletModel);
+    delete oldWalletModel;
 }
 
 void BitcoinGUI::createTrayIcon()

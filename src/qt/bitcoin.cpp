@@ -244,10 +244,10 @@ int main(int argc, char *argv[])
                     splash.finish(&window);
 
                 ClientModel clientModel(&optionsModel);
-                WalletModel walletModel(*setpwalletRegistered.begin(), &optionsModel);
+                WalletModel *walletModel = new WalletModel(*setpwalletRegistered.begin(), &optionsModel);
 
                 window.setClientModel(&clientModel);
-                window.setWalletModel(&walletModel);
+                window.setWalletModel(walletModel);
 
                 // If -min option passed, start window minimized.
                 if(GetBoolArg("-min"))
