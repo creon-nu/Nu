@@ -4005,7 +4005,7 @@ CBlock* CreateNewBlock(CReserveKey& reservekey, CWallet* pwallet, bool fProofOfS
                 continue;
 
             int64 nTxFees = tx.GetValueIn(mapInputs)-tx.GetValueOut();
-            if (nTxFees < nMinFee)
+            if (nTxFees < nMinFee && !tx.IsUnpark())
                 continue;
 
             nTxSigOps += tx.GetP2SHSigOpCount(mapInputs);
