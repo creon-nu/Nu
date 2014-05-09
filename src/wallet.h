@@ -73,6 +73,9 @@ private:
     // the maxmimum wallet format version: memory-only variable that specifies to what version this wallet may be upgraded
     int nWalletMaxVersion;
 
+    int64 nNextTimeResendWalletTransactions;
+    int64 nLastTimeResendWalletTransactions;
+
 public:
     mutable CCriticalSection cs_wallet;
 
@@ -94,6 +97,8 @@ public:
         nMasterKeyMaxID = 0;
         pwalletdbEncryption = NULL;
         cUnit = 0;
+        nNextTimeResendWalletTransactions = 0;
+        nLastTimeResendWalletTransactions = 0;
     }
     CWallet(std::string strWalletFileIn)
     {
@@ -104,6 +109,8 @@ public:
         nMasterKeyMaxID = 0;
         pwalletdbEncryption = NULL;
         cUnit = 0;
+        nNextTimeResendWalletTransactions = 0;
+        nLastTimeResendWalletTransactions = 0;
     }
 
     std::map<uint256, CWalletTx> mapWallet;
