@@ -1220,48 +1220,14 @@ Value unpark(const Array& params, bool fHelp)
             "unpark all transaction that have reached duration");
 
     Array ret;
-    for (map<uint256, CWalletTx>::iterator it = pwalletMain->mapWallet.begin(); it != pwalletMain->mapWallet.end(); ++it)
-    {
-        CWalletTx& wtx = it->second;
-        for (unsigned int i = 0; i < wtx.vout.size(); i++)
-        {
-            if (wtx.IsSpent(i))
-                continue;
+    vector<CWalletTx> vTransaction;
 
-            const CTxOut& txo = wtx.vout[i];
+    if (!pwalletMain->SendUnparkTransactions(vTransaction))
+        throw JSONRPCError(-1, "SendUnparkTransactions failed");
 
-            if (!pwalletMain->IsMine(txo))
-                continue;
+    BOOST_FOREACH(const CWalletTx& wtxUnpark, vTransaction)
+        ret.push_back(wtxUnpark.GetHash().GetHex());
 
-            uint64 nDuration;
-            CBitcoinAddress unparkAddress;
-
-            if (!ExtractPark(txo.scriptPubKey, wtx.cUnit, nDuration, unparkAddress))
-                continue;
-
-            CBlockIndex *pindex = NULL;
-            uint64 nDepth = wtx.GetDepthInMainChain(pindex);
-
-            if (nDepth < nDuration)
-                continue;
-
-            if (!pindex)
-                continue;
-
-            uint64 nPremium = pindex->GetPremium(txo.nValue, nDuration, wtx.cUnit);
-            uint64 nAmount = txo.nValue + nPremium;
-
-            CWalletTx wtxUnpark;
-            if (!pwalletMain->CreateUnparkTransaction(wtx, i, unparkAddress, nAmount, wtxUnpark))
-                throw JSONRPCError(-1, "CreateUnparkTransaction failed");
-
-            CReserveKey reservekey(pwalletMain);
-            if (!pwalletMain->CommitTransaction(wtxUnpark, reservekey))
-                throw JSONRPCError(-2, "CommitTransaction failed");
-
-            ret.push_back(wtxUnpark.GetHash().GetHex());
-        }
-    }
     return ret;
 }
 

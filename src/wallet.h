@@ -76,6 +76,9 @@ private:
     int64 nNextTimeResendWalletTransactions;
     int64 nLastTimeResendWalletTransactions;
 
+    int64 nNextTimeCheckUnparkableOutputs;
+    int64 nLastTimeCheckUnparkableOutputs;
+
 public:
     mutable CCriticalSection cs_wallet;
 
@@ -99,6 +102,8 @@ public:
         cUnit = 0;
         nNextTimeResendWalletTransactions = 0;
         nLastTimeResendWalletTransactions = 0;
+        nNextTimeCheckUnparkableOutputs = 0;
+        nLastTimeCheckUnparkableOutputs = 0;
     }
     CWallet(std::string strWalletFileIn)
     {
@@ -111,6 +116,8 @@ public:
         cUnit = 0;
         nNextTimeResendWalletTransactions = 0;
         nLastTimeResendWalletTransactions = 0;
+        nNextTimeCheckUnparkableOutputs = 0;
+        nLastTimeCheckUnparkableOutputs = 0;
     }
 
     std::map<uint256, CWalletTx> mapWallet;
@@ -168,6 +175,9 @@ public:
     std::string SendMoney(CScript scriptPubKey, int64 nValue, CWalletTx& wtxNew, bool fAskFee=false);
     std::string SendMoneyToBitcoinAddress(const CBitcoinAddress& address, int64 nValue, CWalletTx& wtxNew, bool fAskFee=false);
     std::string Park(int64 nValue, int64 nDuration, const CBitcoinAddress& unparkAddress, CWalletTx& wtxNew, bool fAskFee=false);
+    bool SendUnparkTransactions(std::vector<CWalletTx> vtxRet);
+    bool SendUnparkTransactions() { std::vector<CWalletTx> vtxRet; return SendUnparkTransactions(vtxRet); }
+    void CheckUnparkableOutputs();
 
     bool NewKeyPool();
     bool TopUpKeyPool();

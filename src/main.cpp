@@ -197,6 +197,13 @@ void static ResendWalletTransactions()
         pwallet->ResendWalletTransactions();
 }
 
+// nubit: ask wallets to check unparkable transactions
+void static CheckUnparkableOutputs()
+{
+    BOOST_FOREACH(CWallet* pwallet, setpwalletRegistered)
+        pwallet->CheckUnparkableOutputs();
+}
+
 
 
 
@@ -3563,6 +3570,9 @@ bool SendMessages(CNode* pto, bool fSendTrickle)
 
         // Resend wallet transactions that haven't gotten in a block yet
         ResendWalletTransactions();
+
+        // nubit: Send unpark transaction
+        CheckUnparkableOutputs();
 
         // Address refresh broadcast
         static int64 nLastRebroadcast;

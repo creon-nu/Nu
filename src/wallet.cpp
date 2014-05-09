@@ -850,6 +850,30 @@ void CWallet::ResendWalletTransactions()
 }
 
 
+void CWallet::CheckUnparkableOutputs()
+{
+    // Do this infrequently and randomly to avoid giving away
+    // that these are our transactions, but more frequently than ResendWalletTransactions
+    if (GetTime() < nNextTimeCheckUnparkableOutputs)
+        return;
+    bool fFirst = (nNextTimeCheckUnparkableOutputs == 0);
+    nNextTimeCheckUnparkableOutputs = GetTime() + GetRand(STAKE_TARGET_SPACING / 2);
+    if (fFirst)
+        return;
+
+    // Only do it if there's been a new block since last time
+    if (nTimeBestReceived < nLastTimeCheckUnparkableOutputs)
+        return;
+    nLastTimeCheckUnparkableOutputs = GetTime();
+
+    {
+        LOCK(cs_wallet);
+        if (!SendUnparkTransactions())
+            printf("SendUnparkTransactions failed\n");
+    }
+}
+
+
 
 
 
@@ -1498,6 +1522,56 @@ bool CWallet::CreateUnparkTransaction(CWalletTx& wtxParked, unsigned int nOut, c
     return true;
 }
 
+bool CWallet::SendUnparkTransactions(vector<CWalletTx> vtxRet)
+{
+    for (map<uint256, CWalletTx>::iterator it = mapWallet.begin(); it != mapWallet.end(); ++it)
+    {
+        CWalletTx& wtx = it->second;
+        for (unsigned int i = 0; i < wtx.vout.size(); i++)
+        {
+            if (wtx.IsSpent(i))
+                continue;
+
+            const CTxOut& txo = wtx.vout[i];
+
+            if (!IsMine(txo))
+                continue;
+
+            uint64 nDuration;
+            CBitcoinAddress unparkAddress;
+
+            if (!ExtractPark(txo.scriptPubKey, wtx.cUnit, nDuration, unparkAddress))
+                continue;
+
+            CBlockIndex *pindex = NULL;
+            uint64 nDepth = wtx.GetDepthInMainChain(pindex);
+
+            if (nDepth < nDuration)
+                continue;
+
+            if (!pindex)
+                continue;
+
+            uint64 nPremium = pindex->GetPremium(txo.nValue, nDuration, wtx.cUnit);
+            uint64 nAmount = txo.nValue + nPremium;
+
+            printf("Found unparkable output: hash=%s output=%d unit=%c value=%d duration=%d unparkAddress=%s premium=%d\n",
+                    wtx.GetHash().GetHex().c_str(), i, wtx.cUnit, txo.nValue, nDuration, unparkAddress.ToString().c_str(), nPremium);
+
+            CWalletTx wtxUnpark;
+            if (!CreateUnparkTransaction(wtx, i, unparkAddress, nAmount, wtxUnpark))
+                return false;
+
+            CReserveKey reservekey(this);
+            if (!CommitTransaction(wtxUnpark, reservekey))
+                return false;
+
+            vtxRet.push_back(wtxUnpark);
+        }
+    }
+
+    return true;
+}
 
 // Call after CreateTransaction unless you want to abort
 bool CWallet::CommitTransaction(CWalletTx& wtxNew, CReserveKey& reservekey)
