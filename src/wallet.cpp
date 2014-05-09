@@ -852,6 +852,9 @@ void CWallet::ResendWalletTransactions()
 
 void CWallet::CheckUnparkableOutputs()
 {
+    if (cUnit == 'S')
+        return;
+
     // Do this infrequently and randomly to avoid giving away
     // that these are our transactions, but more frequently than ResendWalletTransactions
     if (GetTime() < nNextTimeCheckUnparkableOutputs)
