@@ -306,6 +306,10 @@ int CWalletDB::LoadWallet(CWallet* pwallet)
                     return DB_CORRUPT;
                 }
             }
+            else if (strType == "vote")
+            {
+                ssValue >> pwallet->vote;
+            }
         }
         pcursor->close();
     }
