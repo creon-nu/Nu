@@ -81,6 +81,8 @@ public:
 
     std::set<int64> setKeyPool;
 
+    CVote vote;
+
 
     typedef std::map<unsigned int, CMasterKey> MasterKeyMap;
     MasterKeyMap mapMasterKeys;

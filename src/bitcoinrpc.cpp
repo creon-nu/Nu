@@ -2570,6 +2570,17 @@ Value sendalert(const Array& params, bool fHelp)
 }
 
 
+Value getvote(const Array& params, bool fHelp)
+{
+    if (fHelp || params.size() != 0)
+        throw runtime_error(
+            "getvote\n"
+            "Returns the vote that will be inserted in the next proof of stake block.");
+
+    return voteToJSON(pwalletMain->vote);
+}
+
+
 
 //
 // Call Table
@@ -2637,6 +2648,7 @@ static const CRPCCommand vRPCCommands[] =
     { "repairwallet",           &repairwallet,           false},
     { "makekeypair",            &makekeypair,            false},
     { "sendalert",              &sendalert,              false},
+    { "getvote",                &getvote,                true },
 };
 
 CRPCTable::CRPCTable()
