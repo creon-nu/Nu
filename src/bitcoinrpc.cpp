@@ -2581,6 +2581,21 @@ Value getvote(const Array& params, bool fHelp)
 }
 
 
+Value setmotionvote(const Array& params, bool fHelp)
+{
+    if (fHelp || params.size() != 1)
+        throw runtime_error(
+            "setmotionvote <motion hash>\n"
+            "<motionhash> is the hash of the motion to vote for.");
+
+    string encodedHash = params[0].get_str();
+    pwalletMain->vote.hashMotion.SetHex(encodedHash);
+    pwalletMain->SaveVote();
+
+    return Value::null;
+}
+
+
 
 //
 // Call Table
@@ -2649,6 +2664,7 @@ static const CRPCCommand vRPCCommands[] =
     { "makekeypair",            &makekeypair,            false},
     { "sendalert",              &sendalert,              false},
     { "getvote",                &getvote,                true },
+    { "setmotionvote",          &setmotionvote,          true },
 };
 
 CRPCTable::CRPCTable()

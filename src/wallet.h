@@ -284,6 +284,8 @@ public:
     void DisableTransaction(const CTransaction &tx);
 
     void ExportPeercoinKeys(int &nExportedCount, int &nErrorCount);
+
+    void SaveVote() const;
 };
 
 /** A key allocated from the key pool. */

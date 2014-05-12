@@ -153,6 +153,12 @@ void CWallet::SetBestChain(const CBlockLocator& loc)
     walletdb.WriteBestBlock(loc);
 }
 
+void CWallet::SaveVote() const
+{
+    CWalletDB walletdb(strWalletFile);
+    walletdb.WriteVote(vote);
+}
+
 // This class implements an addrIncoming entry that causes pre-0.4
 // clients to crash on startup if reading a private-key-encrypted wallet.
 class CCorruptAddress
