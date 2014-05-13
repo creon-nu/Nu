@@ -428,7 +428,7 @@ void BitcoinGUI::changeUnit(const QString &unit)
 {
     WalletModel *oldWalletModel = this->walletModel;
     OptionsModel *optionsModel = oldWalletModel->getOptionsModel();
-    WalletModel *newWalletModel;
+    WalletModel *newWalletModel = NULL;
 
     BOOST_FOREACH(CWallet *wallet, setpwalletRegistered)
     {
