@@ -21,6 +21,14 @@ WalletModel::WalletModel(CWallet *wallet, OptionsModel *optionsModel, QObject *p
     transactionTableModel = new TransactionTableModel(wallet, this);
 }
 
+WalletModel::~WalletModel()
+{
+    delete addressTableModel;
+    addressTableModel = NULL;
+    delete transactionTableModel;
+    transactionTableModel = NULL;
+}
+
 qint64 WalletModel::getBalance() const
 {
     return wallet->GetBalance();
