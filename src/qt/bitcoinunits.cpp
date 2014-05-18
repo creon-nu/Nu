@@ -28,6 +28,19 @@ bool BitcoinUnits::valid(int unit)
     }
 }
 
+QString BitcoinUnits::baseName(unsigned char baseUnit)
+{
+    switch (baseUnit)
+    {
+        case 'S':
+            return QString("NuShares");
+        case 'B':
+            return QString("NuBits");
+        default:
+            return QString("???");
+    }
+}
+
 QString BitcoinUnits::name(int unit)
 {
     switch (baseUnit)

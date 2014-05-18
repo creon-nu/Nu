@@ -409,7 +409,7 @@ void BitcoinGUI::setWalletModel(WalletModel *walletModel)
         BOOST_FOREACH(CWallet *wallet, setpwalletRegistered)
         {
             QString unitString(wallet->Unit());
-            QAction *action = new QAction(unitString, this);
+            QAction *action = new QAction(BitcoinUnits::baseName(wallet->Unit()), this);
             action->setCheckable(true);
             if (unitString == QString(walletModel->getWallet()->Unit()))
                 action->setChecked(true);
