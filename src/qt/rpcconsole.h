@@ -7,6 +7,8 @@ namespace Ui {
     class RPCConsole;
 }
 class ClientModel;
+class WalletModel;
+class CWallet;
 
 /** Local bitcoin RPC console. */
 class RPCConsole: public QDialog
@@ -18,6 +20,7 @@ public:
     ~RPCConsole();
 
     void setClientModel(ClientModel *model);
+    void setModel(WalletModel *model);
 
     enum MessageClass {
         MC_ERROR,
@@ -50,6 +53,7 @@ signals:
     // For RPC command executor
     void stopExecutor();
     void cmdRequest(const QString &command);
+    void walletChange(CWallet* wallet);
 
 private:
     Ui::RPCConsole *ui;
