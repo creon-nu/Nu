@@ -2,6 +2,8 @@
 #include "ui_rpcconsole.h"
 
 #include "clientmodel.h"
+#include "walletmodel.h"
+#include "bitcoinunits.h"
 #include "bitcoinrpc.h"
 #include "guiutil.h"
 
@@ -39,6 +41,7 @@ class RPCExecutor: public QObject
 public slots:
     void start();
     void request(const QString &command);
+    void setWallet(CWallet* wallet);
 signals:
     void reply(int category, const QString &command);
 };
@@ -48,6 +51,12 @@ signals:
 void RPCExecutor::start()
 {
    // Nothing to do
+}
+
+void RPCExecutor::setWallet(CWallet *wallet)
+{
+    threadWallet.reset(new CWallet*(wallet));
+    emit reply(RPCConsole::CMD_REPLY, tr("Switched to %1 wallet").arg(BitcoinUnits::baseName(wallet->Unit())));
 }
 
 /**
@@ -264,6 +273,11 @@ void RPCConsole::setClientModel(ClientModel *model)
     }
 }
 
+void RPCConsole::setModel(WalletModel *model)
+{
+    emit walletChange(model->getWallet());
+}
+
 static QString categoryClass(int category)
 {
     switch(category)
@@ -384,6 +398,8 @@ void RPCConsole::startExecutor()
 
     // Notify executor when thread started (in executor thread)
     connect(thread, SIGNAL(started()), executor, SLOT(start()));
+    // nubit: Wallet change is notified to the executor
+    connect(this, SIGNAL(walletChange(CWallet*)), executor, SLOT(setWallet(CWallet*)));
     // Replies from executor object must go to this object
     connect(executor, SIGNAL(reply(int,QString)), this, SLOT(message(int,QString)));
     // Requests from this object must go to executor
