@@ -122,6 +122,7 @@ public:
 
     std::map<uint256, CWalletTx> mapWallet;
     std::vector<uint256> vWalletUpdated;
+    std::set<COutPoint> setParked;
 
     std::map<uint256, int> mapRequestCount;
 
@@ -302,6 +303,9 @@ public:
     void DisableTransaction(const CTransaction &tx);
 
     void ExportPeercoinKeys(int &nExportedCount, int &nErrorCount);
+
+    void AddParked(const COutPoint& outpoint);
+    void RemoveParked(const COutPoint& outpoint);
 };
 
 /** A key allocated from the key pool. */

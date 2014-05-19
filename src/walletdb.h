@@ -173,6 +173,11 @@ public:
     int64 GetAccountCreditDebit(const std::string& strAccount);
     void ListAccountCreditDebit(const std::string& strAccount, std::list<CAccountingEntry>& acentries);
 
+    bool WriteParked(const std::set<COutPoint>& setParked)
+    {
+        return Write(std::string("parked"), setParked);
+    }
+
     int LoadWallet(CWallet* pwallet);
 };
 

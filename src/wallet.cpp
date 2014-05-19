@@ -308,6 +308,8 @@ void CWallet::WalletUpdateSpent(const CTransaction &tx)
                     wtx.WriteToDisk();
                     vWalletUpdated.push_back(txin.prevout.hash);
                 }
+                if (setParked.count(txin.prevout))
+                    RemoveParked(txin.prevout);
             }
         }
     }
@@ -384,6 +386,23 @@ bool CWallet::AddToWallet(const CWalletTx& wtxIn)
 #endif
         // Notify UI
         vWalletUpdated.push_back(hash);
+
+        // nubit: Add parked outputs
+        for (unsigned int i = 0; i < wtx.vout.size(); i++)
+        {
+            const CTxOut& txo = wtx.vout[i];
+
+            uint64 nDuration;
+            CBitcoinAddress unparkAddress;
+
+            if (!ExtractPark(txo.scriptPubKey, wtx.cUnit, nDuration, unparkAddress))
+                continue;
+
+            if (!HaveKey(unparkAddress))
+                continue;
+
+            AddParked(COutPoint(wtx.GetHash(), i));
+        }
 
         // since AddToWallet is called directly for self-originating transactions, check for consumption of own coins
         WalletUpdateSpent(wtx);
@@ -2183,4 +2202,16 @@ void CWallet::ExportPeercoinKeys(int &nExportedCount, int &nErrorCount)
             }
         }
     }
+}
+
+void CWallet::AddParked(const COutPoint& outpoint)
+{
+    setParked.insert(outpoint);
+    CWalletDB(strWalletFile).WriteParked(setParked);
+}
+
+void CWallet::RemoveParked(const COutPoint& outpoint)
+{
+    setParked.erase(outpoint);
+    CWalletDB(strWalletFile).WriteParked(setParked);
 }
