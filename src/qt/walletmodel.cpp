@@ -3,6 +3,7 @@
 #include "optionsmodel.h"
 #include "addresstablemodel.h"
 #include "transactiontablemodel.h"
+#include "parktablemodel.h"
 #include "bitcoinunits.h"
 
 #include "ui_interface.h"
@@ -14,11 +15,13 @@
 WalletModel::WalletModel(CWallet *wallet, OptionsModel *optionsModel, QObject *parent) :
     QObject(parent), wallet(wallet), optionsModel(optionsModel), addressTableModel(0),
     transactionTableModel(0),
+    parkTableModel(0),
     cachedBalance(0), cachedUnconfirmedBalance(0), cachedNumTransactions(0),
     cachedEncryptionStatus(Unencrypted)
 {
     addressTableModel = new AddressTableModel(wallet, this);
     transactionTableModel = new TransactionTableModel(wallet, this);
+    parkTableModel = new ParkTableModel(wallet, this);
 }
 
 WalletModel::~WalletModel()
@@ -27,6 +30,8 @@ WalletModel::~WalletModel()
     addressTableModel = NULL;
     delete transactionTableModel;
     transactionTableModel = NULL;
+    delete parkTableModel;
+    parkTableModel = NULL;
 }
 
 qint64 WalletModel::getBalance() const
@@ -210,6 +215,11 @@ AddressTableModel *WalletModel::getAddressTableModel()
 TransactionTableModel *WalletModel::getTransactionTableModel()
 {
     return transactionTableModel;
+}
+
+ParkTableModel *WalletModel::getParkTableModel()
+{
+    return parkTableModel;
 }
 
 WalletModel::EncryptionStatus WalletModel::getEncryptionStatus() const

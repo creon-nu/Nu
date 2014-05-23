@@ -122,6 +122,7 @@ public:
 
     std::map<uint256, CWalletTx> mapWallet;
     std::vector<uint256> vWalletUpdated;
+    std::vector<uint256> vParkWalletUpdated;
     std::set<COutPoint> setParked;
 
     std::map<uint256, int> mapRequestCount;
@@ -266,6 +267,7 @@ public:
         {
             LOCK(cs_wallet);
             vWalletUpdated.push_back(hashTx);
+            vParkWalletUpdated.push_back(hashTx);
         }
     }
 

@@ -11,6 +11,7 @@
 class OptionsModel;
 class AddressTableModel;
 class TransactionTableModel;
+class ParkTableModel;
 class CWallet;
 
 class SendCoinsRecipient
@@ -52,6 +53,7 @@ public:
     OptionsModel *getOptionsModel();
     AddressTableModel *getAddressTableModel();
     TransactionTableModel *getTransactionTableModel();
+    ParkTableModel *getParkTableModel();
 
     qint64 getBalance() const;
     qint64 getStake() const;
@@ -125,6 +127,7 @@ private:
 
     AddressTableModel *addressTableModel;
     TransactionTableModel *transactionTableModel;
+    ParkTableModel *parkTableModel;
 
     // Cache some values to be able to detect changes
     qint64 cachedBalance;

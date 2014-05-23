@@ -385,7 +385,7 @@ bool CWallet::AddToWallet(const CWalletTx& wtxIn)
         }
 #endif
         // Notify UI
-        vWalletUpdated.push_back(hash);
+        UpdatedTransaction(hash);
 
         // nubit: Add parked outputs
         for (unsigned int i = 0; i < wtx.vout.size(); i++)
@@ -1622,7 +1622,7 @@ bool CWallet::CommitTransaction(CWalletTx& wtxNew, CReserveKey& reservekey)
                 coin.BindWallet(this);
                 coin.MarkSpent(txin.prevout.n);
                 coin.WriteToDisk();
-                vWalletUpdated.push_back(coin.GetHash());
+                UpdatedTransaction(coin.GetHash());
             }
 
             if (fFileBacked)
