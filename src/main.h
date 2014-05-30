@@ -65,6 +65,10 @@ extern CScript COINBASE_FLAGS;
 
 static const std::string sAvailableUnits("SB");
 
+inline bool ValidUnit(unsigned char cUnit)
+{
+    return sAvailableUnits.find(cUnit) != -1;
+}
 
 
 

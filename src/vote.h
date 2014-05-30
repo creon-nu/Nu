@@ -14,6 +14,13 @@ public:
     uint160 hashAddress;
     uint64 nAmount;
 
+    CCustodianVote() :
+        cUnit('?'),
+        hashAddress(0),
+        nAmount(0)
+    {
+    }
+
     IMPLEMENT_SERIALIZE
     (
         READWRITE(cUnit);
@@ -48,7 +55,9 @@ public:
     unsigned char nCompactDuration;
     unsigned int nRate;
 
-    CParkRate()
+    CParkRate() :
+        nCompactDuration(0),
+        nRate(0)
     {
     }
 
@@ -82,9 +91,14 @@ public:
     unsigned char cUnit;
     std::vector<CParkRate> vParkRate;
 
+    CParkRateVote() :
+        cUnit('?')
+    {
+    }
+
     void SetNull()
     {
-        cUnit = 0;
+        cUnit = '?';
         vParkRate.clear();
     }
 

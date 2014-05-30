@@ -291,6 +291,25 @@ public:
         }
     }
 
+    unsigned char GetUnit() const
+    {
+        switch (nVersion)
+        {
+            case 125:
+            case 126:
+            case 63:
+            case 64:
+                return 'S';
+            case 85:
+            case 86:
+            case 25:
+            case 26:
+                return 'B';
+            default:
+                return '?';
+        }
+    }
+
     bool SetHash160(const uint160& hash160, unsigned char cUnit)
     {
         SetData(ExpectedVersion(cUnit, true), &hash160, 20);
@@ -315,6 +334,16 @@ public:
 
         return vchData.size() == 20;
     }
+    bool IsValid() const
+    {
+        unsigned char cUnit = GetUnit();
+
+        if (cUnit == '?')
+            return false;
+
+        return IsValid(cUnit);
+    }
+
     bool IsScript(unsigned char cUnit) const
     {
         if (!IsValid(cUnit))
