@@ -1374,30 +1374,7 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
         nCredit += GetProofOfStakeReward(nCoinAge);
     }
 
-    // Temp values
-    CVote vote;
-
-    CCustodianVote custodianVote;
-    custodianVote.cUnit = 'B';
-    custodianVote.hashAddress = CBitcoinAddress("bMtyEAF2UEuKAuLgUutwoqRaKAN3578HUV").GetHash160();
-    custodianVote.nAmount = 100 * COIN;
-    vote.vCustodianVote.push_back(custodianVote);
-
-    CCustodianVote custodianVote2;
-    custodianVote2.cUnit = 'B';
-    custodianVote2.hashAddress = uint160(555555555);
-    custodianVote2.nAmount = 5.5 * COIN;
-    vote.vCustodianVote.push_back(custodianVote2);
-
-    CParkRateVote parkRateVote;
-    parkRateVote.cUnit = 'B';
-    parkRateVote.vParkRate.push_back(CParkRate(13, 3));
-    parkRateVote.vParkRate.push_back(CParkRate(14, 6));
-    parkRateVote.vParkRate.push_back(CParkRate(15, 13));
-    vote.vParkRateVote.push_back(parkRateVote);
-
-    vote.hashMotion = uint160(123456);
-
+    // nubit: Add current vote
     txNew.vout.push_back(CTxOut(0, vote.ToScript()));
 
     // nubit: The result of the vote is stored in the CoinStake transaction
