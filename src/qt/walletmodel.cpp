@@ -202,6 +202,27 @@ WalletModel::SendCoinsReturn WalletModel::sendCoins(const QList<SendCoinsRecipie
     return SendCoinsReturn(OK, 0, hex);
 }
 
+QString WalletModel::park(qint64 amount, qint64 blocks, QString unparkAddress)
+{
+    {
+        LOCK2(cs_main, wallet->cs_wallet);
+        CWalletTx wtx;
+        std::string result = wallet->Park(amount, blocks, CBitcoinAddress(unparkAddress.toStdString()), wtx, false);
+        return QString::fromStdString(result);
+    }
+}
+
+qint64 WalletModel::getPremium(qint64 amount, qint64 blocks)
+{
+    {
+        LOCK2(cs_main, wallet->cs_wallet);
+        if (!pindexBest)
+            return 0;
+
+        return pindexBest->GetPremium(amount, blocks, wallet->Unit());
+    }
+}
+
 OptionsModel *WalletModel::getOptionsModel()
 {
     return optionsModel;

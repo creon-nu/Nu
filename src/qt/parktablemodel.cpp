@@ -359,7 +359,6 @@ QVariant ParkTableModel::data(const QModelIndex &index, int role) const
         return QVariant();
     ParkRecord *rec = static_cast<ParkRecord*>(index.internalPointer());
 
-    double time;
     switch(role)
     {
     case Qt::DecorationRole:
@@ -391,20 +390,7 @@ QVariant ParkTableModel::data(const QModelIndex &index, int role) const
             else
                 return "Unknown";
         case EstimatedTimeLeft:
-            time = (double)rec->remaining * STAKE_TARGET_SPACING / 60;
-            if (time < 55)
-                return QString("%1 min").arg(QString::number(time, 'f', 1));
-            time = time / 60;
-            if (time < 23.5)
-                return QString("%1 hours").arg(QString::number(time, 'f', 1));
-            time = time / 24;
-            if (time < 30)
-                return QString("%1 days").arg(QString::number(time, 'f', 1));
-            time = time / 30;
-            if (time < 12)
-                return QString("%1 months").arg(QString::number(time, 'f', 1));
-            time = time / 12;
-            return QString("%1 years").arg(QString::number(time, 'f', 1));
+            return GUIUtil::blocksToTime(rec->remaining);
         case UnparkAddress:
             return QString::fromStdString(rec->unparkAddress);
         }

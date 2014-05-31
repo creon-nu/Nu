@@ -21,6 +21,9 @@ public:
 private:
     Ui::ParkPage *ui;
     WalletModel *model;
+
+private slots:
+    void on_park_clicked();
 };
 
 #endif // PARKPAGE_H

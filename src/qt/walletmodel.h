@@ -81,6 +81,12 @@ public:
     // Send coins to a list of recipients
     SendCoinsReturn sendCoins(const QList<SendCoinsRecipient> &recipients);
 
+    // nubit: Park coins
+    QString park(qint64 amount, qint64 blocks, QString unparkAddress);
+
+    // nubit: Get current premium for this amount and duration
+    qint64 getPremium(qint64 amount, qint64 blocks);
+
     // Wallet encryption
     bool setWalletEncrypted(bool encrypted, const SecureString &passphrase);
     // Passphrase only needed when unlocking

@@ -4,6 +4,7 @@
 #include "bitcoinunits.h"
 #include "optionsmodel.h"
 #include "parktablemodel.h"
+#include "parkdialog.h"
 
 #include <QSortFilterProxyModel>
 
@@ -50,3 +51,11 @@ void ParkPage::setModel(WalletModel *model)
     view->horizontalHeader()->resizeSection(ParkTableModel::Premium, 100);
     view->horizontalHeader()->setResizeMode(ParkTableModel::UnparkAddress, QHeaderView::Stretch);
 }
+
+void ParkPage::on_park_clicked()
+{
+    ParkDialog dlg(this);
+    dlg.setModel(model);
+    dlg.exec();
+}
+
