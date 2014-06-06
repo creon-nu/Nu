@@ -18,11 +18,8 @@
 using namespace std;
 using namespace boost;
 
-//
-// Global state
-//
-static const uint256 hashGenesisBlockOfficial("0x000000d78e35e381ca738ceb966b9faf528f0970d994ce4eb4560b56cbe2f6c4");
-static const uint256 hashGenesisBlockTestNet ("0x00000da01001c0f91ccb20ad67e801a173f55f4be23d63463a4d453c8aebab48");
+const uint256 hashGenesisBlockOfficial("0x000000d78e35e381ca738ceb966b9faf528f0970d994ce4eb4560b56cbe2f6c4");
+const uint256 hashGenesisBlockTestNet ("0x00000da01001c0f91ccb20ad67e801a173f55f4be23d63463a4d453c8aebab48");
 
 CCriticalSection cs_setpwalletRegistered;
 set<CWallet*> setpwalletRegistered;
