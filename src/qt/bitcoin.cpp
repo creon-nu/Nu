@@ -7,6 +7,7 @@
 #include "walletmodel.h"
 #include "optionsmodel.h"
 #include "guiutil.h"
+#include "bitcoinunits.h"
 
 #include "init.h"
 #include "ui_interface.h"
@@ -36,8 +37,9 @@ Q_IMPORT_PLUGIN(qtaccessiblewidgets)
 // Need a global reference for the notifications to find the GUI
 static BitcoinGUI *guiref;
 static QSplashScreen *splashref;
-static WalletModel *walletmodel;
-static ClientModel *clientmodel;
+// nubit: get the current model instead of the first initialized
+#define walletmodel (guiref->getWalletModel())
+#define clientmodel (guiref->getClientModel())
 
 int ThreadSafeMessageBox(const std::string& message, const std::string& caption, int style)
 {
@@ -243,12 +245,10 @@ int main(int argc, char *argv[])
                     splash.finish(&window);
 
                 ClientModel clientModel(&optionsModel);
-                clientmodel = &clientModel;
-                WalletModel walletModel(*setpwalletRegistered.begin(), &optionsModel);
-                walletmodel = &walletModel;
+                WalletModel *walletModel = new WalletModel(*setpwalletRegistered.begin(), &optionsModel);
 
                 window.setClientModel(&clientModel);
-                window.setWalletModel(&walletModel);
+                window.setWalletModel(walletModel);
 
                 // If -min option passed, start window minimized.
                 if(GetBoolArg("-min"))
@@ -287,8 +287,6 @@ int main(int argc, char *argv[])
                 window.setClientModel(0);
                 window.setWalletModel(0);
                 guiref = 0;
-                clientmodel = 0;
-                walletmodel = 0;
             }
             // Shutdown the core and it's threads, but don't exit Bitcoin-Qt here
             Shutdown(NULL);
