@@ -70,4 +70,7 @@ public:
 extern const CRPCTable tableRPC;
 extern CReserveKey* pMiningKey;
 
+class CWallet;
+extern boost::thread_specific_ptr<CWallet*> threadWallet;
+
 #endif

@@ -172,6 +172,8 @@ void OverviewPage::setModel(WalletModel *model)
         connect(model, SIGNAL(numTransactionsChanged(int)), this, SLOT(setNumTransactions(int)));
 
         connect(model->getOptionsModel(), SIGNAL(displayUnitChanged(int)), this, SLOT(displayUnitChanged()));
+
+        emit displayUnitChanged();
     }
 }
 

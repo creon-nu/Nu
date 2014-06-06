@@ -27,6 +27,7 @@ class WalletModel : public QObject
     Q_OBJECT
 public:
     explicit WalletModel(CWallet *wallet, OptionsModel *optionsModel, QObject *parent = 0);
+    ~WalletModel();
 
     enum StatusCode // Returned by sendCoins
     {
@@ -57,6 +58,7 @@ public:
     qint64 getUnconfirmedBalance() const;
     int getNumTransactions() const;
     EncryptionStatus getEncryptionStatus() const;
+    unsigned char getUnit() const;
 
     // Check address for validity
     bool validateAddress(const QString &address);

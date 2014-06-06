@@ -3,6 +3,7 @@
 #include "optionsmodel.h"
 #include "addresstablemodel.h"
 #include "transactiontablemodel.h"
+#include "bitcoinunits.h"
 
 #include "ui_interface.h"
 #include "wallet.h"
@@ -18,6 +19,14 @@ WalletModel::WalletModel(CWallet *wallet, OptionsModel *optionsModel, QObject *p
 {
     addressTableModel = new AddressTableModel(wallet, this);
     transactionTableModel = new TransactionTableModel(wallet, this);
+}
+
+WalletModel::~WalletModel()
+{
+    delete addressTableModel;
+    addressTableModel = NULL;
+    delete transactionTableModel;
+    transactionTableModel = NULL;
 }
 
 qint64 WalletModel::getBalance() const
@@ -43,6 +52,11 @@ int WalletModel::getNumTransactions() const
         numTransactions = wallet->mapWallet.size();
     }
     return numTransactions;
+}
+
+unsigned char WalletModel::getUnit() const
+{
+    return wallet->Unit();
 }
 
 void WalletModel::update()
