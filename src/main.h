@@ -558,6 +558,18 @@ public:
         return (cUnit != 'S' && vin.size() == 1 && vin[0].prevout.IsNull() && vout.size() >= 1);
     }
 
+    bool IsParked(unsigned int nOut) const
+    {
+        if (nOut >= vout.size())
+            throw std::runtime_error("CTransaction::IsParked() : nOut out of range");
+        return IsPark(vout[nOut].scriptPubKey);
+    }
+
+    bool IsUnpark() const
+    {
+        return (vin.size() == 1 && !vin[0].prevout.IsNull() && ::IsUnpark(vin[0].scriptSig) && vout.size() == 1);
+    }
+
     /** Check for standard transaction types
         @return True if all outputs (scriptPubKeys) use only standard transaction forms
     */
@@ -892,7 +904,8 @@ public:
     {
         return !(a == b);
     }
-    int GetDepthInMainChain() const;
+    int GetDepthInMainChain(CBlockIndex* &pindexRet) const;
+    int GetDepthInMainChain() const { CBlockIndex *pindexRet; return GetDepthInMainChain(pindexRet); }
  
 };
 
@@ -1173,6 +1186,7 @@ public:
     bool CheckBlock() const;
     bool AcceptBlock();
     bool GetCoinAge(uint64& nCoinAge) const; // ppcoin: calculate total coin age spent in block
+    bool GetCoinStakeAge(uint64& nCoinAge) const;
     bool SignBlock(const CKeyStore& keystore);
     bool CheckBlockSignature() const;
 
@@ -1427,6 +1441,11 @@ public:
         nStakeModifier = nModifier;
         if (fGeneratedStakeModifier)
             nFlags |= BLOCK_STAKE_MODIFIER;
+    }
+
+    uint64 GetPremium(uint64 nValue, uint64 nDuration, unsigned char cUnit)
+    {
+        return ::GetPremium(nValue, nDuration, cUnit, vParkRateResult);
     }
 
     std::string ToString() const

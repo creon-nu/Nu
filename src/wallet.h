@@ -73,6 +73,12 @@ private:
     // the maxmimum wallet format version: memory-only variable that specifies to what version this wallet may be upgraded
     int nWalletMaxVersion;
 
+    int64 nNextTimeResendWalletTransactions;
+    int64 nLastTimeResendWalletTransactions;
+
+    int64 nNextTimeCheckUnparkableOutputs;
+    int64 nLastTimeCheckUnparkableOutputs;
+
 public:
     mutable CCriticalSection cs_wallet;
 
@@ -94,6 +100,10 @@ public:
         nMasterKeyMaxID = 0;
         pwalletdbEncryption = NULL;
         cUnit = 0;
+        nNextTimeResendWalletTransactions = 0;
+        nLastTimeResendWalletTransactions = 0;
+        nNextTimeCheckUnparkableOutputs = 0;
+        nLastTimeCheckUnparkableOutputs = 0;
     }
     CWallet(std::string strWalletFileIn)
     {
@@ -104,6 +114,10 @@ public:
         nMasterKeyMaxID = 0;
         pwalletdbEncryption = NULL;
         cUnit = 0;
+        nNextTimeResendWalletTransactions = 0;
+        nLastTimeResendWalletTransactions = 0;
+        nNextTimeCheckUnparkableOutputs = 0;
+        nLastTimeCheckUnparkableOutputs = 0;
     }
 
     std::map<uint256, CWalletTx> mapWallet;
@@ -152,12 +166,18 @@ public:
     int64 GetUnconfirmedBalance() const;
     int64 GetStake() const;
     int64 GetNewMint() const;
+    int64 GetParked() const;
     bool CreateTransaction(const std::vector<std::pair<CScript, int64> >& vecSend, CWalletTx& wtxNew, CReserveKey& reservekey, int64& nFeeRet);
     bool CreateTransaction(CScript scriptPubKey, int64 nValue, CWalletTx& wtxNew, CReserveKey& reservekey, int64& nFeeRet);
     bool CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int64 nSearchInterval, CTransaction& txNew, CBlockIndex* pindexprev);
+    bool CreateUnparkTransaction(CWalletTx& wtxParked, unsigned int nOut, const CBitcoinAddress& unparkAddress, uint64 nAmount, CWalletTx& wtxNew);
     bool CommitTransaction(CWalletTx& wtxNew, CReserveKey& reservekey);
     std::string SendMoney(CScript scriptPubKey, int64 nValue, CWalletTx& wtxNew, bool fAskFee=false);
     std::string SendMoneyToBitcoinAddress(const CBitcoinAddress& address, int64 nValue, CWalletTx& wtxNew, bool fAskFee=false);
+    std::string Park(int64 nValue, int64 nDuration, const CBitcoinAddress& unparkAddress, CWalletTx& wtxNew, bool fAskFee=false);
+    bool SendUnparkTransactions(std::vector<CWalletTx> vtxRet);
+    bool SendUnparkTransactions() { std::vector<CWalletTx> vtxRet; return SendUnparkTransactions(vtxRet); }
+    void CheckUnparkableOutputs();
 
     bool NewKeyPool();
     bool TopUpKeyPool();
@@ -530,7 +550,7 @@ public:
         int64 nCredit = 0;
         for (unsigned int i = 0; i < vout.size(); i++)
         {
-            if (!IsSpent(i))
+            if (!IsSpent(i) && !IsParked(i))
             {
                 const CTxOut &txout = vout[i];
                 nCredit += pwallet->GetCredit(txout);

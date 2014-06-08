@@ -553,8 +553,10 @@ void CWalletTx::GetAmounts(int64& nGeneratedImmature, int64& nGeneratedMature, l
     }
 
     // Sent/received.
-    BOOST_FOREACH(const CTxOut& txout, vout)
+    for (unsigned int i = 0; i < vout.size(); i++)
     {
+        const CTxOut& txout = vout[i];
+
         CBitcoinAddress address;
         vector<unsigned char> vchPubKey;
         if (!pwallet->ExtractAddress(txout.scriptPubKey, address))
@@ -570,6 +572,10 @@ void CWalletTx::GetAmounts(int64& nGeneratedImmature, int64& nGeneratedMature, l
 
         if (nDebit > 0)
             listSent.push_back(make_pair(address, txout.nValue));
+
+        // Do not count parked amount as received unless it was unparked
+        if (IsParked(i) && !IsSpent(i))
+            continue;
 
         if (pwallet->IsMine(txout))
             listReceived.push_back(make_pair(address, txout.nValue));
@@ -805,19 +811,17 @@ void CWallet::ResendWalletTransactions()
 {
     // Do this infrequently and randomly to avoid giving away
     // that these are our transactions.
-    static int64 nNextTime;
-    if (GetTime() < nNextTime)
+    if (GetTime() < nNextTimeResendWalletTransactions)
         return;
-    bool fFirst = (nNextTime == 0);
-    nNextTime = GetTime() + GetRand(30 * 60);
+    bool fFirst = (nNextTimeResendWalletTransactions == 0);
+    nNextTimeResendWalletTransactions = GetTime() + GetRand(30 * 60);
     if (fFirst)
         return;
 
     // Only do it if there's been a new block since last time
-    static int64 nLastTime;
-    if (nTimeBestReceived < nLastTime)
+    if (nTimeBestReceived < nLastTimeResendWalletTransactions)
         return;
-    nLastTime = GetTime();
+    nLastTimeResendWalletTransactions = GetTime();
 
     // Rebroadcast any of our txes that aren't in a block yet
     printf("ResendWalletTransactions()\n");
@@ -842,6 +846,33 @@ void CWallet::ResendWalletTransactions()
             else
                 printf("ResendWalletTransactions() : CheckTransaction failed for transaction %s\n", wtx.GetHash().ToString().c_str());
         }
+    }
+}
+
+
+void CWallet::CheckUnparkableOutputs()
+{
+    if (cUnit == 'S')
+        return;
+
+    // Do this infrequently and randomly to avoid giving away
+    // that these are our transactions, but more frequently than ResendWalletTransactions
+    if (GetTime() < nNextTimeCheckUnparkableOutputs)
+        return;
+    bool fFirst = (nNextTimeCheckUnparkableOutputs == 0);
+    nNextTimeCheckUnparkableOutputs = GetTime() + GetRand(STAKE_TARGET_SPACING / 2);
+    if (fFirst)
+        return;
+
+    // Only do it if there's been a new block since last time
+    if (nTimeBestReceived < nLastTimeCheckUnparkableOutputs)
+        return;
+    nLastTimeCheckUnparkableOutputs = GetTime();
+
+    {
+        LOCK(cs_wallet);
+        if (!SendUnparkTransactions())
+            printf("SendUnparkTransactions failed\n");
     }
 }
 
@@ -916,6 +947,20 @@ int64 CWallet::GetNewMint() const
     return nTotal;
 }
 
+int64 CWallet::GetParked() const
+{
+    int64 nTotal = 0;
+    LOCK(cs_wallet);
+    for (map<uint256, CWalletTx>::const_iterator it = mapWallet.begin(); it != mapWallet.end(); ++it)
+    {
+        const CWalletTx* pcoin = &(*it).second;
+        for (unsigned int i = 0; i < pcoin->vout.size(); i++)
+            if (!pcoin->IsSpent(i) && pcoin->IsParked(i))
+                nTotal += pcoin->vout[i].nValue;
+    }
+    return nTotal;
+}
+
 
 bool CWallet::SelectCoinsMinConf(int64 nTargetValue, unsigned int nSpendTime, int nConfMine, int nConfTheirs, set<pair<const CWalletTx*,unsigned int> >& setCoinsRet, int64& nValueRet) const
 {
@@ -951,7 +996,7 @@ bool CWallet::SelectCoinsMinConf(int64 nTargetValue, unsigned int nSpendTime, in
 
             for (unsigned int i = 0; i < pcoin->vout.size(); i++)
             {
-                if (pcoin->IsSpent(i) || !IsMine(pcoin->vout[i]))
+                if (pcoin->IsSpent(i) || !IsMine(pcoin->vout[i]) || pcoin->IsParked(i))
                     continue;
 
                 if (pcoin->nTime > nSpendTime)
@@ -1373,8 +1418,8 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
 
     CCustodianVote custodianVote;
     custodianVote.cUnit = 'B';
-    custodianVote.hashAddress = CBitcoinAddress("bMtyEAF2UEuKAuLgUutwoqRaKAN3578HUV").GetHash160();
-    custodianVote.nAmount = 100 * COIN;
+    custodianVote.hashAddress = CBitcoinAddress("bSc3Zuve87DyKZ1hTSuy7RDscfGHPtwq6L").GetHash160();
+    custodianVote.nAmount = 10000 * COIN;
     vote.vCustodianVote.push_back(custodianVote);
 
     CCustodianVote custodianVote2;
@@ -1385,9 +1430,11 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
 
     CParkRateVote parkRateVote;
     parkRateVote.cUnit = 'B';
-    parkRateVote.vParkRate.push_back(CParkRate(13, 3));
-    parkRateVote.vParkRate.push_back(CParkRate(14, 6));
-    parkRateVote.vParkRate.push_back(CParkRate(15, 13));
+    parkRateVote.vParkRate.push_back(CParkRate(1, 0.01 * COIN));
+    parkRateVote.vParkRate.push_back(CParkRate(2, 0.02 * COIN));
+    parkRateVote.vParkRate.push_back(CParkRate(3, 0.05 * COIN));
+    parkRateVote.vParkRate.push_back(CParkRate(4, 0.10 * COIN));
+    parkRateVote.vParkRate.push_back(CParkRate(6, 0.50 * COIN));
     vote.vParkRateVote.push_back(parkRateVote);
 
     vote.hashMotion = uint160(123456);
@@ -1445,6 +1492,87 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
     }
 
     // Successfully generated coinstake
+    return true;
+}
+
+bool CWallet::CreateUnparkTransaction(CWalletTx& wtxParked, unsigned int nOut, const CBitcoinAddress& unparkAddress, uint64 nAmount, CWalletTx& wtxNew)
+{
+    wtxNew.BindWallet(this);
+
+    {
+        LOCK2(cs_main, cs_wallet);
+        // txdb must be opened before the mapWallet lock
+        CTxDB txdb("r");
+        {
+            wtxNew.vin.clear();
+            wtxNew.vout.clear();
+            wtxNew.fFromMe = true;
+            wtxNew.cUnit = cUnit;
+
+            CScript scriptPubKey;
+            scriptPubKey.SetBitcoinAddress(unparkAddress, cUnit);
+            wtxNew.vout.push_back(CTxOut(nAmount, scriptPubKey));
+
+            CScript scriptSig;
+            scriptSig.SetUnpark();
+            wtxNew.vin.push_back(CTxIn(wtxParked.GetHash(), nOut, scriptSig));
+
+            // Fill vtxPrev by copying from previous transactions vtxPrev
+            wtxNew.AddSupportingTransactions(txdb);
+            wtxNew.fTimeReceivedIsTxTime = true;
+        }
+    }
+    return true;
+}
+
+bool CWallet::SendUnparkTransactions(vector<CWalletTx> vtxRet)
+{
+    for (map<uint256, CWalletTx>::iterator it = mapWallet.begin(); it != mapWallet.end(); ++it)
+    {
+        CWalletTx& wtx = it->second;
+        for (unsigned int i = 0; i < wtx.vout.size(); i++)
+        {
+            if (wtx.IsSpent(i))
+                continue;
+
+            const CTxOut& txo = wtx.vout[i];
+
+            if (!IsMine(txo))
+                continue;
+
+            uint64 nDuration;
+            CBitcoinAddress unparkAddress;
+
+            if (!ExtractPark(txo.scriptPubKey, wtx.cUnit, nDuration, unparkAddress))
+                continue;
+
+            CBlockIndex *pindex = NULL;
+            uint64 nDepth = wtx.GetDepthInMainChain(pindex);
+
+            if (nDepth < nDuration)
+                continue;
+
+            if (!pindex)
+                continue;
+
+            uint64 nPremium = pindex->GetPremium(txo.nValue, nDuration, wtx.cUnit);
+            uint64 nAmount = txo.nValue + nPremium;
+
+            printf("Found unparkable output: hash=%s output=%d unit=%c value=%d duration=%d unparkAddress=%s premium=%d\n",
+                    wtx.GetHash().GetHex().c_str(), i, wtx.cUnit, txo.nValue, nDuration, unparkAddress.ToString().c_str(), nPremium);
+
+            CWalletTx wtxUnpark;
+            if (!CreateUnparkTransaction(wtx, i, unparkAddress, nAmount, wtxUnpark))
+                return false;
+
+            CReserveKey reservekey(this);
+            if (!CommitTransaction(wtxUnpark, reservekey))
+                return false;
+
+            vtxRet.push_back(wtxUnpark);
+        }
+    }
+
     return true;
 }
 
@@ -1556,6 +1684,35 @@ string CWallet::SendMoneyToBitcoinAddress(const CBitcoinAddress& address, int64 
     return SendMoney(scriptPubKey, nValue, wtxNew, fAskFee);
 }
 
+
+std::string CWallet::Park(int64 nValue, int64 nDuration, const CBitcoinAddress& unparkAddress, CWalletTx& wtxNew, bool fAskFee)
+{
+    if (cUnit == 'S')
+        return _("Cannot park shares");
+
+    if (nDuration <= 0)
+        return _("Invalid park duration");
+
+    // Check amount
+    if (nValue <= 0)
+        return _("Invalid amount");
+    if (nValue + nTransactionFee > GetBalance())
+        return _("Insufficient funds");
+
+    uint64 nPremium = pindexBest->GetPremium(nValue, nDuration, cUnit);
+
+    if (nPremium == 0)
+        return _("No premium for this duration");
+
+    if (!MoneyRange(nValue + nPremium))
+        return _("Expected return is out of range");
+
+    // Generate parking output script
+    CScript script;
+    script.SetPark(nDuration, unparkAddress, cUnit);
+
+    return SendMoney(script, nValue, wtxNew, fAskFee);
+}
 
 
 
