@@ -378,6 +378,9 @@ void BitcoinGUI::setWalletModel(WalletModel *walletModel)
     this->walletModel = walletModel;
     if(walletModel)
     {
+        // nubit: set current base unit
+        BitcoinUnits::baseUnit = walletModel->getUnit();
+
         // Report errors from wallet thread
         connect(walletModel, SIGNAL(error(QString,QString,bool)), this, SLOT(error(QString,QString,bool)));
 
@@ -389,6 +392,7 @@ void BitcoinGUI::setWalletModel(WalletModel *walletModel)
         receiveCoinsPage->setModel(walletModel->getAddressTableModel());
         sendCoinsPage->setModel(walletModel);
         messagePage->setModel(walletModel);
+        rpcConsole->setModel(walletModel);
 
         setEncryptionStatus(walletModel->getEncryptionStatus());
         connect(walletModel, SIGNAL(encryptionStatusChanged(int)), this, SLOT(setEncryptionStatus(int)));
@@ -406,7 +410,7 @@ void BitcoinGUI::setWalletModel(WalletModel *walletModel)
         BOOST_FOREACH(CWallet *wallet, setpwalletRegistered)
         {
             QString unitString(wallet->Unit());
-            QAction *action = new QAction(unitString, this);
+            QAction *action = new QAction(BitcoinUnits::baseName(wallet->Unit()), this);
             action->setCheckable(true);
             if (unitString == QString(walletModel->getWallet()->Unit()))
                 action->setChecked(true);
@@ -428,7 +432,7 @@ void BitcoinGUI::changeUnit(const QString &unit)
 {
     WalletModel *oldWalletModel = this->walletModel;
     OptionsModel *optionsModel = oldWalletModel->getOptionsModel();
-    WalletModel *newWalletModel;
+    WalletModel *newWalletModel = NULL;
 
     BOOST_FOREACH(CWallet *wallet, setpwalletRegistered)
     {
@@ -439,6 +443,7 @@ void BitcoinGUI::changeUnit(const QString &unit)
         }
     }
     setWalletModel(newWalletModel);
+    delete oldWalletModel;
 }
 
 void BitcoinGUI::createTrayIcon()

@@ -37,6 +37,7 @@ enum txnouttype
     TX_SCRIPTHASH,
     TX_MULTISIG,
     TX_NULL_DATA,
+    TX_PARK,
 };
 
 const char* GetTxnOutputType(txnouttype t);
@@ -179,6 +180,7 @@ enum opcodetype
 
 
     // template matching params
+    OP_INTEGER = 0xf8,
     OP_SMALLDATA = 0xf9,
     OP_SMALLINTEGER = 0xfa,
     OP_PUBKEYS = 0xfb,
@@ -527,6 +529,8 @@ public:
     }
     void SetMultisig(int nRequired, const std::vector<CKey>& keys);
     void SetPayToScriptHash(const CScript& subscript);
+    void SetPark(int64 nDuration, const CBitcoinAddress& unparkAddress, unsigned char cUnit);
+    void SetUnpark();
 
 
     void PrintHex() const
@@ -576,5 +580,8 @@ bool ExtractAddress(const CScript& scriptPubKey, CBitcoinAddress& addressRet, un
 bool ExtractAddresses(const CScript& scriptPubKey, txnouttype& typeRet, std::vector<CBitcoinAddress>& addressRet, int& nRequiredRet, unsigned char cUnit);
 bool SignSignature(const CKeyStore& keystore, const CTransaction& txFrom, CTransaction& txTo, unsigned int nIn, int nHashType=SIGHASH_ALL);
 bool VerifySignature(const CTransaction& txFrom, const CTransaction& txTo, unsigned int nIn, bool fValidatePayToScriptHash, int nHashType);
+bool IsPark(const CScript& scriptPubKey);
+bool ExtractPark(const CScript& scriptPubKey, unsigned char cUnit, uint64& nDurationRet, CBitcoinAddress& unparkAddressRet);
+bool IsUnpark(const CScript& scriptSig);
 
 #endif

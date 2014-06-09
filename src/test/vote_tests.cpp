@@ -1,4 +1,5 @@
 #include <boost/test/unit_test.hpp>
+#include <algorithm>
 
 #include "main.h"
 #include "vote.h"
@@ -89,7 +90,13 @@ BOOST_AUTO_TEST_CASE(reload_park_rates_from_script_tests)
 #undef CHECK_PARK_RATE_EQUAL
 }
 
-BOOST_AUTO_TEST_CASE(premium_calculation_from_vote_tests)
+template< class T >
+static void shuffle(vector<T> v)
+{
+    random_shuffle(v.begin(), v.end());
+}
+
+BOOST_AUTO_TEST_CASE(rate_calculation_from_votes)
 {
     vector<CVote> vVote;
     vector<CParkRateVote> results;
@@ -194,6 +201,21 @@ BOOST_AUTO_TEST_CASE(premium_calculation_from_vote_tests)
     BOOST_CHECK_EQUAL(300, results[0].vParkRate[1].nRate);
     // On duration 13: only last vote is positive and it has not the majority, so median is 0
     BOOST_CHECK_EQUAL(  2, results[0].vParkRate.size());
+
+    // Shuffle all the votes
+    srand(1234);
+    BOOST_FOREACH(const CVote& vote, vVote)
+    {
+        BOOST_FOREACH(const CParkRateVote& parkRateVote, vote.vParkRateVote)
+            shuffle(parkRateVote.vParkRate);
+        shuffle(vote.vParkRateVote);
+    }
+    shuffle(vVote);
+
+    // The result should not be changed
+    vector<CParkRateVote> newResults;
+    BOOST_CHECK(CalculateParkRateResults(vVote, newResults));
+    BOOST_CHECK(results == newResults);
 
     // New vote with duplicate duration makes the result invalid
     parkRateVote.vParkRate.clear();
@@ -410,6 +432,54 @@ BOOST_AUTO_TEST_CASE(create_currency_coin_bases)
     vVote[1].vCustodianVote.back().cUnit = 'S';
     BOOST_CHECK(!GenerateCurrencyCoinBases(vVote, setElected, vCurrencyCoinBase));
     BOOST_CHECK_EQUAL(0, vCurrencyCoinBase.size());
+}
+
+BOOST_AUTO_TEST_CASE(premium_calculation)
+{
+    vector<CParkRateVote> vParkRateResult;
+    CParkRateVote parkRateResult;
+    parkRateResult.cUnit = 'B';
+    parkRateResult.vParkRate.push_back(CParkRate( 2,  5));
+    parkRateResult.vParkRate.push_back(CParkRate( 5, 50));
+    parkRateResult.vParkRate.push_back(CParkRate( 3, 10));
+    parkRateResult.vParkRate.push_back(CParkRate(10,  1 * COIN));
+    parkRateResult.vParkRate.push_back(CParkRate(12,  2 * COIN));
+    parkRateResult.vParkRate.push_back(CParkRate(13,  5 * COIN));
+    parkRateResult.vParkRate.push_back(CParkRate(15, 50 * COIN));
+    vParkRateResult.push_back(parkRateResult);
+
+    // Below minimum rate
+    BOOST_CHECK_EQUAL( 0, GetPremium( 1 * COIN, 0, 'B', vParkRateResult));
+    BOOST_CHECK_EQUAL( 0, GetPremium( 1 * COIN, 1, 'B', vParkRateResult));
+    BOOST_CHECK_EQUAL( 0, GetPremium( 1 * COIN, 3, 'B', vParkRateResult));
+    BOOST_CHECK_EQUAL( 0, GetPremium(10 * COIN, 3, 'B', vParkRateResult));
+
+    // Above maximum rate
+    BOOST_CHECK_EQUAL( 0, GetPremium(   1 * COIN,   32769, 'B', vParkRateResult));
+    BOOST_CHECK_EQUAL( 0, GetPremium(1000 * COIN,   32769, 'B', vParkRateResult));
+    BOOST_CHECK_EQUAL( 0, GetPremium(   1 * COIN, 1000000, 'B', vParkRateResult));
+
+    // Exact durations
+    BOOST_CHECK_EQUAL( 5, GetPremium(1   * COIN,  4, 'B', vParkRateResult));
+    BOOST_CHECK_EQUAL(10, GetPremium(2   * COIN,  4, 'B', vParkRateResult));
+    BOOST_CHECK_EQUAL( 0, GetPremium(0.1 * COIN,  4, 'B', vParkRateResult));
+    BOOST_CHECK_EQUAL(10, GetPremium(1   * COIN,  8, 'B', vParkRateResult));
+    BOOST_CHECK_EQUAL(99, GetPremium(9.9 * COIN,  8, 'B', vParkRateResult));
+    BOOST_CHECK_EQUAL(50, GetPremium(1   * COIN, 32, 'B', vParkRateResult));
+    BOOST_CHECK_EQUAL( 1 * COIN, GetPremium(1 * COIN,  1024, 'B', vParkRateResult));
+    BOOST_CHECK_EQUAL( 2 * COIN, GetPremium(1 * COIN,  4096, 'B', vParkRateResult));
+    BOOST_CHECK_EQUAL( 5 * COIN, GetPremium(1 * COIN,  8192, 'B', vParkRateResult));
+    BOOST_CHECK_EQUAL(50 * COIN, GetPremium(1 * COIN, 32768, 'B', vParkRateResult));
+
+    // Intermediate durations
+    BOOST_CHECK_EQUAL( 6, GetPremium(1   * COIN,  5, 'B', vParkRateResult));
+    BOOST_CHECK_EQUAL( 9, GetPremium(1.5 * COIN,  5, 'B', vParkRateResult));
+    BOOST_CHECK_EQUAL(25, GetPremium(4   * COIN,  5, 'B', vParkRateResult));
+    BOOST_CHECK_EQUAL( 8, GetPremium(1   * COIN,  7, 'B', vParkRateResult));
+    BOOST_CHECK_EQUAL( 8, GetPremium(1   * COIN,  7, 'B', vParkRateResult));
+    BOOST_CHECK_EQUAL(21, GetPremium(1   * COIN, 15, 'B', vParkRateResult));
+    BOOST_CHECK_EQUAL(38, GetPremium(1   * COIN, 25, 'B', vParkRateResult));
+    BOOST_CHECK_EQUAL((uint64)(3.39453125 * COIN), GetPremium(1 * COIN, 6000, 'B', vParkRateResult));
 }
 
 BOOST_AUTO_TEST_SUITE_END()

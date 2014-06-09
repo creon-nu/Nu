@@ -86,6 +86,15 @@ CScript CParkRateVote::ToParkRateResultScript() const
     return script;
 }
 
+string CParkRateVote::ToString() const
+{
+    std::stringstream stream;
+    stream << "ParkRateVote unit=" << cUnit;
+    BOOST_FOREACH(const CParkRate& parkRate, vParkRate)
+        stream << " " << (int)parkRate.nCompactDuration << ":" << parkRate.nRate;
+    return stream.str();
+}
+
 bool IsParkRateResult(const CScript& scriptPubKey)
 {
     return (scriptPubKey.size() > 2 && scriptPubKey[0] == OP_RETURN && scriptPubKey[1] == OP_2);
@@ -148,7 +157,7 @@ static uint64 AddRateWeight(const uint64& totalWeight, const RateWeight& rateWei
     return totalWeight + rateWeight.second;
 }
 
-bool CalculateParkRateResults(const std::vector<CVote>& vVote, std::vector<CParkRateVote> &results)
+bool CalculateParkRateResults(const std::vector<CVote>& vVote, std::vector<CParkRateVote>& results)
 {
     results.clear();
 
@@ -218,7 +227,7 @@ bool CalculateParkRateResults(const std::vector<CVote>& vVote, std::vector<CPark
     return true;
 }
 
-bool CalculateParkRateResults(const CVote &vote, CBlockIndex *pindexprev, std::vector<CParkRateVote> &vParkRateResult)
+bool CalculateParkRateResults(const CVote &vote, CBlockIndex *pindexprev, std::vector<CParkRateVote>& vParkRateResult)
 {
     vector<CVote> vVote;
     vVote.reserve(PARK_RATE_VOTES);
@@ -306,8 +315,8 @@ bool CheckVote(const CBlock& block, CBlockIndex *pindexprev)
     if (!vote.IsValid())
         return error("CheckVote(): Invalid vote");
 
-    if (!block.GetCoinAge(vote.nCoinAgeDestroyed))
-        return error("CheckVote(): Unable to get block coin age");
+    if (!block.GetCoinStakeAge(vote.nCoinAgeDestroyed))
+        return error("CheckVote(): Unable to get coin stake coin age");
 
     vector<CParkRateVote> vParkRateResult;
     if (!ExtractParkRateResults(block, vParkRateResult))
@@ -411,4 +420,37 @@ bool GenerateCurrencyCoinBases(const std::vector<CVote> vVote, std::set<CBitcoin
     }
 
     return true;
+}
+
+uint64 GetPremium(uint64 nValue, uint64 nDuration, unsigned char cUnit, const std::vector<CParkRateVote>& vParkRateResult)
+{
+    BOOST_FOREACH(const CParkRateVote& parkRateVote, vParkRateResult)
+    {
+        if (parkRateVote.cUnit != cUnit)
+            continue;
+
+        vector<CParkRate> vSortedParkRate = parkRateVote.vParkRate;
+        sort(vSortedParkRate.begin(), vSortedParkRate.end());
+
+        for (unsigned int i = 0; i < vSortedParkRate.size(); i++)
+        {
+            const CParkRate& parkRate = vSortedParkRate[i];
+
+            if (nDuration == parkRate.GetDuration())
+                return nValue * parkRate.nRate / COIN;
+
+            if (nDuration < parkRate.GetDuration())
+            {
+                if (i == 0)
+                    return 0;
+
+                const CParkRate& prevParkRate = vSortedParkRate[i-1];
+
+                double ratio = (double)(parkRate.nRate - prevParkRate.nRate) / (parkRate.GetDuration() - prevParkRate.GetDuration());
+                double rate = prevParkRate.nRate + (nDuration - prevParkRate.GetDuration()) * ratio;
+                return nValue * rate / COIN;
+            }
+        }
+    }
+    return 0;
 }

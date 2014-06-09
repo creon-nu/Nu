@@ -83,6 +83,15 @@ public:
         return (a.nCompactDuration == b.nCompactDuration &&
                 a.nRate == b.nRate);
     }
+
+    bool operator<(const CParkRate& other) const
+    {
+        if (nCompactDuration < other.nCompactDuration)
+            return true;
+        if (nCompactDuration > other.nCompactDuration)
+            return false;
+        return nRate < other.nRate;
+    }
 };
 
 class CParkRateVote
@@ -115,6 +124,8 @@ public:
         return (a.cUnit     == b.cUnit &&
                 a.vParkRate == b.vParkRate);
     }
+
+    std::string ToString() const;
 };
 
 class CVote
@@ -164,8 +175,9 @@ bool IsParkRateResult(const CScript& scriptPubKey);
 bool ExtractParkRateResult(const CScript& scriptPubKey, CParkRateVote& parkRateResultRet);
 bool ExtractParkRateResults(const CBlock& block, std::vector<CParkRateVote>& vParkRateResultRet);
 
-bool CalculateParkRateResults(const std::vector<CVote>& vVote, std::vector<CParkRateVote> &results);
-bool CalculateParkRateResults(const CVote &vote, CBlockIndex *pindexprev, std::vector<CParkRateVote> &vParkRateResult);
+bool CalculateParkRateResults(const std::vector<CVote>& vVote, std::vector<CParkRateVote>& results);
+bool CalculateParkRateResults(const CVote &vote, CBlockIndex *pindexprev, std::vector<CParkRateVote>& vParkRateResult);
+uint64 GetPremium(uint64 nValue, uint64 nDuration, unsigned char cUnit, const std::vector<CParkRateVote>& vParkRateResult);
 
 bool CheckVote(const CBlock& block, CBlockIndex *pindexprev);
 

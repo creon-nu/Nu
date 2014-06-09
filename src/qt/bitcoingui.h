@@ -46,6 +46,9 @@ public:
         functionality.
     */
     void setWalletModel(WalletModel *walletModel);
+
+    ClientModel *getClientModel() const { return clientModel; }
+    WalletModel *getWalletModel() const { return walletModel; }
     
 protected:
     void changeEvent(QEvent *e);
