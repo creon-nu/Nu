@@ -43,10 +43,10 @@ inline bool MoneyRange(int64 nValue) { return (nValue >= 0 && nValue <= MAX_MONE
 static const int COINBASE_MATURITY_PPC = 100; //Same as in Bitcoin, where Peercoin is 500
 // Threshold for nLockTime: below this value it is interpreted as block number, otherwise as UNIX timestamp.
 static const int LOCKTIME_THRESHOLD = 500000000; // Tue Nov  5 00:53:20 1985 UTC
-static const int STAKE_TARGET_SPACING = 60 * 30; // 30 minute block spacing 
-static const int STAKE_MIN_AGE = 60 * 60 * 24 * 3; // minimum age for coin age changed to 3 days 
-static const int STAKE_MAX_AGE = 60 * 60 * 24 * 90; // stake age of full weight
-static const int64 IPO_SHARES = 1000000 * COIN; // Total number of shares to create using proof of work (intented for IPO)
+static const int STAKE_TARGET_SPACING = 60 * 1; // 60 second block spacing for Nubit
+static const int STAKE_MIN_AGE = 60 * 60 * 24 * 7; // changed to 7 days so only one vote in 10000 block voting period can be made
+static const int STAKE_MAX_AGE = 60 * 60 * 24 * 7; // changed to same as minimum to incentivize minting as soon as possible
+static const int64 IPO_SHARES = 1000000000 * COIN; // Total number of shares to create using proof of work (intented for IPO)
 static const int64 PROOF_OF_WORK_BLOCKS = 400; // Block height of the last proof of work block
 static const int64 PARK_RATE_VOTES = 1000; // Number of blocks used in park rate median vote calculation
 static const unsigned int CUSTODIAN_VOTES = 10000;
@@ -58,6 +58,8 @@ static const int fHaveUPnP = true;
 static const int fHaveUPnP = false;
 #endif
 
+extern const uint256 hashGenesisBlockOfficial;
+extern const uint256 hashGenesisBlockTestNet;
 
 static const int64 nMaxClockDrift = 2 * 60 * 60;        // two hours
 

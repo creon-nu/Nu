@@ -99,7 +99,7 @@ int BitcoinUnits::decimals(int unit)
 {
     switch(unit)
     {
-    case BTC: return 4;
+    case BTC: return 6;
     default: return 0;
     }
 }
