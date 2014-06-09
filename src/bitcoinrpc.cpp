@@ -183,9 +183,9 @@ Object parkRateVoteToJSON(const CParkRateVote& parkRateVote)
     Array rates;
     BOOST_FOREACH(const CParkRate& parkRate, parkRateVote.vParkRate)
     {
-        Array rate;
-        rate.push_back((boost::uint64_t)parkRate.GetDuration());
-        rate.push_back(ValueFromAmount(parkRate.nRate));
+        Object rate;
+        rate.push_back(Pair("blocks", (boost::int64_t)parkRate.GetDuration()));
+        rate.push_back(Pair("rate", ValueFromAmount(parkRate.nRate)));
         rates.push_back(rate);
     }
     object.push_back(Pair("rates", rates));
@@ -201,7 +201,6 @@ Object voteToJSON(const CVote& vote)
     BOOST_FOREACH(const CCustodianVote& custodianVote, vote.vCustodianVote)
     {
         Object object;
-        object.push_back(Pair("unit", string(1, custodianVote.cUnit)));
         object.push_back(Pair("address", CBitcoinAddress(custodianVote.hashAddress, custodianVote.cUnit).ToString()));
         object.push_back(Pair("amount", (double)custodianVote.nAmount / COIN));
         custodianVotes.push_back(object);
@@ -2753,6 +2752,158 @@ Value sendalert(const Array& params, bool fHelp)
 }
 
 
+Value getvote(const Array& params, bool fHelp)
+{
+    if (fHelp || params.size() != 0)
+        throw runtime_error(
+            "getvote\n"
+            "Returns the vote that will be inserted in the next proof of stake block.");
+
+    return voteToJSON(pwalletMain->vote);
+}
+
+
+Value setmotionvote(const Array& params, bool fHelp)
+{
+    if (fHelp || params.size() != 1)
+        throw runtime_error(
+            "setmotionvote <motion hash>\n"
+            "<motionhash> is the hash of the motion to vote for.");
+
+    string encodedHash = params[0].get_str();
+    pwalletMain->vote.hashMotion.SetHex(encodedHash);
+    pwalletMain->SaveVote();
+
+    return Value::null;
+}
+
+CVote SampleVote()
+{
+    CVote sample;
+
+    CCustodianVote custodianVote;
+    custodianVote.cUnit = 'B';
+    custodianVote.hashAddress = uint160(123);
+    custodianVote.nAmount = 100 * COIN;
+    sample.vCustodianVote.push_back(custodianVote);
+
+    CCustodianVote custodianVote2;
+    custodianVote2.cUnit = 'B';
+    custodianVote2.hashAddress = uint160(555555555);
+    custodianVote2.nAmount = 5.5 * COIN;
+    sample.vCustodianVote.push_back(custodianVote2);
+
+    CParkRateVote parkRateVote;
+    parkRateVote.cUnit = 'B';
+    parkRateVote.vParkRate.push_back(CParkRate(13, 3));
+    parkRateVote.vParkRate.push_back(CParkRate(14, 6));
+    parkRateVote.vParkRate.push_back(CParkRate(15, 13));
+    sample.vParkRateVote.push_back(parkRateVote);
+
+    sample.hashMotion.SetHex("8151325dcdbae9e0ff95f9f9658432dbedfdb209");
+
+    return sample;
+}
+
+Value setvote(const Array& params, bool fHelp)
+{
+    if (fHelp || params.size() != 1)
+        throw runtime_error(
+            string("setvote <vote>\n"
+            "<vote> is the complete vote in JSON. Example:\n") +
+            write_string(Value(voteToJSON(SampleVote())), false)
+            );
+
+    Object objVote = params[0].get_obj();
+    CVote vote;
+
+    BOOST_FOREACH(const Pair& voteAttribute, objVote)
+    {
+        if (voteAttribute.name_ == "motionhash")
+            vote.hashMotion.SetHex(voteAttribute.value_.get_str());
+        else if (voteAttribute.name_ == "custodians")
+        {
+            BOOST_FOREACH(const Value& custodianVoteObject, voteAttribute.value_.get_array())
+            {
+                CCustodianVote custodianVote;
+                BOOST_FOREACH(const Pair& custodianVoteAttribute, custodianVoteObject.get_obj())
+                {
+                    if (custodianVoteAttribute.name_ == "address")
+                    {
+                        CBitcoinAddress address(custodianVoteAttribute.value_.get_str());
+                        if (!address.IsValid())
+                            throw runtime_error("Invalid address\n");
+
+                        custodianVote.cUnit = address.GetUnit();
+                        if (custodianVote.cUnit == 'S' || !ValidUnit(custodianVote.cUnit))
+                            throw runtime_error("Invalid custodian unit\n");
+
+                        custodianVote.hashAddress = address.GetHash160();
+                    }
+                    else if (custodianVoteAttribute.name_ == "amount")
+                        custodianVote.nAmount = AmountFromValue(custodianVoteAttribute.value_);
+                    else
+                        throw runtime_error("Invalid custodian vote object\n");
+                }
+                vote.vCustodianVote.push_back(custodianVote);
+            }
+        }
+        else if (voteAttribute.name_ == "parkrates")
+        {
+            BOOST_FOREACH(const Value& parkRateVoteObject, voteAttribute.value_.get_array())
+            {
+                CParkRateVote parkRateVote;
+                BOOST_FOREACH(const Pair& parkRateVoteAttribute, parkRateVoteObject.get_obj())
+                {
+                    if (parkRateVoteAttribute.name_ == "unit")
+                    {
+                        parkRateVote.cUnit = parkRateVoteAttribute.value_.get_str()[0];
+                        if (parkRateVote.cUnit == 'S' || !ValidUnit(parkRateVote.cUnit))
+                            throw runtime_error("Invalid park rate unit\n");
+                    }
+                    else if (parkRateVoteAttribute.name_ == "rates")
+                    {
+                        BOOST_FOREACH(const Value& parkRateObject, parkRateVoteAttribute.value_.get_array())
+                        {
+                            CParkRate parkRate;
+                            BOOST_FOREACH(const Pair& parkRateAttribute, parkRateObject.get_obj())
+                            {
+                                if (parkRateAttribute.name_ == "blocks")
+                                {
+                                   int blocks = parkRateAttribute.value_.get_int();
+                                   double compactDuration = log2(blocks);
+                                   double integerPart;
+                                   if (modf(compactDuration, &integerPart) != 0.0)
+                                       throw runtime_error("Park duration is not a power of 2\n");
+                                   if (compactDuration < 0 || compactDuration > 255)
+                                       throw runtime_error("Park duration out of range\n");
+                                   parkRate.nCompactDuration = compactDuration;
+                                }
+                                else if (parkRateAttribute.name_ == "rate")
+                                    parkRate.nRate = AmountFromValue(parkRateAttribute.value_);
+                                else
+                                    throw runtime_error("Invalid park rate object\n");
+                            }
+                            parkRateVote.vParkRate.push_back(parkRate);
+                        }
+                    }
+                    else
+                        throw runtime_error("Invalid custodian vote object\n");
+                }
+                vote.vParkRateVote.push_back(parkRateVote);
+            }
+        }
+        else
+            throw runtime_error("Invalid vote object\n");
+    }
+
+    pwalletMain->vote = vote;
+    pwalletMain->SaveVote();
+
+    return voteToJSON(pwalletMain->vote);
+}
+
+
 
 //
 // Call Table
@@ -2824,6 +2975,9 @@ static const CRPCCommand vRPCCommands[] =
     { "repairwallet",           &repairwallet,           false},
     { "makekeypair",            &makekeypair,            false},
     { "sendalert",              &sendalert,              false},
+    { "getvote",                &getvote,                true },
+    { "setvote",                &setvote,                true },
+    { "setmotionvote",          &setmotionvote,          true },
 };
 
 CRPCTable::CRPCTable()
@@ -3559,6 +3713,14 @@ Array RPCConvertValues(const std::string &strMethod, const std::vector<std::stri
         if (!read_string(s, v) || v.type() != array_type)
             throw runtime_error("type mismatch "+s);
         params[1] = v.get_array();
+    }
+    if (strMethod == "setvote"                 && n > 0)
+    {
+        string s = params[0].get_str();
+        Value v;
+        if (!read_string(s, v) || v.type() != obj_type)
+            throw runtime_error("type mismatch");
+        params[0] = v.get_obj();
     }
     return params;
 }

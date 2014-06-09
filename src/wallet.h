@@ -87,6 +87,8 @@ public:
 
     std::set<int64> setKeyPool;
 
+    CVote vote;
+
 
     typedef std::map<unsigned int, CMasterKey> MasterKeyMap;
     MasterKeyMap mapMasterKeys;
@@ -302,6 +304,8 @@ public:
     void DisableTransaction(const CTransaction &tx);
 
     void ExportPeercoinKeys(int &nExportedCount, int &nErrorCount);
+
+    void SaveVote() const;
 };
 
 /** A key allocated from the key pool. */
