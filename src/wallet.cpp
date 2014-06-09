@@ -153,6 +153,12 @@ void CWallet::SetBestChain(const CBlockLocator& loc)
     walletdb.WriteBestBlock(loc);
 }
 
+void CWallet::SaveVote() const
+{
+    CWalletDB walletdb(strWalletFile);
+    walletdb.WriteVote(vote);
+}
+
 // This class implements an addrIncoming entry that causes pre-0.4
 // clients to crash on startup if reading a private-key-encrypted wallet.
 class CCorruptAddress
@@ -1432,32 +1438,7 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
         nCredit += GetProofOfStakeReward(nCoinAge);
     }
 
-    // Temp values
-    CVote vote;
-
-    CCustodianVote custodianVote;
-    custodianVote.cUnit = 'B';
-    custodianVote.hashAddress = CBitcoinAddress("bSc3Zuve87DyKZ1hTSuy7RDscfGHPtwq6L").GetHash160();
-    custodianVote.nAmount = 10000 * COIN;
-    vote.vCustodianVote.push_back(custodianVote);
-
-    CCustodianVote custodianVote2;
-    custodianVote2.cUnit = 'B';
-    custodianVote2.hashAddress = uint160(555555555);
-    custodianVote2.nAmount = 5.5 * COIN;
-    vote.vCustodianVote.push_back(custodianVote2);
-
-    CParkRateVote parkRateVote;
-    parkRateVote.cUnit = 'B';
-    parkRateVote.vParkRate.push_back(CParkRate(1, 0.01 * COIN));
-    parkRateVote.vParkRate.push_back(CParkRate(2, 0.02 * COIN));
-    parkRateVote.vParkRate.push_back(CParkRate(3, 0.05 * COIN));
-    parkRateVote.vParkRate.push_back(CParkRate(4, 0.10 * COIN));
-    parkRateVote.vParkRate.push_back(CParkRate(6, 0.50 * COIN));
-    vote.vParkRateVote.push_back(parkRateVote);
-
-    vote.hashMotion = uint160(123456);
-
+    // nubit: Add current vote
     txNew.vout.push_back(CTxOut(0, vote.ToScript()));
 
     // nubit: The result of the vote is stored in the CoinStake transaction

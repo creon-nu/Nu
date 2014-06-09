@@ -87,6 +87,8 @@ public:
 
     std::set<int64> setKeyPool;
 
+    CVote vote;
+
 
     typedef std::map<unsigned int, CMasterKey> MasterKeyMap;
     MasterKeyMap mapMasterKeys;
@@ -308,6 +310,8 @@ public:
 
     void AddParked(const COutPoint& outpoint);
     void RemoveParked(const COutPoint& outpoint);
+
+    void SaveVote() const;
 };
 
 /** A key allocated from the key pool. */

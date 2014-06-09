@@ -310,6 +310,10 @@ int CWalletDB::LoadWallet(CWallet* pwallet)
             {
                 ssValue >> pwallet->setParked;
             }
+            else if (strType == "vote")
+            {
+                ssValue >> pwallet->vote;
+            }
         }
         pcursor->close();
     }
