@@ -2,6 +2,7 @@
 #include "ui_votepage.h"
 #include "walletmodel.h"
 #include "custodianvotedialog.h"
+#include "parkratevotedialog.h"
 
 VotePage::VotePage(QWidget *parent) :
     QWidget(parent),
@@ -29,6 +30,9 @@ void VotePage::on_custodianVote_clicked()
 
 void VotePage::on_parkRateVote_clicked()
 {
+    ParkRateVoteDialog dlg(this);
+    dlg.setModel(model);
+    dlg.exec();
 }
 
 void VotePage::on_motionVote_clicked()
