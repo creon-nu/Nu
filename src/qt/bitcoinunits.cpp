@@ -81,8 +81,8 @@ qint64 BitcoinUnits::factor(int unit)
 {
     switch(unit)
     {
-    case BTC:  return 1000000;
-    default:   return 1000000;
+    case BTC:  return 1000;
+    default:   return 1000;
     }
 }
 
@@ -99,7 +99,7 @@ int BitcoinUnits::decimals(int unit)
 {
     switch(unit)
     {
-    case BTC: return 6;
+    case BTC: return 3;
     default: return 0;
     }
 }
