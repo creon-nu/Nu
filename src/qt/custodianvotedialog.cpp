@@ -54,11 +54,23 @@ void CustodianVoteDialog::on_add_clicked()
 
 void CustodianVoteDialog::on_remove_clicked()
 {
-    QModelIndexList indexes = ui->table->selectionModel()->selectedIndexes();
-    while (!indexes.isEmpty())
+    QItemSelection selection(ui->table->selectionModel()->selection());
+
+    QList<int> rows;
+    foreach(const QModelIndex& index, selection.indexes())
+        rows.append(index.row());
+
+    qSort(rows);
+
+    int prev = -1;
+    for (int i = rows.count() - 1; i >= 0; i -= 1)
     {
-        ui->table->removeRow(indexes.last().row());
-        indexes.removeLast();
+        int current = rows[i];
+        if (current != prev)
+        {
+            ui->table->removeRow(current);
+            prev = current;
+        }
     }
 }
 
