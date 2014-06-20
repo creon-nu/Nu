@@ -40,7 +40,8 @@ static const int64 MAX_MONEY = 2000000000 * COIN;
 static const int64 MAX_MINT_PROOF_OF_WORK = 9999 * COIN;
 static const int64 MIN_TXOUT_AMOUNT = MIN_TX_FEE;
 inline bool MoneyRange(int64 nValue) { return (nValue >= 0 && nValue <= MAX_MONEY); }
-static const int COINBASE_MATURITY_PPC = 100; //Same as in Bitcoin, where Peercoin is 500
+static const int COINBASE_MATURITY  = 100; // Must be smaller than PROOF_OF_WORK_BLOCKS
+static const int COINSTAKE_MATURITY = 5000; // Same average time as Peercoin (500 * 10 minutes vs 5000 * 1 minute)
 // Threshold for nLockTime: below this value it is interpreted as block number, otherwise as UNIX timestamp.
 static const int LOCKTIME_THRESHOLD = 500000000; // Tue Nov  5 00:53:20 1985 UTC
 static const int STAKE_TARGET_SPACING = 60 * 1; // 60 second block spacing for Nubit
@@ -81,6 +82,7 @@ extern std::set<std::pair<COutPoint, unsigned int> > setStakeSeen;
 extern uint256 hashGenesisBlock;
 extern unsigned int nStakeMinAge;
 extern int nCoinbaseMaturity;
+extern int nCoinstakeMaturity;
 extern CBlockIndex* pindexGenesisBlock;
 extern int nBestHeight;
 extern CBigNum bnBestChainTrust;
@@ -140,7 +142,10 @@ const CBlockIndex* GetLastBlockIndex(const CBlockIndex* pindex, bool fProofOfSta
 void BitcoinMiner(CWallet *pwallet, bool fProofOfStake);
 
 
-
+inline int GetMaturity(bool fProofOfStake)
+{
+    return fProofOfStake ? nCoinstakeMaturity : nCoinbaseMaturity;
+}
 
 
 
