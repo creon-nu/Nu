@@ -1271,9 +1271,7 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
 {
     // The following split & combine thresholds are important to security
     // Should not be adjusted if you don't understand the consequences
-    static unsigned int nStakeSplitAge = (60 * 60 * 24 * 90);
     int64 nCombineThreshold = GetProofOfWorkReward(GetLastBlockIndex(pindexBest, false)->nBits) / 3;
-    bool fSplit = false;
 
     CBigNum bnTargetPerCoinDay;
     bnTargetPerCoinDay.SetCompact(nBits);
@@ -1302,6 +1300,7 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
         return false;
     int64 nCredit = 0;
     CScript scriptPubKeyKernel;
+    int nOutputs = -1;
     BOOST_FOREACH(PAIRTYPE(const CWalletTx*, unsigned int) pcoin, setCoins)
     {
         if (pcoin.first->vout[pcoin.second].nValue < MIN_COINSTAKE_VALUE)
@@ -1369,12 +1368,15 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
                 txNew.vin.push_back(CTxIn(pcoin.first->GetHash(), pcoin.second));
                 nCredit += pcoin.first->vout[pcoin.second].nValue;
                 vwtxPrev.push_back(pcoin.first);
-                txNew.vout.push_back(CTxOut(0, scriptPubKeyOut));
-                if (block.GetBlockTime() + nStakeSplitAge > txNew.nTime)
-                {
-                    txNew.vout.push_back(CTxOut(0, scriptPubKeyOut)); //split stake
-                    fSplit = true;
-                }
+
+                if (GetBoolArg("-splitshareoutputs", true))
+                    nOutputs = nCredit / MIN_COINSTAKE_VALUE;
+                else
+                    nOutputs = 1;
+
+                for (int i = 0; i < nOutputs; i++)
+                    txNew.vout.push_back(CTxOut(0, scriptPubKeyOut));
+
                 if (fDebug && GetBoolArg("-printcoinstake"))
                     printf("CreateCoinStake : added kernel type=%d\n", whichType);
                 fKernelFound = true;
@@ -1440,13 +1442,14 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
     loop
     {
         // Set output amount
-        if (fSplit)
+        int64 nAmountToDistribute = nCredit - nMinFee;
+        int i;
+        for (i = 1; i < nOutputs; i++)
         {
-            txNew.vout[1].nValue = ((nCredit - nMinFee) / 2 / CENT) * CENT;
-            txNew.vout[2].nValue = nCredit - nMinFee - txNew.vout[1].nValue;
+            txNew.vout[i].nValue = MIN_COINSTAKE_VALUE;
+            nAmountToDistribute -= txNew.vout[i].nValue;
         }
-        else
-            txNew.vout[1].nValue = nCredit - nMinFee;
+        txNew.vout[i].nValue = nAmountToDistribute;
 
         // Sign
         int nIn = 0;
