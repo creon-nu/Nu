@@ -1304,6 +1304,9 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
     CScript scriptPubKeyKernel;
     BOOST_FOREACH(PAIRTYPE(const CWalletTx*, unsigned int) pcoin, setCoins)
     {
+        if (pcoin.first->vout[pcoin.second].nValue < MIN_COINSTAKE_VALUE)
+            continue; // nu: only count coins meeting min value requirement
+
         CTxDB txdb("r");
         CTxIndex txindex;
         if (!txdb.ReadTxIndex(pcoin.first->GetHash(), txindex))
