@@ -381,6 +381,13 @@ void BitcoinGUI::setWalletModel(WalletModel *walletModel)
         // nubit: set current base unit
         BitcoinUnits::baseUnit = walletModel->getUnit();
 
+		//update the send and receive button text to display the proper unit (NuShares/NuBits)
+		receiveCoinsAction->setText(tr("&Receive %1").arg(BitcoinUnits::baseName()));
+		receiveCoinsAction->setToolTip(tr("Show the list of addresses for receiving %1").arg(BitcoinUnits::baseName()));
+
+		sendCoinsAction->setText(tr("&Send %1").arg(BitcoinUnits::baseName()));
+		sendCoinsAction->setToolTip(tr("Send coins to a %1 address").arg(BitcoinUnits::baseName()));
+		
         // Report errors from wallet thread
         connect(walletModel, SIGNAL(error(QString,QString,bool)), this, SLOT(error(QString,QString,bool)));
 
