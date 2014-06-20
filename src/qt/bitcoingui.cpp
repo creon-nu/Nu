@@ -201,14 +201,14 @@ void BitcoinGUI::createActions()
     addressBookAction->setShortcut(QKeySequence(Qt::ALT + Qt::Key_5));
     tabGroup->addAction(addressBookAction);
 
-    receiveCoinsAction = new QAction(QIcon(":/icons/receiving_addresses"), tr("&Receive %1").args(BitcoinUnits::baseName()), this);
-    receiveCoinsAction->setToolTip(tr("Show the list of addresses for receiving %1").args(BitcoinUnits::baseName()));
+    receiveCoinsAction = new QAction(QIcon(":/icons/receiving_addresses"), tr("&Receive %1").arg(BitcoinUnits::baseName()), this);
+    receiveCoinsAction->setToolTip(tr("Show the list of addresses for receiving %1").arg(BitcoinUnits::baseName()));
     receiveCoinsAction->setCheckable(true);
     receiveCoinsAction->setShortcut(QKeySequence(Qt::ALT + Qt::Key_3));
     tabGroup->addAction(receiveCoinsAction);
 
-    sendCoinsAction = new QAction(QIcon(":/icons/send"), tr("&Send %1").args(BitcoinUnits::baseName()), this);
-    sendCoinsAction->setToolTip(tr("Send coins to a %1 address").args(BitcoinUnits::baseName()));
+    sendCoinsAction = new QAction(QIcon(":/icons/send"), tr("&Send %1").arg(BitcoinUnits::baseName()), this);
+    sendCoinsAction->setToolTip(tr("Send coins to a %1 address").arg(BitcoinUnits::baseName()));
     sendCoinsAction->setCheckable(true);
     sendCoinsAction->setShortcut(QKeySequence(Qt::ALT + Qt::Key_2));
     tabGroup->addAction(sendCoinsAction);
