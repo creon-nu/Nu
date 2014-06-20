@@ -2065,7 +2065,8 @@ bool CBlock::CheckBlock() const
         return DoS(50, error("CheckBlock() : coinstake timestamp violation nTimeBlock=%u nTimeTx=%u", GetBlockTime(), vtx[1].nTime));
 
     // Check coinbase reward
-    if (vtx[0].GetValueOut() > (IsProofOfWork()? (GetProofOfWorkReward(nBits) - vtx[0].GetMinFee() + MIN_TX_FEE) : 0))
+    // nu: proof of work blocks do not have fee to generate the right amount of shares even when outputs are split
+    if (vtx[0].GetValueOut() > (IsProofOfWork()? GetProofOfWorkReward(nBits) : 0))
         return DoS(50, error("CheckBlock() : coinbase reward exceeded %s > %s", 
                    FormatMoney(vtx[0].GetValueOut()).c_str(),
                    FormatMoney(IsProofOfWork()? GetProofOfWorkReward(nBits) : 0).c_str()));
@@ -4062,9 +4063,6 @@ CBlock* CreateNewBlock(CReserveKey& reservekey, CWallet* pwallet, bool fProofOfS
         }
         else
             pblock->vtx[0].vout[0].nValue = nReward;
-
-        pblock->vtx[0].vout[0].nValue -= pblock->vtx[0].GetMinFee();
-        pblock->vtx[0].vout[0].nValue += MIN_TX_FEE;
     }
 
     // Fill in header
