@@ -36,7 +36,8 @@ static CBigNum bnProofOfWorkLimit(~uint256(0) >> 20);
 static CBigNum bnInitialHashTarget(~uint256(0) >> 24);
 static CBigNum bnInitialProofOfStakeHashTarget(~uint256(0) >> 20);
 unsigned int nStakeMinAge = STAKE_MIN_AGE;
-int nCoinbaseMaturity = COINBASE_MATURITY_PPC;
+int nCoinbaseMaturity = COINBASE_MATURITY;
+int nCoinstakeMaturity = COINSTAKE_MATURITY;
 CBlockIndex* pindexGenesisBlock = NULL;
 int nBestHeight = -1;
 CBigNum bnBestChainTrust = 0;
@@ -808,7 +809,7 @@ int CMerkleTx::GetBlocksToMaturity() const
 {
     if (!(IsCoinBase() || IsCoinStake()))
         return 0;
-    return max(0, (nCoinbaseMaturity+20) - GetDepthInMainChain());
+    return max(0, (GetMaturity(IsCoinStake())+20) - GetDepthInMainChain());
 }
 
 
@@ -1247,7 +1248,7 @@ bool CTransaction::ConnectInputs(CTxDB& txdb, MapPrevTx inputs,
 
             // If prev is coinbase/coinstake, check that it's matured
             if (txPrev.IsCoinBase() || txPrev.IsCoinStake())
-                for (const CBlockIndex* pindex = pindexBlock; pindex && pindexBlock->nHeight - pindex->nHeight < nCoinbaseMaturity; pindex = pindex->pprev)
+                for (const CBlockIndex* pindex = pindexBlock; pindex && pindexBlock->nHeight - pindex->nHeight < GetMaturity(txPrev.IsCoinStake()); pindex = pindex->pprev)
                     if (pindex->nBlockPos == txindex.pos.nBlockPos && pindex->nFile == txindex.pos.nFile)
                         return error("ConnectInputs() : tried to spend coinbase/coinstake at depth %d", pindexBlock->nHeight - pindex->nHeight);
 
@@ -2461,13 +2462,14 @@ bool LoadBlockIndex(bool fAllowNew)
         bnProofOfWorkLimit = CBigNum(~uint256(0) >> 20);
         nStakeMinAge = 300; // test net min age is 5 minutes
         nCoinbaseMaturity = 60;
+        nCoinstakeMaturity = 60;
         bnInitialHashTarget = CBigNum(~uint256(0) >> 20);
         bnInitialProofOfStakeHashTarget = CBigNum(~uint256(0) >> 16);
         nModifierInterval = 60 * 20; // test net modifier interval is 20 minutes
     }
 
-    printf("%s Network: genesis=0x%s nBitsLimit=0x%08x nBitsInitial=0x%08x nStakeMinAge=%d nCoinbaseMaturity=%d nModifierInterval=%d\n",
-           fTestNet? "Test" : "PPCoin", hashGenesisBlock.ToString().substr(0, 20).c_str(), bnProofOfWorkLimit.GetCompact(), bnInitialHashTarget.GetCompact(), nStakeMinAge, nCoinbaseMaturity, nModifierInterval);
+    printf("%s Network: genesis=0x%s nBitsLimit=0x%08x nBitsInitial=0x%08x nStakeMinAge=%d nCoinbaseMaturity=%d nCoinstakeMaturity=%d nModifierInterval=%d\n",
+           fTestNet? "Test" : "PPCoin", hashGenesisBlock.ToString().substr(0, 20).c_str(), bnProofOfWorkLimit.GetCompact(), bnInitialHashTarget.GetCompact(), nStakeMinAge, nCoinbaseMaturity, nCoinstakeMaturity, nModifierInterval);
 
     //
     // Load block index
