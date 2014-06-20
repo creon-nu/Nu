@@ -4043,7 +4043,29 @@ CBlock* CreateNewBlock(CReserveKey& reservekey, CWallet* pwallet, bool fProofOfS
 
     }
     if (pblock->IsProofOfWork())
-        pblock->vtx[0].vout[0].nValue = GetProofOfWorkReward(pblock->nBits);
+    {
+        int64 nReward = GetProofOfWorkReward(pblock->nBits);
+
+        if (GetBoolArg("-splitshareoutputs", true) && nReward >= MIN_COINSTAKE_VALUE * 2)
+        {
+            // nu: split output of generated shares
+            int nOutputs = nReward / MIN_COINSTAKE_VALUE;
+            int64 nRemainingAmount = nReward;
+
+            for (int i = 0; i < nOutputs - 1; i++)
+            {
+                int64 nAmount = MIN_COINSTAKE_VALUE;
+                pblock->vtx[0].vout.push_back(CTxOut(nAmount, pblock->vtx[0].vout[0].scriptPubKey));
+                nRemainingAmount -= nAmount;
+            }
+            pblock->vtx[0].vout[0].nValue = nRemainingAmount;
+        }
+        else
+            pblock->vtx[0].vout[0].nValue = nReward;
+
+        pblock->vtx[0].vout[0].nValue -= pblock->vtx[0].GetMinFee();
+        pblock->vtx[0].vout[0].nValue += MIN_TX_FEE;
+    }
 
     // Fill in header
     pblock->hashPrevBlock  = pindexPrev->GetBlockHash();
@@ -4136,7 +4158,7 @@ bool CheckWork(CBlock* pblock, CWallet& wallet, CReserveKey& reservekey)
     printf("new block found  \n  hash: %s  \ntarget: %s\n", hash.GetHex().c_str(), hashTarget.GetHex().c_str());
     pblock->print();
     printf("%s ", DateTimeStrFormat(GetTime()).c_str());
-    printf("generated %s\n", FormatMoney(pblock->vtx[0].vout[0].nValue).c_str());
+    printf("generated %s\n", FormatMoney(pblock->vtx[0].GetValueOut()).c_str());
 
     // Found a solution
     {
