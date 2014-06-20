@@ -201,14 +201,14 @@ void BitcoinGUI::createActions()
     addressBookAction->setShortcut(QKeySequence(Qt::ALT + Qt::Key_5));
     tabGroup->addAction(addressBookAction);
 
-    receiveCoinsAction = new QAction(QIcon(":/icons/receiving_addresses"), tr("&Receive coins"), this);
-    receiveCoinsAction->setToolTip(tr("Show the list of addresses for receiving payments"));
+    receiveCoinsAction = new QAction(QIcon(":/icons/receiving_addresses"), tr("&Receive %1").args(BitcoinUnits::baseName()), this);
+    receiveCoinsAction->setToolTip(tr("Show the list of addresses for receiving %1").args(BitcoinUnits::baseName()));
     receiveCoinsAction->setCheckable(true);
     receiveCoinsAction->setShortcut(QKeySequence(Qt::ALT + Qt::Key_3));
     tabGroup->addAction(receiveCoinsAction);
 
-    sendCoinsAction = new QAction(QIcon(":/icons/send"), tr("&Send coins"), this);
-    sendCoinsAction->setToolTip(tr("Send coins to a ppcoin address"));
+    sendCoinsAction = new QAction(QIcon(":/icons/send"), tr("&Send %1").args(BitcoinUnits::baseName()), this);
+    sendCoinsAction->setToolTip(tr("Send coins to a %1 address").args(BitcoinUnits::baseName()));
     sendCoinsAction->setCheckable(true);
     sendCoinsAction->setShortcut(QKeySequence(Qt::ALT + Qt::Key_2));
     tabGroup->addAction(sendCoinsAction);
@@ -238,23 +238,23 @@ void BitcoinGUI::createActions()
     quitAction->setShortcut(QKeySequence(Qt::CTRL + Qt::Key_Q));
     quitAction->setMenuRole(QAction::QuitRole);
     aboutAction = new QAction(QIcon(":/icons/ppcoin"), tr("&About %1").arg(qApp->applicationName()), this);
-    aboutAction->setToolTip(tr("Show information about PPCoin"));
+    aboutAction->setToolTip(tr("Show information about Nu"));
     aboutAction->setMenuRole(QAction::AboutRole);
     aboutQtAction = new QAction(tr("About &Qt"), this);
     aboutQtAction->setToolTip(tr("Show information about Qt"));
     aboutQtAction->setMenuRole(QAction::AboutQtRole);
     optionsAction = new QAction(QIcon(":/icons/options"), tr("&Options..."), this);
-    optionsAction->setToolTip(tr("Modify configuration options for ppcoin"));
+    optionsAction->setToolTip(tr("Modify configuration options for Nu"));
     optionsAction->setMenuRole(QAction::PreferencesRole);
-    toggleHideAction = new QAction(QIcon(":/icons/ppcoin"), tr("Show/Hide &PPCoin"), this);
-    toggleHideAction->setToolTip(tr("Show or hide the PPCoin window"));
+    toggleHideAction = new QAction(QIcon(":/icons/ppcoin"), tr("Show/Hide &Nu"), this);
+    toggleHideAction->setToolTip(tr("Show or hide the Nu window"));
     exportAction = new QAction(QIcon(":/icons/export"), tr("&Export..."), this);
     exportAction->setToolTip(tr("Export the data in the current tab to a file"));
     encryptWalletAction = new QAction(QIcon(":/icons/lock_closed"), tr("&Encrypt Wallet"), this);
     encryptWalletAction->setToolTip(tr("Encrypt or decrypt wallet"));
     encryptWalletAction->setCheckable(true);
     unlockForMintingAction = new QAction(QIcon(":/icons/lock_closed"), tr("&Unlock Wallet for Minting Only"), this);
-    unlockForMintingAction->setToolTip(tr("Unlock wallet only for minting. Sending coins will still require the passphrase."));
+    unlockForMintingAction->setToolTip(tr("Unlock wallet only for minting. Sending NuShares will still require the passphrase."));
     unlockForMintingAction->setCheckable(true);
     backupWalletAction = new QAction(QIcon(":/icons/filesave"), tr("&Backup Wallet"), this);
     backupWalletAction->setToolTip(tr("Backup wallet to another location"));
@@ -263,7 +263,7 @@ void BitcoinGUI::createActions()
     openRPCConsoleAction = new QAction(tr("&Debug window"), this);
     openRPCConsoleAction->setToolTip(tr("Open debugging and diagnostic console"));
     exportPeercoinKeysAction = new QAction(QIcon(":/icons/export"), tr("&Export Peercoin keys"), this);
-    exportPeercoinKeysAction->setToolTip(tr("Export the Peercoin keys associated with the Peershares addresses to Peercoin via RPC"));
+    exportPeercoinKeysAction->setToolTip(tr("Export the Peercoin keys associated with the NuShares addresses to Peercoin via RPC"));
     distributeDividendsAction = new QAction(tr("&Distribute dividends"), this);
     distributeDividendsAction->setToolTip(tr("Distribute dividends to share holders"));
 
@@ -453,7 +453,7 @@ void BitcoinGUI::createTrayIcon()
     trayIcon = new QSystemTrayIcon(this);
     trayIconMenu = new QMenu(this);
     trayIcon->setContextMenu(trayIconMenu);
-    trayIcon->setToolTip(tr("PPCoin client"));
+    trayIcon->setToolTip(tr("Nu client"));
     trayIcon->setIcon(QIcon(":/icons/toolbar"));
     connect(trayIcon, SIGNAL(activated(QSystemTrayIcon::ActivationReason)),
             this, SLOT(trayIconActivated(QSystemTrayIcon::ActivationReason)));
@@ -480,7 +480,7 @@ void BitcoinGUI::createTrayIcon()
     trayIconMenu->addAction(quitAction);
 #endif
 
-    notificator = new Notificator(tr("ppcoin-qt"), trayIcon);
+    notificator = new Notificator(tr("Nu-qt"), trayIcon);
 }
 
 #ifndef Q_WS_MAC
@@ -544,7 +544,7 @@ void BitcoinGUI::setNumConnections(int count)
     default: icon = ":/icons/connect_4"; break;
     }
     labelConnectionsIcon->setPixmap(QIcon(icon).pixmap(STATUSBAR_ICONSIZE,STATUSBAR_ICONSIZE));
-    labelConnectionsIcon->setToolTip(tr("%n active connection(s) to PPCoin network", "", count));
+    labelConnectionsIcon->setToolTip(tr("%n active connection(s) to Nu network", "", count));
 }
 
 void BitcoinGUI::setNumBlocks(int count)

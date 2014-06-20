@@ -181,12 +181,12 @@ int main(int argc, char *argv[])
 
     // Application identification (must be set before OptionsModel is initialized,
     // as it is used to locate QSettings)
-    app.setOrganizationName("PPCoin");
-    app.setOrganizationDomain("ppcoin.org");
+    app.setOrganizationName("Nu");
+    app.setOrganizationDomain("NuBits.com");
     if(GetBoolArg("-testnet")) // Separate UI settings for testnet
-        app.setApplicationName("PPCoin-Qt-testnet");
+        app.setApplicationName("Nu-Qt-testnet");
     else
-        app.setApplicationName("PPCoin-Qt");
+        app.setApplicationName("Nu-Qt");
 
     // ... then GUI settings:
     OptionsModel optionsModel;
