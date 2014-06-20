@@ -1160,7 +1160,24 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, int64> >& vecSend, CW
                 double dPriority = 0;
                 // vouts to the payees
                 BOOST_FOREACH (const PAIRTYPE(CScript, int64)& s, vecSend)
-                    wtxNew.vout.push_back(CTxOut(s.second, s.first));
+                {
+                    // nu: split shares if appropriate
+                    if (wtxNew.cUnit == 'S' && GetBoolArg("-splitshareoutputs", true) && s.second >= MIN_COINSTAKE_VALUE * 2)
+                    {
+                        int nOutputs = s.second / MIN_COINSTAKE_VALUE;
+                        int64 nRemainingAmount = s.second;
+
+                        for (int i = 0; i < nOutputs - 1; i++)
+                        {
+                            int64 nAmount = MIN_COINSTAKE_VALUE;
+                            wtxNew.vout.push_back(CTxOut(nAmount, s.first));
+                            nRemainingAmount -= nAmount;
+                        }
+                        wtxNew.vout.push_back(CTxOut(nRemainingAmount, s.first));
+                    }
+                    else
+                        wtxNew.vout.push_back(CTxOut(s.second, s.first));
+                }
 
                 // Choose coins to use
                 set<pair<const CWalletTx*,unsigned int> > setCoins;
