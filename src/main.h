@@ -51,6 +51,7 @@ static const int64 IPO_SHARES = 1000000000 * COIN; // Total number of shares to 
 static const int64 PROOF_OF_WORK_BLOCKS = 400; // Block height of the last proof of work block
 static const int64 PARK_RATE_VOTES = 1000; // Number of blocks used in park rate median vote calculation
 static const unsigned int CUSTODIAN_VOTES = 10000;
+static const int64 PROOF_OF_STAKE_REWARD = 20 * COIN; // Constant reward of Proof of Stake blocks
 
 
 #ifdef USE_UPNP
