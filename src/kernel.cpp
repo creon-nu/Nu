@@ -342,6 +342,10 @@ bool CheckProofOfStake(const CTransaction& tx, unsigned int nBits, uint256& hash
     if (!tx.IsCoinStake())
         return error("CheckProofOfStake() : called on non-coinstake %s", tx.GetHash().ToString().c_str());
 
+    // nu: only one input is allowed
+    if (tx.vin.size() != 1)
+        return tx.DoS(100, error("CheckProofOfStake() : Invalid number of inputs on %s", tx.GetHash().ToString().c_str()));
+
     // Kernel (input 0) must match the stake hash target per coin age (nBits)
     const CTxIn& txin = tx.vin[0];
 
