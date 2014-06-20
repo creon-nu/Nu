@@ -4396,7 +4396,8 @@ void static ThreadBitcoinMiner(void* parg)
 void GenerateBitcoins(bool fGenerate, CWallet* pwallet)
 {
     fGenerateBitcoins = fGenerate;
-    nLimitProcessors = GetArg("-genproclimit", -1);
+    // nu: defaults to 1 processor because spliting outputs makes block generation and verification slow so we easily generate stale blocks
+    nLimitProcessors = GetArg("-genproclimit", 1);
     if (nLimitProcessors == 0)
         fGenerateBitcoins = false;
     fLimitProcessors = (nLimitProcessors != -1);
