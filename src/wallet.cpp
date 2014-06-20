@@ -1233,9 +1233,25 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, int64> >& vecSend, CW
                     else
                         reservekey.ReturnKey(); // return key in avatar mode
 
-                    // Insert change txn at random position:
+                    // nu: split change if appropriate
+                    int nChangeOutputs;
+                    if (wtxNew.cUnit == 'S' && GetBoolArg("-splitshareoutputs", true) && nChange >= MIN_COINSTAKE_VALUE * 2)
+                        nChangeOutputs = nChange / MIN_COINSTAKE_VALUE;
+                    else
+                        nChangeOutputs = 1;
+
+                    int64 nChangeRemaining = nChange;
+                    for (int i = 0; i < nChangeOutputs - 1; i++)
+                    {
+                        // Insert split change txn at random position:
+                        vector<CTxOut>::iterator position = wtxNew.vout.begin()+GetRandInt(wtxNew.vout.size());
+                        int64 nAmount = MIN_COINSTAKE_VALUE;
+                        wtxNew.vout.insert(position, CTxOut(nAmount, scriptChange));
+                        nChangeRemaining -= nAmount;
+                    }
+                    // Insert remaining change txn at random position:
                     vector<CTxOut>::iterator position = wtxNew.vout.begin()+GetRandInt(wtxNew.vout.size());
-                    wtxNew.vout.insert(position, CTxOut(nChange, scriptChange));
+                    wtxNew.vout.insert(position, CTxOut(nChangeRemaining, scriptChange));
                 }
                 else
                     reservekey.ReturnKey();
