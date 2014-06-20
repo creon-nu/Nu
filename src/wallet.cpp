@@ -1387,6 +1387,10 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
                 else
                     nOutputs = 1;
 
+                // limit the number of outputs to avoid exceeding MAX_COINSTAKE_SIZE
+                if (nOutputs > 10)
+                    nOutputs = 10;
+
                 for (int i = 0; i < nOutputs; i++)
                     txNew.vout.push_back(CTxOut(0, scriptPubKeyOut));
 
