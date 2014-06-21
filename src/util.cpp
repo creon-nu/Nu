@@ -1002,7 +1002,7 @@ const boost::filesystem::path &GetPeercoinDataDir(bool fNetSpecific)
 
 boost::filesystem::path GetConfigFile()
 {
-    namespace fs = boost::filesystem;++
+    namespace fs = boost::filesystem;
 
     fs::path pathConfigFile(GetArg("-conf", "nu.conf"));
     if (!pathConfigFile.is_complete()) pathConfigFile = GetDataDir(false) / pathConfigFile;
