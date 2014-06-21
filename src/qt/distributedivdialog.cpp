@@ -92,7 +92,7 @@ void BalanceScannerThread::Scan(unsigned int cutoffTime)
 
 
 const char* DistributeDivDialog::columnHeadings[] = {
-    "Peershares Address", "Shares", "Peercoin Address", "Dividend"
+    "NuShares Address", "Shares", "Peercoin Address", "Dividend"
 };
 
 DistributeDivDialog::DistributeDivDialog(QWidget *parent) :
