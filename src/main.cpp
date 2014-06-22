@@ -54,6 +54,7 @@ map<uint256, CDataStream*> mapOrphanTransactions;
 map<uint256, map<uint256, CDataStream*> > mapOrphanTransactionsByPrev;
 
 map<CBitcoinAddress, CBlockIndex*> mapElectedCustodian;
+CCriticalSection cs_mapElectedCustodian;
 
 // Constant stuff for coinbase transactions we create:
 CScript COINBASE_FLAGS;
@@ -1446,10 +1447,14 @@ bool CBlock::DisconnectBlock(CTxDB& txdb, CBlockIndex* pindex)
             if (!ExtractAddress(tx.vout[0].scriptPubKey, address, tx.cUnit))
                 return error("Connect() : ExtractAddress on CurrencyCoinBase failed");
 
-            if (!mapElectedCustodian.count(address))
-                return error("Connect() : custodian was not elected");
+            {
+                LOCK(cs_mapElectedCustodian);
 
-            mapElectedCustodian.erase(address);
+                if (!mapElectedCustodian.count(address))
+                    return error("Connect() : custodian was not elected");
+
+                mapElectedCustodian.erase(address);
+            }
         }
     }
 
@@ -1568,16 +1573,20 @@ bool CBlock::ConnectBlock(CTxDB& txdb, CBlockIndex* pindex)
             if (tx.vout.size() < 1)
                 return error("Connect() : not output in CurrencyCoinBase");
 
-            BOOST_FOREACH(const CTxOut& txo, tx.vout)
             {
-                CBitcoinAddress address;
-                if (!ExtractAddress(txo.scriptPubKey, address, tx.cUnit))
-                    return error("Connect() : ExtractAddress on CurrencyCoinBase failed");
+                LOCK(cs_mapElectedCustodian);
 
-                if (mapElectedCustodian.count(address))
-                    return error("Connect() : custodian has already been elected");
+                BOOST_FOREACH(const CTxOut& txo, tx.vout)
+                {
+                    CBitcoinAddress address;
+                    if (!ExtractAddress(txo.scriptPubKey, address, tx.cUnit))
+                        return error("Connect() : ExtractAddress on CurrencyCoinBase failed");
 
-                mapElectedCustodian[address] = pindex;
+                    if (mapElectedCustodian.count(address))
+                        return error("Connect() : custodian has already been elected");
+
+                    mapElectedCustodian[address] = pindex;
+                }
             }
         }
     }
@@ -2175,8 +2184,12 @@ bool CBlock::AcceptBlock()
             return error("AcceptBlock() : unable to extract votes");
 
         vector<CTransaction> vExpectedTx;
-        if (!GenerateCurrencyCoinBases(vVote, mapElectedCustodian, vExpectedTx))
-            return error("AcceptBlock() : unable to generate currency coin bases");
+        {
+            LOCK(cs_mapElectedCustodian);
+
+            if (!GenerateCurrencyCoinBases(vVote, mapElectedCustodian, vExpectedTx))
+                return error("AcceptBlock() : unable to generate currency coin bases");
+        }
 
         int matching = 0;
         BOOST_FOREACH(const CTransaction& tx, vtx)
@@ -3896,10 +3909,14 @@ CBlock* CreateNewBlock(CReserveKey& reservekey, CWallet* pwallet, bool fProofOfS
         }
 
         vector<CTransaction> vCurrencyCoinBase;
-        if (!GenerateCurrencyCoinBases(vVote, mapElectedCustodian, vCurrencyCoinBase))
         {
-            printf("CreateNewBlock(): unable to generate currency coin bases");
-            return NULL;
+            LOCK(cs_mapElectedCustodian);
+
+            if (!GenerateCurrencyCoinBases(vVote, mapElectedCustodian, vCurrencyCoinBase))
+            {
+                printf("CreateNewBlock(): unable to generate currency coin bases");
+                return NULL;
+            }
         }
 
         BOOST_FOREACH(const CTransaction& tx, vCurrencyCoinBase)

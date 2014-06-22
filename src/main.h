@@ -103,6 +103,7 @@ extern CCriticalSection cs_setpwalletRegistered;
 extern std::set<CWallet*> setpwalletRegistered;
 extern std::map<uint256, CBlock*> mapOrphanBlocks;
 extern std::map<CBitcoinAddress, CBlockIndex*> mapElectedCustodian;
+extern CCriticalSection cs_mapElectedCustodian;
 
 // Settings
 extern int64 nTransactionFee;
