@@ -53,7 +53,7 @@ map<uint256, uint256> mapProofOfStake;
 map<uint256, CDataStream*> mapOrphanTransactions;
 map<uint256, map<uint256, CDataStream*> > mapOrphanTransactionsByPrev;
 
-set<CBitcoinAddress> setElectedCustodian;
+map<CBitcoinAddress, CBlockIndex*> mapElectedCustodian;
 
 // Constant stuff for coinbase transactions we create:
 CScript COINBASE_FLAGS;
@@ -1446,10 +1446,10 @@ bool CBlock::DisconnectBlock(CTxDB& txdb, CBlockIndex* pindex)
             if (!ExtractAddress(tx.vout[0].scriptPubKey, address, tx.cUnit))
                 return error("Connect() : ExtractAddress on CurrencyCoinBase failed");
 
-            if (!setElectedCustodian.count(address))
+            if (!mapElectedCustodian.count(address))
                 return error("Connect() : custodian was not elected");
 
-            setElectedCustodian.erase(address);
+            mapElectedCustodian.erase(address);
         }
     }
 
@@ -1574,10 +1574,10 @@ bool CBlock::ConnectBlock(CTxDB& txdb, CBlockIndex* pindex)
                 if (!ExtractAddress(txo.scriptPubKey, address, tx.cUnit))
                     return error("Connect() : ExtractAddress on CurrencyCoinBase failed");
 
-                if (setElectedCustodian.count(address))
+                if (mapElectedCustodian.count(address))
                     return error("Connect() : custodian has already been elected");
 
-                setElectedCustodian.insert(address);
+                mapElectedCustodian[address] = pindex;
             }
         }
     }
@@ -2175,7 +2175,7 @@ bool CBlock::AcceptBlock()
             return error("AcceptBlock() : unable to extract votes");
 
         vector<CTransaction> vExpectedTx;
-        if (!GenerateCurrencyCoinBases(vVote, setElectedCustodian, vExpectedTx))
+        if (!GenerateCurrencyCoinBases(vVote, mapElectedCustodian, vExpectedTx))
             return error("AcceptBlock() : unable to generate currency coin bases");
 
         int matching = 0;
@@ -3896,7 +3896,7 @@ CBlock* CreateNewBlock(CReserveKey& reservekey, CWallet* pwallet, bool fProofOfS
         }
 
         vector<CTransaction> vCurrencyCoinBase;
-        if (!GenerateCurrencyCoinBases(vVote, setElectedCustodian, vCurrencyCoinBase))
+        if (!GenerateCurrencyCoinBases(vVote, mapElectedCustodian, vCurrencyCoinBase))
         {
             printf("CreateNewBlock(): unable to generate currency coin bases");
             return NULL;

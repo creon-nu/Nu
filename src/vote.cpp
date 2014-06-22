@@ -343,7 +343,7 @@ typedef map<CCustodianVote, CCustodianVoteCounter> CustodianVoteCounterMap;
 typedef map<CBitcoinAddress, uint64> GrantedAmountMap;
 typedef map<unsigned char, GrantedAmountMap> GrantedAmountPerUnitMap;
 
-bool GenerateCurrencyCoinBases(const std::vector<CVote> vVote, std::set<CBitcoinAddress> setAlreadyElected, std::vector<CTransaction>& vCurrencyCoinBaseRet)
+bool GenerateCurrencyCoinBases(const std::vector<CVote> vVote, std::map<CBitcoinAddress, CBlockIndex*> mapAlreadyElected, std::vector<CTransaction>& vCurrencyCoinBaseRet)
 {
     vCurrencyCoinBaseRet.clear();
 
@@ -365,7 +365,7 @@ bool GenerateCurrencyCoinBases(const std::vector<CVote> vVote, std::set<CBitcoin
 
         BOOST_FOREACH(const CCustodianVote& custodianVote, vote.vCustodianVote)
         {
-            if (!setAlreadyElected.count(custodianVote.GetAddress()))
+            if (!mapAlreadyElected.count(custodianVote.GetAddress()))
             {
                 CCustodianVoteCounter& counter = mapCustodianVoteCounter[custodianVote];
                 counter.nWeight += vote.nCoinAgeDestroyed;

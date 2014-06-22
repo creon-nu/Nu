@@ -667,7 +667,7 @@ bool CTxDB::LoadBlockIndex()
     for (CBlockIndex* pindex = pindexBest; pindex && pindex->pprev; pindex = pindex->pprev)
     {
         BOOST_FOREACH(const CCustodianVote& custodianVote, pindex->vElectedCustodian)
-            setElectedCustodian.insert(custodianVote.GetAddress());
+            mapElectedCustodian[custodianVote.GetAddress()] = pindex;
     }
 
     // Verify blocks in the best chain
