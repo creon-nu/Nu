@@ -11,6 +11,7 @@
 #include "ui_interface.h"
 #include "kernel.h"
 #include "wallet.h"
+#include "liquidityinfo.h"
 #include <boost/algorithm/string/replace.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>
@@ -1454,6 +1455,12 @@ bool CBlock::DisconnectBlock(CTxDB& txdb, CBlockIndex* pindex)
                     return error("Connect() : custodian was not elected");
 
                 mapElectedCustodian.erase(address);
+            }
+
+            {
+                LOCK(cs_mapLiquidityInfo);
+
+                mapLiquidityInfo.erase(address);
             }
         }
     }
@@ -2975,6 +2982,13 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv)
                 Checkpoints::checkpointMessage.RelayTo(pfrom);
         }
 
+        // nu: Relay liquidity info
+        {
+            LOCK(cs_mapLiquidityInfo);
+            BOOST_FOREACH(PAIRTYPE(const CBitcoinAddress, CLiquidityInfo)& item, mapLiquidityInfo)
+                item.second.RelayTo(pfrom);
+        }
+
         pfrom->fSuccessfullyConnected = true;
 
         printf("version message: version %d, blocks=%d\n", pfrom->nVersion, pfrom->nStartingHeight);
@@ -3418,6 +3432,23 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv)
             LOCK(cs_vNodes);
             BOOST_FOREACH(CNode* pnode, vNodes)
                 checkpoint.RelayTo(pnode);
+        }
+    }
+
+    else if (strCommand == "liquidity")
+    {
+        CLiquidityInfo info;
+        vRecv >> info;
+
+        if (info.ProcessLiquidityInfo())
+        {
+            // Relay
+            pfrom->setKnown.insert(info.GetHash());
+            {
+                LOCK(cs_vNodes);
+                BOOST_FOREACH(CNode* pnode, vNodes)
+                    info.RelayTo(pnode);
+            }
         }
     }
 

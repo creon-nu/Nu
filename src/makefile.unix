@@ -111,7 +111,8 @@ OBJS= \
     obj/noui.o \
     obj/kernel.o \
     obj/distribution.o \
-    obj/vote.o
+    obj/vote.o \
+    obj/liquidityinfo.o
 
 
 all: nud
