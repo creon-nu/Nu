@@ -9,6 +9,7 @@ using namespace std;
 
 map<const CBitcoinAddress, CLiquidityInfo> mapLiquidityInfo;
 CCriticalSection cs_mapLiquidityInfo;
+int64 nLastLiquidityUpdate = 0;
 
 bool CLiquidityInfo::ProcessLiquidityInfo()
 {
@@ -45,6 +46,7 @@ bool CLiquidityInfo::ProcessLiquidityInfo()
         }
 
         mapLiquidityInfo[address] = *this;
+        nLastLiquidityUpdate = GetAdjustedTime();
     }
 
     printf("accepted liquidity info from %s\n", address.ToString().c_str());
@@ -70,6 +72,7 @@ void RemoveExpiredLiquidityInfo(int nCurrentHeight)
             {
                 mapLiquidityInfo.erase(it++);
                 fAnyRemoved = true;
+                nLastLiquidityUpdate = GetAdjustedTime();
             }
             else
                 it++;

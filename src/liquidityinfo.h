@@ -145,6 +145,7 @@ public:
 
 extern std::map<const CBitcoinAddress, CLiquidityInfo> mapLiquidityInfo;
 extern CCriticalSection cs_mapLiquidityInfo;
+extern int64 nLastLiquidityUpdate;
 
 void RemoveExpiredLiquidityInfo(int nCurrentHeight);
 
