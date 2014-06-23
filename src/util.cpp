@@ -803,11 +803,9 @@ void FormatException(char* pszMessage, std::exception* pex, const char* pszThrea
     pszModule[0] = '\0';
     GetModuleFileNameA(NULL, pszModule, sizeof(pszModule));
 #else
-<<<<<<< HEAD
-    const char* pszModule = "Nu";
-=======
+
     const char* pszModule = "nu";
->>>>>>> d3285cb0bcb859623c4ab70be15f9c45aa5b1754
+
 #endif
     if (pex)
         snprintf(pszMessage, 1000,
