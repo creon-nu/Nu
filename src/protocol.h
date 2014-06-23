@@ -15,9 +15,13 @@
 #include <string>
 #include "uint256.h"
 
-#define PEERSHARES_PORT  9921
-#define RPC_PORT     14001
-#define TESTNET_PORT 9923
+// Nu protocol port
+#define PROTOCOL_PORT     7890
+// Base RPC port used by the NuShare RPC server. Other unit RPC servers listen on RPC_PORT+1, RPC_PORT+2, etc.
+#define RPC_PORT         14001
+
+// The same rules apply to testnet, but on different ports
+#define TESTNET_PORT      7895
 #define TESTNET_RPC_PORT 15001
 
 #define PEERCOIN_RPC_PORT         9902
@@ -29,7 +33,7 @@ void GetMessageStart(unsigned char pchMessageStart[], bool fPersistent = false);
 
 static inline unsigned short GetDefaultPort(const bool testnet = fTestNet)
 {
-    return testnet ? TESTNET_PORT : PEERSHARES_PORT;
+    return testnet ? TESTNET_PORT : PROTOCOL_PORT;
 }
 
 

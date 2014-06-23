@@ -69,6 +69,8 @@ namespace GUIUtil
     // Determine whether a widget is hidden behind other windows
     bool isObscured(QWidget *w);
 
+    QString blocksToTime(qint64 blocks);
+
 } // namespace GUIUtil
 
 #endif // GUIUTIL_H
