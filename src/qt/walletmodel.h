@@ -11,6 +11,7 @@
 class OptionsModel;
 class AddressTableModel;
 class TransactionTableModel;
+class ParkTableModel;
 class CWallet;
 
 class SendCoinsRecipient
@@ -52,10 +53,12 @@ public:
     OptionsModel *getOptionsModel();
     AddressTableModel *getAddressTableModel();
     TransactionTableModel *getTransactionTableModel();
+    ParkTableModel *getParkTableModel();
 
     qint64 getBalance() const;
     qint64 getStake() const;
     qint64 getUnconfirmedBalance() const;
+    qint64 getParked() const;
     int getNumTransactions() const;
     EncryptionStatus getEncryptionStatus() const;
     unsigned char getUnit() const;
@@ -77,6 +80,12 @@ public:
 
     // Send coins to a list of recipients
     SendCoinsReturn sendCoins(const QList<SendCoinsRecipient> &recipients);
+
+    // nubit: Park coins
+    QString park(qint64 amount, qint64 blocks, QString unparkAddress);
+
+    // nubit: Get current premium for this amount and duration
+    qint64 getPremium(qint64 amount, qint64 blocks);
 
     // Wallet encryption
     bool setWalletEncrypted(bool encrypted, const SecureString &passphrase);
@@ -124,16 +133,18 @@ private:
 
     AddressTableModel *addressTableModel;
     TransactionTableModel *transactionTableModel;
+    ParkTableModel *parkTableModel;
 
     // Cache some values to be able to detect changes
     qint64 cachedBalance;
     qint64 cachedUnconfirmedBalance;
+    qint64 cachedParked;
     qint64 cachedNumTransactions;
     EncryptionStatus cachedEncryptionStatus;
 
 signals:
     // Signal that balance in wallet changed
-    void balanceChanged(qint64 balance, qint64 stake, qint64 unconfirmedBalance);
+    void balanceChanged(qint64 balance, qint64 stake, qint64 unconfirmedBalance, qint64 parked);
 
     // Number of transactions in wallet changed
     void numTransactionsChanged(int count);

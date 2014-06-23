@@ -124,6 +124,8 @@ public:
 
     std::map<uint256, CWalletTx> mapWallet;
     std::vector<uint256> vWalletUpdated;
+    std::vector<uint256> vParkWalletUpdated;
+    std::set<COutPoint> setParked;
 
     std::map<uint256, int> mapRequestCount;
 
@@ -267,6 +269,7 @@ public:
         {
             LOCK(cs_wallet);
             vWalletUpdated.push_back(hashTx);
+            vParkWalletUpdated.push_back(hashTx);
         }
     }
 
@@ -304,6 +307,9 @@ public:
     void DisableTransaction(const CTransaction &tx);
 
     void ExportPeercoinKeys(int &nExportedCount, int &nErrorCount);
+
+    void AddParked(const COutPoint& outpoint);
+    void RemoveParked(const COutPoint& outpoint);
 
     void SaveVote() const;
 };
