@@ -3,6 +3,8 @@
 #include "main.h"
 #include "ui_interface.h"
 
+#define LIQUIDITY_INFO_MAX_HEIGHT 260000 // Liquidity info from custodians who were elected more than LIQUIDITY_INFO_MAX_HEIGHT blocks ago are ignored
+
 using namespace std;
 
 map<const CBitcoinAddress, CLiquidityInfo> mapLiquidityInfo;
@@ -16,9 +18,15 @@ bool CLiquidityInfo::ProcessLiquidityInfo()
     CBitcoinAddress address(GetCustodianAddress());
 
     {
-        LOCK(cs_mapElectedCustodian);
+        LOCK2(cs_main, cs_mapElectedCustodian);
 
-        if (!mapElectedCustodian.count(address))
+        map<const CBitcoinAddress, CBlockIndex*>::iterator it;
+        it = mapElectedCustodian.find(address);
+        if (it == mapElectedCustodian.end())
+            return false;
+
+        CBlockIndex *pindex = it->second;
+        if (!pindexBest || pindexBest->nHeight - pindex->nHeight > LIQUIDITY_INFO_MAX_HEIGHT)
             return false;
     }
 
