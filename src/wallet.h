@@ -73,6 +73,12 @@ private:
     // the maxmimum wallet format version: memory-only variable that specifies to what version this wallet may be upgraded
     int nWalletMaxVersion;
 
+    int64 nNextTimeResendWalletTransactions;
+    int64 nLastTimeResendWalletTransactions;
+
+    int64 nNextTimeCheckUnparkableOutputs;
+    int64 nLastTimeCheckUnparkableOutputs;
+
 public:
     mutable CCriticalSection cs_wallet;
 
@@ -80,6 +86,8 @@ public:
     std::string strWalletFile;
 
     std::set<int64> setKeyPool;
+
+    CVote vote;
 
 
     typedef std::map<unsigned int, CMasterKey> MasterKeyMap;
@@ -94,6 +102,10 @@ public:
         nMasterKeyMaxID = 0;
         pwalletdbEncryption = NULL;
         cUnit = 0;
+        nNextTimeResendWalletTransactions = 0;
+        nLastTimeResendWalletTransactions = 0;
+        nNextTimeCheckUnparkableOutputs = 0;
+        nLastTimeCheckUnparkableOutputs = 0;
     }
     CWallet(std::string strWalletFileIn)
     {
@@ -104,10 +116,16 @@ public:
         nMasterKeyMaxID = 0;
         pwalletdbEncryption = NULL;
         cUnit = 0;
+        nNextTimeResendWalletTransactions = 0;
+        nLastTimeResendWalletTransactions = 0;
+        nNextTimeCheckUnparkableOutputs = 0;
+        nLastTimeCheckUnparkableOutputs = 0;
     }
 
     std::map<uint256, CWalletTx> mapWallet;
     std::vector<uint256> vWalletUpdated;
+    std::vector<uint256> vParkWalletUpdated;
+    std::set<COutPoint> setParked;
 
     std::map<uint256, int> mapRequestCount;
 
@@ -152,12 +170,18 @@ public:
     int64 GetUnconfirmedBalance() const;
     int64 GetStake() const;
     int64 GetNewMint() const;
+    int64 GetParked() const;
     bool CreateTransaction(const std::vector<std::pair<CScript, int64> >& vecSend, CWalletTx& wtxNew, CReserveKey& reservekey, int64& nFeeRet);
     bool CreateTransaction(CScript scriptPubKey, int64 nValue, CWalletTx& wtxNew, CReserveKey& reservekey, int64& nFeeRet);
     bool CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int64 nSearchInterval, CTransaction& txNew, CBlockIndex* pindexprev);
+    bool CreateUnparkTransaction(CWalletTx& wtxParked, unsigned int nOut, const CBitcoinAddress& unparkAddress, uint64 nAmount, CWalletTx& wtxNew);
     bool CommitTransaction(CWalletTx& wtxNew, CReserveKey& reservekey);
     std::string SendMoney(CScript scriptPubKey, int64 nValue, CWalletTx& wtxNew, bool fAskFee=false);
     std::string SendMoneyToBitcoinAddress(const CBitcoinAddress& address, int64 nValue, CWalletTx& wtxNew, bool fAskFee=false);
+    std::string Park(int64 nValue, int64 nDuration, const CBitcoinAddress& unparkAddress, CWalletTx& wtxNew, bool fAskFee=false);
+    bool SendUnparkTransactions(std::vector<CWalletTx> vtxRet);
+    bool SendUnparkTransactions() { std::vector<CWalletTx> vtxRet; return SendUnparkTransactions(vtxRet); }
+    void CheckUnparkableOutputs();
 
     bool NewKeyPool();
     bool TopUpKeyPool();
@@ -245,6 +269,7 @@ public:
         {
             LOCK(cs_wallet);
             vWalletUpdated.push_back(hashTx);
+            vParkWalletUpdated.push_back(hashTx);
         }
     }
 
@@ -282,6 +307,11 @@ public:
     void DisableTransaction(const CTransaction &tx);
 
     void ExportPeercoinKeys(int &nExportedCount, int &nErrorCount);
+
+    void AddParked(const COutPoint& outpoint);
+    void RemoveParked(const COutPoint& outpoint);
+
+    void SaveVote() const;
 };
 
 /** A key allocated from the key pool. */
@@ -298,17 +328,32 @@ public:
         pwallet = pwalletIn;
     }
 
-    ~CReserveKey()
+    virtual ~CReserveKey()
     {
         if (!fShutdown)
             ReturnKey();
     }
 
     void ReturnKey();
-    std::vector<unsigned char> GetReservedKey();
+    virtual std::vector<unsigned char> GetReservedKey();
     void KeepKey();
 };
 
+// Peershares: A reserve key that always returns the default key
+class CDefaultKey : public CReserveKey
+{
+public:
+    CDefaultKey(CWallet* pwalletIn) :
+        CReserveKey(pwalletIn)
+    {
+    }
+
+    std::vector<unsigned char> GetReservedKey()
+    {
+        vchPubKey = pwallet->vchDefaultKey;
+        return vchPubKey;
+    }
+};
 
 /** A transaction with a bunch of additional info that only the owner cares about. 
  * It includes any unrecorded transactions needed to link it back to the block chain.
@@ -530,7 +575,7 @@ public:
         int64 nCredit = 0;
         for (unsigned int i = 0; i < vout.size(); i++)
         {
-            if (!IsSpent(i))
+            if (!IsSpent(i) && !IsParked(i))
             {
                 const CTxOut &txout = vout[i];
                 nCredit += pwallet->GetCredit(txout);

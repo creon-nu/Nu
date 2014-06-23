@@ -28,6 +28,7 @@
 #include "rpcconsole.h"
 #include "wallet.h"
 #include "distributedivdialog.h"
+#include "parkpage.h"
 
 #ifdef Q_WS_MAC
 #include "macdockiconhandler.h"
@@ -114,6 +115,8 @@ BitcoinGUI::BitcoinGUI(QWidget *parent):
 
     messagePage = new MessagePage(this);
 
+    parkPage = new ParkPage(this);
+
     centralWidget = new QStackedWidget(this);
     centralWidget->addWidget(overviewPage);
     centralWidget->addWidget(transactionsPage);
@@ -123,6 +126,7 @@ BitcoinGUI::BitcoinGUI(QWidget *parent):
 #ifdef FIRST_CLASS_MESSAGING
     centralWidget->addWidget(messagePage);
 #endif
+    centralWidget->addWidget(parkPage);
     setCentralWidget(centralWidget);
 
     // Create status bar
@@ -220,6 +224,12 @@ void BitcoinGUI::createActions()
 #endif
     tabGroup->addAction(messageAction);
 
+    parkAction = new QAction(QIcon(":/icons/lock_closed"), tr("&Park"), this);
+    parkAction->setToolTip(tr("Park coins"));
+    parkAction->setCheckable(true);
+    parkAction->setShortcut(QKeySequence(Qt::ALT + Qt::Key_6));
+    tabGroup->addAction(parkAction);
+
     connect(overviewAction, SIGNAL(triggered()), this, SLOT(showNormalIfMinimized()));
     connect(overviewAction, SIGNAL(triggered()), this, SLOT(gotoOverviewPage()));
     connect(historyAction, SIGNAL(triggered()), this, SLOT(showNormalIfMinimized()));
@@ -232,6 +242,8 @@ void BitcoinGUI::createActions()
     connect(sendCoinsAction, SIGNAL(triggered()), this, SLOT(gotoSendCoinsPage()));
     connect(messageAction, SIGNAL(triggered()), this, SLOT(showNormalIfMinimized()));
     connect(messageAction, SIGNAL(triggered()), this, SLOT(gotoMessagePage()));
+    connect(parkAction, SIGNAL(triggered()), this, SLOT(showNormalIfMinimized()));
+    connect(parkAction, SIGNAL(triggered()), this, SLOT(gotoParkPage()));
 
     quitAction = new QAction(QIcon(":/icons/quit"), tr("E&xit"), this);
     quitAction->setToolTip(tr("Quit application"));
@@ -332,6 +344,7 @@ void BitcoinGUI::createToolBars()
 #ifdef FIRST_CLASS_MESSAGING
     toolbar->addAction(messageAction);
 #endif
+    toolbar->addAction(parkAction);
 
     QToolBar *toolbar2 = addToolBar(tr("Actions toolbar"));
     toolbar2->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
@@ -378,6 +391,9 @@ void BitcoinGUI::setWalletModel(WalletModel *walletModel)
     this->walletModel = walletModel;
     if(walletModel)
     {
+        // nubit: set current base unit
+        BitcoinUnits::baseUnit = walletModel->getUnit();
+
         // Report errors from wallet thread
         connect(walletModel, SIGNAL(error(QString,QString,bool)), this, SLOT(error(QString,QString,bool)));
 
@@ -389,6 +405,10 @@ void BitcoinGUI::setWalletModel(WalletModel *walletModel)
         receiveCoinsPage->setModel(walletModel->getAddressTableModel());
         sendCoinsPage->setModel(walletModel);
         messagePage->setModel(walletModel);
+        rpcConsole->setModel(walletModel);
+        parkPage->setModel(walletModel);
+
+        parkAction->setVisible(walletModel->getUnit() != 'S');
 
         setEncryptionStatus(walletModel->getEncryptionStatus());
         connect(walletModel, SIGNAL(encryptionStatusChanged(int)), this, SLOT(setEncryptionStatus(int)));
@@ -406,7 +426,7 @@ void BitcoinGUI::setWalletModel(WalletModel *walletModel)
         BOOST_FOREACH(CWallet *wallet, setpwalletRegistered)
         {
             QString unitString(wallet->Unit());
-            QAction *action = new QAction(unitString, this);
+            QAction *action = new QAction(BitcoinUnits::baseName(wallet->Unit()), this);
             action->setCheckable(true);
             if (unitString == QString(walletModel->getWallet()->Unit()))
                 action->setChecked(true);
@@ -428,7 +448,7 @@ void BitcoinGUI::changeUnit(const QString &unit)
 {
     WalletModel *oldWalletModel = this->walletModel;
     OptionsModel *optionsModel = oldWalletModel->getOptionsModel();
-    WalletModel *newWalletModel;
+    WalletModel *newWalletModel = NULL;
 
     BOOST_FOREACH(CWallet *wallet, setpwalletRegistered)
     {
@@ -439,6 +459,7 @@ void BitcoinGUI::changeUnit(const QString &unit)
         }
     }
     setWalletModel(newWalletModel);
+    delete oldWalletModel;
 }
 
 void BitcoinGUI::createTrayIcon()
@@ -801,6 +822,15 @@ void BitcoinGUI::gotoMessagePage(QString addr)
 {
     gotoMessagePage();
     messagePage->setAddress(addr);
+}
+
+void BitcoinGUI::gotoParkPage()
+{
+    parkAction->setChecked(true);
+    centralWidget->setCurrentWidget(parkPage);
+
+    exportAction->setEnabled(false);
+    disconnect(exportAction, SIGNAL(triggered()), 0, 0);
 }
 
 void BitcoinGUI::dragEnterEvent(QDragEnterEvent *event)

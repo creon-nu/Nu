@@ -3,6 +3,8 @@
 #include "optionsmodel.h"
 #include "addresstablemodel.h"
 #include "transactiontablemodel.h"
+#include "parktablemodel.h"
+#include "bitcoinunits.h"
 
 #include "ui_interface.h"
 #include "wallet.h"
@@ -13,11 +15,23 @@
 WalletModel::WalletModel(CWallet *wallet, OptionsModel *optionsModel, QObject *parent) :
     QObject(parent), wallet(wallet), optionsModel(optionsModel), addressTableModel(0),
     transactionTableModel(0),
+    parkTableModel(0),
     cachedBalance(0), cachedUnconfirmedBalance(0), cachedNumTransactions(0),
     cachedEncryptionStatus(Unencrypted)
 {
     addressTableModel = new AddressTableModel(wallet, this);
     transactionTableModel = new TransactionTableModel(wallet, this);
+    parkTableModel = new ParkTableModel(wallet, this);
+}
+
+WalletModel::~WalletModel()
+{
+    delete addressTableModel;
+    addressTableModel = NULL;
+    delete transactionTableModel;
+    transactionTableModel = NULL;
+    delete parkTableModel;
+    parkTableModel = NULL;
 }
 
 qint64 WalletModel::getBalance() const
@@ -35,6 +49,11 @@ qint64 WalletModel::getUnconfirmedBalance() const
     return wallet->GetUnconfirmedBalance();
 }
 
+qint64 WalletModel::getParked() const
+{
+    return wallet->GetParked();
+}
+
 int WalletModel::getNumTransactions() const
 {
     int numTransactions = 0;
@@ -45,15 +64,21 @@ int WalletModel::getNumTransactions() const
     return numTransactions;
 }
 
+unsigned char WalletModel::getUnit() const
+{
+    return wallet->Unit();
+}
+
 void WalletModel::update()
 {
     qint64 newBalance = getBalance();
     qint64 newUnconfirmedBalance = getUnconfirmedBalance();
+    qint64 newParked = getParked();
     int newNumTransactions = getNumTransactions();
     EncryptionStatus newEncryptionStatus = getEncryptionStatus();
 
-    if(cachedBalance != newBalance || cachedUnconfirmedBalance != newUnconfirmedBalance)
-        emit balanceChanged(newBalance, getStake(), newUnconfirmedBalance);
+    if(cachedBalance != newBalance || cachedUnconfirmedBalance != newUnconfirmedBalance || cachedParked != newParked)
+        emit balanceChanged(newBalance, getStake(), newUnconfirmedBalance, newParked);
 
     if(cachedNumTransactions != newNumTransactions)
         emit numTransactionsChanged(newNumTransactions);
@@ -63,6 +88,7 @@ void WalletModel::update()
 
     cachedBalance = newBalance;
     cachedUnconfirmedBalance = newUnconfirmedBalance;
+    cachedParked = newParked;
     cachedNumTransactions = newNumTransactions;
 }
 
@@ -176,6 +202,27 @@ WalletModel::SendCoinsReturn WalletModel::sendCoins(const QList<SendCoinsRecipie
     return SendCoinsReturn(OK, 0, hex);
 }
 
+QString WalletModel::park(qint64 amount, qint64 blocks, QString unparkAddress)
+{
+    {
+        LOCK2(cs_main, wallet->cs_wallet);
+        CWalletTx wtx;
+        std::string result = wallet->Park(amount, blocks, CBitcoinAddress(unparkAddress.toStdString()), wtx, false);
+        return QString::fromStdString(result);
+    }
+}
+
+qint64 WalletModel::getPremium(qint64 amount, qint64 blocks)
+{
+    {
+        LOCK2(cs_main, wallet->cs_wallet);
+        if (!pindexBest)
+            return 0;
+
+        return pindexBest->GetPremium(amount, blocks, wallet->Unit());
+    }
+}
+
 OptionsModel *WalletModel::getOptionsModel()
 {
     return optionsModel;
@@ -189,6 +236,11 @@ AddressTableModel *WalletModel::getAddressTableModel()
 TransactionTableModel *WalletModel::getTransactionTableModel()
 {
     return transactionTableModel;
+}
+
+ParkTableModel *WalletModel::getParkTableModel()
+{
+    return parkTableModel;
 }
 
 WalletModel::EncryptionStatus WalletModel::getEncryptionStatus() const

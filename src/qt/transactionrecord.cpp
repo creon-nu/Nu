@@ -67,7 +67,10 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
                     else if (wallet->ExtractAddress(txout.scriptPubKey, address) && wallet->HaveKey(address))
                     {
                         // Received by Bitcoin Address
-                        sub.type = TransactionRecord::RecvWithAddress;
+                        if (wtx.IsUnpark())
+                            sub.type = TransactionRecord::Unpark;
+                        else
+                            sub.type = TransactionRecord::RecvWithAddress;
                         sub.address = address.ToString();
                     }
                     else
@@ -91,7 +94,34 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
             BOOST_FOREACH(const CTxOut& txout, wtx.vout)
                 fAllToMe = fAllToMe && wallet->IsMine(txout);
 
-            if (fAllFromMe && fAllToMe)
+            bool fPark = false;
+            BOOST_FOREACH(const CTxOut& txout, wtx.vout)
+            {
+                uint64 nParkDuration;
+                CBitcoinAddress unparkAddress;
+
+                if (ExtractPark(txout.scriptPubKey, wtx.cUnit, nParkDuration, unparkAddress))
+                {
+                    fPark = true;
+                    TransactionRecord sub(hash, nTime);
+                    sub.idx = parts.size();
+                    sub.type = TransactionRecord::Park;
+                    sub.address = unparkAddress.ToString();
+                    sub.debit = -txout.nValue;
+                    if (parts.size() == 0)
+                    {
+                        int64 nTxFee = nDebit - wtx.GetValueOut();
+                        sub.debit -= nTxFee;
+                    }
+                    parts.append(sub);
+                }
+            }
+
+            if (fPark)
+            {
+                // do nothing, all other outputs should be change
+            }
+            else if (fAllFromMe && fAllToMe)
             {
                 // Payment to self
                 int64 nChange = wtx.GetChange();

@@ -214,5 +214,31 @@ bool isObscured(QWidget *w)
            && checkPoint(QPoint(w->width()/2, w->height()/2), w));
 }
 
+QString blocksToTime(qint64 blocks)
+{
+    double time = (double)blocks * STAKE_TARGET_SPACING / 60;
+    if (time < 55)
+        return QString("%1 min").arg(QString::number(time, 'f', 1));
+    time = time / 60;
+    if (time == 1)
+        return QString("%1 hour").arg(QString::number(time, 'f', 1));
+    if (time < 23.5)
+        return QString("%1 hours").arg(QString::number(time, 'f', 1));
+    time = time / 24;
+    if (time == 1)
+        return QString("%1 day").arg(QString::number(time, 'f', 1));
+    if (time < 30)
+        return QString("%1 days").arg(QString::number(time, 'f', 1));
+    time = time / 30;
+    if (time == 1)
+        return QString("%1 month").arg(QString::number(time, 'f', 1));
+    if (time < 12)
+        return QString("%1 months").arg(QString::number(time, 'f', 1));
+    time = time / 12;
+    if (time == 1)
+        return QString("%1 year").arg(QString::number(time, 'f', 1));
+    return QString("%1 years").arg(QString::number(time, 'f', 1));
+}
+
 } // namespace GUIUtil
 

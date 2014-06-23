@@ -114,6 +114,11 @@ OverviewPage::OverviewPage(QWidget *parent) :
     ui->labelUnconfirmed->setToolTip(tr("Total of transactions that have yet to be confirmed, and do not yet count toward the current balance"));
     ui->labelUnconfirmed->setTextInteractionFlags(Qt::TextSelectableByMouse|Qt::TextSelectableByKeyboard);
 
+    // nubit: parked: <parked>
+    ui->labelParked->setFont(QFont("Monospace", -1, QFont::Bold));
+    ui->labelParked->setToolTip(tr("Your current parked amount"));
+    ui->labelParked->setTextInteractionFlags(Qt::TextSelectableByMouse|Qt::TextSelectableByKeyboard);
+
     ui->labelNumTransactions->setToolTip(tr("Total number of transactions in wallet"));
 
     // Recent transactions
@@ -132,15 +137,37 @@ OverviewPage::~OverviewPage()
     delete ui;
 }
 
-void OverviewPage::setBalance(qint64 balance, qint64 stake, qint64 unconfirmedBalance)
+void OverviewPage::setBalance(qint64 balance, qint64 stake, qint64 unconfirmedBalance, qint64 parked)
 {
     int unit = model->getOptionsModel()->getDisplayUnit();
     currentBalance = balance;
     currentStake = stake;
     currentUnconfirmedBalance = unconfirmedBalance;
+    currentParked = parked;
     ui->labelBalance->setText(BitcoinUnits::formatWithUnit(unit, balance));
     ui->labelStake->setText(BitcoinUnits::formatWithUnit(unit, stake));
     ui->labelUnconfirmed->setText(BitcoinUnits::formatWithUnit(unit, unconfirmedBalance));
+    ui->labelParked->setText(BitcoinUnits::formatWithUnit(unit, parked));
+    // Hiding doesn't remove the margin so we have to remove the widgets
+    // See https://bugreports.qt-project.org/browse/QTBUG-6864
+    static int parkedRow = -1;
+    QFormLayout* formLayout = (QFormLayout*)ui->frame->layout();
+    if (parkedRow == -1)
+        formLayout->getWidgetPosition(ui->labelParked, &parkedRow, NULL);
+
+    if (model->getUnit() == 'S')
+    {
+        ui->labelParkedLabel->hide();
+        ui->labelParked->hide();
+        ui->frame->layout()->removeWidget(ui->labelParkedLabel);
+        ui->frame->layout()->removeWidget(ui->labelParked);
+    }
+    else
+    {
+        formLayout->insertRow(parkedRow, ui->labelParkedLabel, ui->labelParked);
+        ui->labelParkedLabel->show();
+        ui->labelParked->show();
+    }
 }
 
 void OverviewPage::setNumTransactions(int count)
@@ -165,13 +192,15 @@ void OverviewPage::setModel(WalletModel *model)
         ui->listTransactions->setModelColumn(TransactionTableModel::ToAddress);
 
         // Keep up to date with wallet
-        setBalance(model->getBalance(), model->getStake(), model->getUnconfirmedBalance());
-        connect(model, SIGNAL(balanceChanged(qint64, qint64, qint64)), this, SLOT(setBalance(qint64, qint64, qint64)));
+        setBalance(model->getBalance(), model->getStake(), model->getUnconfirmedBalance(), model->getParked());
+        connect(model, SIGNAL(balanceChanged(qint64, qint64, qint64, qint64)), this, SLOT(setBalance(qint64, qint64, qint64, qint64)));
 
         setNumTransactions(model->getNumTransactions());
         connect(model, SIGNAL(numTransactionsChanged(int)), this, SLOT(setNumTransactions(int)));
 
         connect(model->getOptionsModel(), SIGNAL(displayUnitChanged(int)), this, SLOT(displayUnitChanged()));
+
+        emit displayUnitChanged();
     }
 }
 
@@ -180,7 +209,7 @@ void OverviewPage::displayUnitChanged()
     if(!model || !model->getOptionsModel())
         return;
     if(currentBalance != -1)
-        setBalance(currentBalance, currentStake, currentUnconfirmedBalance);
+        setBalance(currentBalance, currentStake, currentUnconfirmedBalance, currentParked);
 
     txdelegate->unit = model->getOptionsModel()->getDisplayUnit();
     ui->listTransactions->update();

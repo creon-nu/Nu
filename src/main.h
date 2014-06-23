@@ -40,13 +40,14 @@ static const int64 MAX_MONEY = 2000000000 * COIN;
 static const int64 MAX_MINT_PROOF_OF_WORK = 9999 * COIN;
 static const int64 MIN_TXOUT_AMOUNT = MIN_TX_FEE;
 inline bool MoneyRange(int64 nValue) { return (nValue >= 0 && nValue <= MAX_MONEY); }
-static const int COINBASE_MATURITY_PPC = 100; //Same as in Bitcoin, where Peercoin is 500
+static const int COINBASE_MATURITY  = 100; // Must be smaller than PROOF_OF_WORK_BLOCKS
+static const int COINSTAKE_MATURITY = 5000; // Same average time as Peercoin (500 * 10 minutes vs 5000 * 1 minute)
 // Threshold for nLockTime: below this value it is interpreted as block number, otherwise as UNIX timestamp.
 static const int LOCKTIME_THRESHOLD = 500000000; // Tue Nov  5 00:53:20 1985 UTC
-static const int STAKE_TARGET_SPACING = 60 * 30; // 30 minute block spacing 
+static const int STAKE_TARGET_SPACING = 60 * 1; // 60 second block spacing for Nubit
 static const int STAKE_MIN_AGE = 60 * 60 * 24 * 7; // changed to 7 days so only one vote in 10000 block voting period can be made
 static const int STAKE_MAX_AGE = 60 * 60 * 24 * 7; // changed to same as minimum to incentivize minting as soon as possible
-static const int64 IPO_SHARES = 1000000 * COIN; // Total number of shares to create using proof of work (intented for IPO)
+static const int64 IPO_SHARES = 1000000000 * COIN; // Total number of shares to create using proof of work (intented for IPO)
 static const int64 PROOF_OF_WORK_BLOCKS = 400; // Block height of the last proof of work block
 static const int64 PARK_RATE_VOTES = 1000; // Number of blocks used in park rate median vote calculation
 static const unsigned int CUSTODIAN_VOTES = 10000;
@@ -58,6 +59,8 @@ static const int fHaveUPnP = true;
 static const int fHaveUPnP = false;
 #endif
 
+static const uint256 hashGenesisBlockOfficial("0x00000c6803146bc8baf8dddee5584b58802deea35c3df0f819850ef273cd5153");
+static const uint256 hashGenesisBlockTestNet ("0x00000da01001c0f91ccb20ad67e801a173f55f4be23d63463a4d453c8aebab48");
 
 static const int64 nMaxClockDrift = 2 * 60 * 60;        // two hours
 
@@ -65,6 +68,10 @@ extern CScript COINBASE_FLAGS;
 
 static const std::string sAvailableUnits("SB");
 
+inline bool ValidUnit(unsigned char cUnit)
+{
+    return sAvailableUnits.find(cUnit) != -1;
+}
 
 
 
@@ -75,6 +82,7 @@ extern std::set<std::pair<COutPoint, unsigned int> > setStakeSeen;
 extern uint256 hashGenesisBlock;
 extern unsigned int nStakeMinAge;
 extern int nCoinbaseMaturity;
+extern int nCoinstakeMaturity;
 extern CBlockIndex* pindexGenesisBlock;
 extern int nBestHeight;
 extern CBigNum bnBestChainTrust;
@@ -134,7 +142,10 @@ const CBlockIndex* GetLastBlockIndex(const CBlockIndex* pindex, bool fProofOfSta
 void BitcoinMiner(CWallet *pwallet, bool fProofOfStake);
 
 
-
+inline int GetMaturity(bool fProofOfStake)
+{
+    return fProofOfStake ? nCoinstakeMaturity : nCoinbaseMaturity;
+}
 
 
 
@@ -556,6 +567,18 @@ public:
         return (cUnit != 'S' && vin.size() == 1 && vin[0].prevout.IsNull() && vout.size() >= 1);
     }
 
+    bool IsParked(unsigned int nOut) const
+    {
+        if (nOut >= vout.size())
+            throw std::runtime_error("CTransaction::IsParked() : nOut out of range");
+        return IsPark(vout[nOut].scriptPubKey);
+    }
+
+    bool IsUnpark() const
+    {
+        return (vin.size() == 1 && !vin[0].prevout.IsNull() && ::IsUnpark(vin[0].scriptSig) && vout.size() == 1);
+    }
+
     /** Check for standard transaction types
         @return True if all outputs (scriptPubKeys) use only standard transaction forms
     */
@@ -890,7 +913,8 @@ public:
     {
         return !(a == b);
     }
-    int GetDepthInMainChain() const;
+    int GetDepthInMainChain(CBlockIndex* &pindexRet) const;
+    int GetDepthInMainChain() const { CBlockIndex *pindexRet; return GetDepthInMainChain(pindexRet); }
  
 };
 
@@ -1171,6 +1195,7 @@ public:
     bool CheckBlock() const;
     bool AcceptBlock();
     bool GetCoinAge(uint64& nCoinAge) const; // ppcoin: calculate total coin age spent in block
+    bool GetCoinStakeAge(uint64& nCoinAge) const;
     bool SignBlock(const CKeyStore& keystore);
     bool CheckBlockSignature() const;
 
@@ -1425,6 +1450,11 @@ public:
         nStakeModifier = nModifier;
         if (fGeneratedStakeModifier)
             nFlags |= BLOCK_STAKE_MODIFIER;
+    }
+
+    uint64 GetPremium(uint64 nValue, uint64 nDuration, unsigned char cUnit)
+    {
+        return ::GetPremium(nValue, nDuration, cUnit, vParkRateResult);
     }
 
     std::string ToString() const

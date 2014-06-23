@@ -18,12 +18,6 @@
 using namespace std;
 using namespace boost;
 
-//
-// Global state
-//
-static const uint256 hashGenesisBlockOfficial("0x000000d78e35e381ca738ceb966b9faf528f0970d994ce4eb4560b56cbe2f6c4");
-static const uint256 hashGenesisBlockTestNet ("0x00000da01001c0f91ccb20ad67e801a173f55f4be23d63463a4d453c8aebab48");
-
 CCriticalSection cs_setpwalletRegistered;
 set<CWallet*> setpwalletRegistered;
 
@@ -39,7 +33,8 @@ static CBigNum bnProofOfWorkLimit(~uint256(0) >> 20);
 static CBigNum bnInitialHashTarget(~uint256(0) >> 24);
 static CBigNum bnInitialProofOfStakeHashTarget(~uint256(0) >> 20);
 unsigned int nStakeMinAge = STAKE_MIN_AGE;
-int nCoinbaseMaturity = COINBASE_MATURITY_PPC;
+int nCoinbaseMaturity = COINBASE_MATURITY;
+int nCoinstakeMaturity = COINSTAKE_MATURITY;
 CBlockIndex* pindexGenesisBlock = NULL;
 int nBestHeight = -1;
 CBigNum bnBestChainTrust = 0;
@@ -195,6 +190,13 @@ void static ResendWalletTransactions()
 {
     BOOST_FOREACH(CWallet* pwallet, setpwalletRegistered)
         pwallet->ResendWalletTransactions();
+}
+
+// nubit: ask wallets to check unparkable transactions
+void static CheckUnparkableOutputs()
+{
+    BOOST_FOREACH(CWallet* pwallet, setpwalletRegistered)
+        pwallet->CheckUnparkableOutputs();
 }
 
 
@@ -563,6 +565,17 @@ bool CTransaction::CheckTransaction() const
                 return DoS(10, error("CTransaction::CheckTransaction() : prevout is null"));
     }
 
+    // nubit: parking shares is not allowed
+    if (cUnit == 'S')
+    {
+        for (unsigned int i = 0; i < vout.size(); i++)
+        {
+            const CTxOut& txout = vout[i];
+            if (IsPark(txout.scriptPubKey))
+                return DoS(100, error("CTransaction::CheckTransaction() : parking of shares"));
+        }
+    }
+
     return true;
 }
 
@@ -663,13 +676,13 @@ bool CTxMemPool::accept(CTxDB& txdb, CTransaction &tx, bool fCheckInputs,
         unsigned int nSize = ::GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION);
 
         // Don't accept it if it can't get into a block
-        if (nFees < tx.GetMinFee(1000, false, GMF_RELAY))
+        if (!tx.IsUnpark() && nFees < tx.GetMinFee(1000, false, GMF_RELAY))
             return error("CTxMemPool::accept() : not enough fees");
 
         // Continuously rate-limit free transactions
         // This mitigates 'penny-flooding' -- sending thousands of free transactions just to
         // be annoying or make other's transactions take longer to confirm.
-        if (nFees < MIN_RELAY_TX_FEE)
+        if (!tx.IsUnpark() && nFees < MIN_RELAY_TX_FEE)
         {
             static CCriticalSection cs;
             static double dFreeCount;
@@ -793,7 +806,7 @@ int CMerkleTx::GetBlocksToMaturity() const
 {
     if (!(IsCoinBase() || IsCoinStake()))
         return 0;
-    return max(0, (nCoinbaseMaturity+20) - GetDepthInMainChain());
+    return max(0, (GetMaturity(IsCoinStake())+20) - GetDepthInMainChain());
 }
 
 
@@ -845,7 +858,7 @@ bool CWalletTx::AcceptWalletTransaction()
     return AcceptWalletTransaction(txdb);
 }
 
-int CTxIndex::GetDepthInMainChain() const
+int CTxIndex::GetDepthInMainChain(CBlockIndex* &pindexRet) const
 {
     // Read block header
     CBlock block;
@@ -858,6 +871,7 @@ int CTxIndex::GetDepthInMainChain() const
     CBlockIndex* pindex = (*mi).second;
     if (!pindex || !pindex->IsInMainChain())
         return 0;
+    pindexRet = pindex;
     return 1 + nBestHeight - pindex->nHeight;
 }
 
@@ -1231,7 +1245,7 @@ bool CTransaction::ConnectInputs(CTxDB& txdb, MapPrevTx inputs,
 
             // If prev is coinbase/coinstake, check that it's matured
             if (txPrev.IsCoinBase() || txPrev.IsCoinStake())
-                for (const CBlockIndex* pindex = pindexBlock; pindex && pindexBlock->nHeight - pindex->nHeight < nCoinbaseMaturity; pindex = pindex->pprev)
+                for (const CBlockIndex* pindex = pindexBlock; pindex && pindexBlock->nHeight - pindex->nHeight < GetMaturity(txPrev.IsCoinStake()); pindex = pindex->pprev)
                     if (pindex->nBlockPos == txindex.pos.nBlockPos && pindex->nFile == txindex.pos.nFile)
                         return error("ConnectInputs() : tried to spend coinbase/coinstake at depth %d", pindexBlock->nHeight - pindex->nHeight);
 
@@ -1245,6 +1259,10 @@ bool CTransaction::ConnectInputs(CTxDB& txdb, MapPrevTx inputs,
                 return DoS(100, error("ConnectInputs() : txin values out of range"));
 
         }
+
+        // nubit: Is the whole transaction is a valid unpark transaction
+        bool fValidUnpark = false;
+
         // The first loop above does all the inexpensive checks.
         // Only if ALL inputs pass do we perform expensive ECDSA signature checks.
         // Helps prevent CPU exhaustion attacks.
@@ -1261,10 +1279,52 @@ bool CTransaction::ConnectInputs(CTxDB& txdb, MapPrevTx inputs,
             if (!txindex.vSpent[prevout.n].IsNull())
                 return fMiner ? false : error("ConnectInputs() : %s prev tx already used at %s", GetHash().ToString().substr(0,10).c_str(), txindex.vSpent[prevout.n].ToString().c_str());
 
+            // nubit: Check unpark transaction
+            if (IsUnpark())
+            {
+                if (!txPrev.IsParked(prevout.n))
+                    return error("ConnectInputs() : prevout is not parked");
+
+                if (vin.size() != 1)
+                    return error("ConnectInputs() : unpark transaction with too many inputs");
+
+                if (vout.size() != 1)
+                    return error("ConnectInputs() : unpark transaction with too many outputs");
+
+                uint64 nDuration;
+                CBitcoinAddress unparkAddress;
+                if (!ExtractPark(txPrev.vout[prevout.n].scriptPubKey, txPrev.cUnit, nDuration, unparkAddress))
+                    return error("ConnectInputs() : ExtractPark failed");
+
+                CBlockIndex *pindex = NULL;
+                if (txindex.GetDepthInMainChain(pindex) < nDuration)
+                    return error("ConnectInputs() : parking duration has not passed");
+
+                if (!pindex)
+                    return error("ConnectInputs() : parked transaction not in main chain");
+
+                uint64 nValue = txPrev.vout[prevout.n].nValue;
+                uint64 nPremium = pindex->GetPremium(nValue, nDuration, cUnit);
+                uint64 nMaxValueOut = nValue + nPremium;
+
+                if (GetValueOut() > nMaxValueOut)
+                    return error("ConnectInputs() : invalid unpark value");
+
+                CBitcoinAddress outAddress;
+                if (!ExtractAddress(vout[0].scriptPubKey, outAddress, cUnit))
+                    return error("ConnectInputs() : ExtractAddress failed");
+
+                if (outAddress.GetHash160() != unparkAddress.GetHash160())
+                    return error("ConnectInputs() : invalid unpark address");
+
+                fValidUnpark = true;
+            }
+
             // Skip ECDSA signature verification when connecting blocks (fBlock=true)
             // before the last blockchain checkpoint. This is safe because block merkle hashes are
             // still computed and checked, and any change will be caught at the next checkpoint.
-            if (!(fBlock && (nBestHeight < Checkpoints::GetTotalBlocksEstimate())))
+            // nubit: Skip signature on unpark transaction
+            if (!fValidUnpark && !(fBlock && (nBestHeight < Checkpoints::GetTotalBlocksEstimate())))
             {
                 // Verify signature
                 if (!VerifySignature(txPrev, *this, i, fStrictPayToScriptHash, 0))
@@ -1298,7 +1358,7 @@ bool CTransaction::ConnectInputs(CTxDB& txdb, MapPrevTx inputs,
             if (nStakeReward > GetProofOfStakeReward(nCoinAge) - GetMinFee() + MIN_TX_FEE)
                 return DoS(100, error("ConnectInputs() : %s stake reward exceeded", GetHash().ToString().substr(0,10).c_str()));
         }
-        else
+        else if (!fValidUnpark)
         {
             if (nValueIn < GetValueOut())
                 return DoS(100, error("ConnectInputs() : %s value in < value out", GetHash().ToString().substr(0,10).c_str()));
@@ -1843,6 +1903,16 @@ bool CBlock::GetCoinAge(uint64& nCoinAge) const
     return true;
 }
 
+bool CBlock::GetCoinStakeAge(uint64& nCoinAge) const
+{
+    nCoinAge = 0;
+
+    if (!IsProofOfStake())
+        return false;
+
+    CTxDB txdb("r");
+    return vtx[1].GetCoinAge(txdb, nCoinAge);
+}
 
 bool CBlock::AddToBlockIndex(unsigned int nFile, unsigned int nBlockPos)
 {
@@ -1894,7 +1964,7 @@ bool CBlock::AddToBlockIndex(unsigned int nFile, unsigned int nBlockPos)
     {
         ExtractVote(*this, pindexNew->vote);
         ExtractParkRateResults(*this, pindexNew->vParkRateResult);
-        if (!GetCoinAge(pindexNew->nCoinAgeDestroyed))
+        if (!GetCoinStakeAge(pindexNew->nCoinAgeDestroyed))
             return error("Unable to get coin age");
         pindexNew->vote.nCoinAgeDestroyed = pindexNew->nCoinAgeDestroyed;
     }
@@ -2389,13 +2459,14 @@ bool LoadBlockIndex(bool fAllowNew)
         bnProofOfWorkLimit = CBigNum(~uint256(0) >> 20);
         nStakeMinAge = 300; // test net min age is 5 minutes
         nCoinbaseMaturity = 60;
+        nCoinstakeMaturity = 60;
         bnInitialHashTarget = CBigNum(~uint256(0) >> 20);
         bnInitialProofOfStakeHashTarget = CBigNum(~uint256(0) >> 16);
         nModifierInterval = 60 * 20; // test net modifier interval is 20 minutes
     }
 
-    printf("%s Network: genesis=0x%s nBitsLimit=0x%08x nBitsInitial=0x%08x nStakeMinAge=%d nCoinbaseMaturity=%d nModifierInterval=%d\n",
-           fTestNet? "Test" : "PPCoin", hashGenesisBlock.ToString().substr(0, 20).c_str(), bnProofOfWorkLimit.GetCompact(), bnInitialHashTarget.GetCompact(), nStakeMinAge, nCoinbaseMaturity, nModifierInterval);
+    printf("%s Network: genesis=0x%s nBitsLimit=0x%08x nBitsInitial=0x%08x nStakeMinAge=%d nCoinbaseMaturity=%d nCoinstakeMaturity=%d nModifierInterval=%d\n",
+           fTestNet? "Test" : "PPCoin", hashGenesisBlock.ToString().substr(0, 20).c_str(), bnProofOfWorkLimit.GetCompact(), bnInitialHashTarget.GetCompact(), nStakeMinAge, nCoinbaseMaturity, nCoinstakeMaturity, nModifierInterval);
 
     //
     // Load block index
@@ -2474,7 +2545,7 @@ bool LoadBlockIndex(bool fAllowNew)
         printf("%s\n", hashGenesisBlock.ToString().c_str());
         printf("%s\n", block.hashMerkleRoot.ToString().c_str());
         if (!fTestNet)
-            assert(block.hashMerkleRoot == uint256("0xf88246c72a053cc2176dbf2ac884bcf79f021bba9c2c3c8fccc0735c37d9354c"));
+            assert(block.hashMerkleRoot == uint256("0xcad706dc4aa0835b8975fbaa4816497c310853239900caaf0b656d584fa62b34"));
         else
             assert(block.hashMerkleRoot == uint256("0x8b2874310ab6015b75dafbd3cde22fbe41b0f914e01e2d4a7ebce488e528f92c"));
 
@@ -3496,6 +3567,9 @@ bool SendMessages(CNode* pto, bool fSendTrickle)
         // Resend wallet transactions that haven't gotten in a block yet
         ResendWalletTransactions();
 
+        // nubit: Send unpark transaction
+        CheckUnparkableOutputs();
+
         // Address refresh broadcast
         static int64 nLastRebroadcast;
         if (!IsInitialBlockDownload() && (GetTime() - nLastRebroadcast > 24 * 60 * 60))
@@ -3927,7 +4001,7 @@ CBlock* CreateNewBlock(CReserveKey& reservekey, CWallet* pwallet, bool fProofOfS
                 continue;
 
             int64 nTxFees = tx.GetValueIn(mapInputs)-tx.GetValueOut();
-            if (nTxFees < nMinFee)
+            if (nTxFees < nMinFee && !tx.IsUnpark())
                 continue;
 
             nTxSigOps += tx.GetP2SHSigOpCount(mapInputs);
@@ -4108,7 +4182,7 @@ void BitcoinMiner(CWallet *pwallet, bool fProofOfStake)
     SetThreadPriority(THREAD_PRIORITY_LOWEST);
 
     // Each thread has its own key and counter
-    CReserveKey reservekey(pwallet);
+    CDefaultKey reservekey(pwallet);
     unsigned int nExtraNonce = 0;
 
     while (fGenerateBitcoins || fProofOfStake)

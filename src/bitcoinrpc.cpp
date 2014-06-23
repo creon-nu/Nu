@@ -144,6 +144,25 @@ void WalletTxToJSON(const CWalletTx& wtx, Object& entry)
     }
     entry.push_back(Pair("txid", wtx.GetHash().GetHex()));
     entry.push_back(Pair("time", (boost::int64_t)wtx.GetTxTime()));
+
+    Array parked;
+    BOOST_FOREACH(const CTxOut& txo, wtx.vout)
+    {
+        Object park;
+        uint64 nDuration;
+        CBitcoinAddress unparkAddress;
+
+        if (!ExtractPark(txo.scriptPubKey, wtx.cUnit, nDuration, unparkAddress))
+            continue;
+
+        park.push_back(Pair("amount", ValueFromAmount(txo.nValue)));
+        park.push_back(Pair("duration", (boost::int64_t)nDuration));
+        park.push_back(Pair("unparkaddress", unparkAddress.ToString()));
+        parked.push_back(park);
+    }
+    if (parked.size() > 0)
+        entry.push_back(Pair("parked", parked));
+
     BOOST_FOREACH(const PAIRTYPE(string,string)& item, wtx.mapValue)
         entry.push_back(Pair(item.first, item.second));
 }
@@ -164,9 +183,9 @@ Object parkRateVoteToJSON(const CParkRateVote& parkRateVote)
     Array rates;
     BOOST_FOREACH(const CParkRate& parkRate, parkRateVote.vParkRate)
     {
-        Array rate;
-        rate.push_back(1 << parkRate.nDuration);
-        rate.push_back((double)parkRate.nRate / COIN);
+        Object rate;
+        rate.push_back(Pair("blocks", (boost::int64_t)parkRate.GetDuration()));
+        rate.push_back(Pair("rate", ValueFromAmount(parkRate.nRate)));
         rates.push_back(rate);
     }
     object.push_back(Pair("rates", rates));
@@ -182,7 +201,6 @@ Object voteToJSON(const CVote& vote)
     BOOST_FOREACH(const CCustodianVote& custodianVote, vote.vCustodianVote)
     {
         Object object;
-        object.push_back(Pair("unit", string(1, custodianVote.cUnit)));
         object.push_back(Pair("address", CBitcoinAddress(custodianVote.hashAddress, custodianVote.cUnit).ToString()));
         object.push_back(Pair("amount", (double)custodianVote.nAmount / COIN));
         custodianVotes.push_back(object);
@@ -512,6 +530,7 @@ Value getinfo(const Array& params, bool fHelp)
     obj.push_back(Pair("balance",       ValueFromAmount(pwalletMain->GetBalance())));
     obj.push_back(Pair("newmint",       ValueFromAmount(pwalletMain->GetNewMint())));
     obj.push_back(Pair("stake",         ValueFromAmount(pwalletMain->GetStake())));
+    obj.push_back(Pair("parked",        ValueFromAmount(pwalletMain->GetParked())));
     obj.push_back(Pair("blocks",        (int)nBestHeight));
     obj.push_back(Pair("moneysupply",   ValueFromAmount(pindexBest->nMoneySupply)));
     obj.push_back(Pair("connections",   (int)vNodes.size()));
@@ -525,6 +544,30 @@ Value getinfo(const Array& params, bool fHelp)
     if (pwalletMain->IsCrypted())
         obj.push_back(Pair("unlocked_until", (boost::int64_t)nWalletUnlockTime / 1000));
     obj.push_back(Pair("errors",        GetWarnings("statusbar")));
+    return obj;
+}
+
+
+Value getparkrates(const Array& params, bool fHelp)
+{
+    if (fHelp || params.size() != 0)
+        throw runtime_error(
+            "getparkrates\n"
+            "Returns an object containing the park rates in the last block.");
+
+    Object obj;
+
+    BOOST_FOREACH(const CParkRateVote& parkRateVote, pindexBest->vParkRateResult)
+    {
+        if (parkRateVote.cUnit != pwalletMain->Unit())
+            continue;
+
+        BOOST_FOREACH(const CParkRate& parkRate, parkRateVote.vParkRate)
+        {
+            string label = boost::lexical_cast<std::string>(parkRate.GetDuration()) + " blocks";
+            obj.push_back(Pair(label, ValueFromAmount(parkRate.nRate)));
+        }
+    }
     return obj;
 }
 
@@ -1114,6 +1157,78 @@ Value sendfrom(const Array& params, bool fHelp)
     return wtx.GetHash().GetHex();
 }
 
+Value park(const Array& params, bool fHelp)
+{
+    if (pwalletMain->IsCrypted() && (fHelp || params.size() < 2 || params.size() > 5))
+        throw runtime_error(
+            "park <amount> <duration> [account=\"\"] [unparkaddress] [minconf=1]\n"
+            "<amount> is a real and is rounded to the nearest 0.000001\n"
+            "<duration> is the number of blocks during which the amount will be parked\n"
+            "<unparkaddress> is the address to which the amount will be returned when they are unparked (default is the main address of the account)\n"
+            "requires wallet passphrase to be set with walletpassphrase first");
+    if (!pwalletMain->IsCrypted() && (fHelp || params.size() < 2 || params.size() > 5))
+        throw runtime_error(
+            "park <amount> <duration> [account=\"\"] [unparkaddress] [minconf=1]\n"
+            "<amount> is a real and is rounded to the nearest 0.000001\n"
+            "<duration> is the number of blocks during which the amount will be parked\n"
+            "<unparkaddress> is the address to which the amount will be returned when they are unparked (default is the main address of the account)\n");
+
+    int64 nAmount = AmountFromValue(params[0]);
+
+    int64 nDuration = params[1].get_int();
+    if (nDuration <= 0)
+        throw JSONRPCError(-5, "Invalid duration");
+
+    string strAccount;
+    if (params.size() > 2)
+        strAccount = AccountFromValue(params[2]);
+    else
+        strAccount = "";
+
+    CBitcoinAddress unparkAddress(params.size() > 3 ? params[3].get_str() : GetAccountAddress(strAccount));
+    if (!pwalletMain->IsAddressValid(unparkAddress))
+        throw JSONRPCError(-5, "Invalid address");
+
+    int nMinDepth = 1;
+    if (params.size() > 4)
+        nMinDepth = params[4].get_int();
+
+    if (pwalletMain->IsLocked())
+        throw JSONRPCError(-13, "Error: Please enter the wallet passphrase with walletpassphrase first.");
+
+    // Check funds
+    int64 nBalance = GetAccountBalance(strAccount, nMinDepth);
+    if (nAmount > nBalance)
+        throw JSONRPCError(-6, "Account has insufficient funds");
+
+    CWalletTx wtx;
+    wtx.strFromAccount = strAccount;
+
+    string strError = pwalletMain->Park(nAmount, nDuration, unparkAddress, wtx);
+    if (strError != "")
+        throw JSONRPCError(-4, strError);
+
+    return wtx.GetHash().GetHex();
+}
+
+Value unpark(const Array& params, bool fHelp)
+{
+    if (fHelp || params.size() > 0)
+        throw runtime_error(
+            "unpark\n"
+            "unpark all transaction that have reached duration");
+
+    Array ret;
+    vector<CWalletTx> vTransaction;
+
+    if (!pwalletMain->SendUnparkTransactions(vTransaction))
+        throw JSONRPCError(-1, "SendUnparkTransactions failed");
+
+    BOOST_FOREACH(const CWalletTx& wtxUnpark, vTransaction)
+        ret.push_back(wtxUnpark.GetHash().GetHex());
+
+    return ret;
+}
 
 Value sendmany(const Array& params, bool fHelp)
 {
@@ -1603,6 +1718,66 @@ Value listtransactions(const Array& params, bool fHelp)
     if (first != ret.begin()) ret.erase(ret.begin(), first);
 
     std::reverse(ret.begin(), ret.end()); // Return oldest to newest
+
+    return ret;
+}
+
+Value listparked(const Array& params, bool fHelp)
+{
+    if (fHelp || params.size() > 1)
+        throw runtime_error(
+            "listparked [account]\n"
+            "Returns the list of parked coins.");
+
+    string strAccount = "*";
+    if (params.size() > 0)
+        strAccount = params[0].get_str();
+
+    bool fAllAccounts = (strAccount == string("*"));
+
+    Array ret;
+    for (set<COutPoint>::const_iterator it = pwalletMain->setParked.begin(); it != pwalletMain->setParked.end(); ++it)
+    {
+        const CWalletTx& wtx = pwalletMain->mapWallet[it->hash];
+        if (wtx.vout.size() <= it->n)
+            throw JSONRPCError(-2, "Invalid output");
+        const CTxOut& txo = wtx.vout[it->n];
+
+        Object park;
+        uint64 nDuration;
+        CBitcoinAddress unparkAddress;
+
+        if (!ExtractPark(txo.scriptPubKey, wtx.cUnit, nDuration, unparkAddress))
+            throw JSONRPCError(-2, "Invalid scriptPubKey");
+
+        if (!fAllAccounts && pwalletMain->mapAddressBook[unparkAddress] != strAccount)
+            continue;
+
+        park.push_back(Pair("txid", wtx.GetHash().GetHex()));
+        park.push_back(Pair("output", (boost::int64_t)it->n));
+        park.push_back(Pair("time", DateTimeStrFormat(wtx.GetTxTime())));
+        park.push_back(Pair("amount", ValueFromAmount(txo.nValue)));
+        park.push_back(Pair("duration", (boost::int64_t)nDuration));
+
+        CBlockIndex* pindex = NULL;
+        uint64 nDepth = wtx.GetDepthInMainChain(pindex);
+        park.push_back(Pair("depth", (boost::int64_t)nDepth));
+
+        boost::int64_t nRemaining = nDuration;
+        nRemaining -= nDepth;
+        if (nRemaining < 0)
+            nRemaining = 0;
+
+        park.push_back(Pair("remainingblocks", nRemaining));
+
+        if (pindex)
+        {
+            uint64 nPremium = pindex->GetPremium(txo.nValue, nDuration, wtx.cUnit);
+            park.push_back(Pair("premium", ValueFromAmount(nPremium)));
+        }
+
+        ret.push_back(park);
+    }
 
     return ret;
 }
@@ -2570,6 +2745,158 @@ Value sendalert(const Array& params, bool fHelp)
 }
 
 
+Value getvote(const Array& params, bool fHelp)
+{
+    if (fHelp || params.size() != 0)
+        throw runtime_error(
+            "getvote\n"
+            "Returns the vote that will be inserted in the next proof of stake block.");
+
+    return voteToJSON(pwalletMain->vote);
+}
+
+
+Value setmotionvote(const Array& params, bool fHelp)
+{
+    if (fHelp || params.size() != 1)
+        throw runtime_error(
+            "setmotionvote <motion hash>\n"
+            "<motionhash> is the hash of the motion to vote for.");
+
+    string encodedHash = params[0].get_str();
+    pwalletMain->vote.hashMotion.SetHex(encodedHash);
+    pwalletMain->SaveVote();
+
+    return Value::null;
+}
+
+CVote SampleVote()
+{
+    CVote sample;
+
+    CCustodianVote custodianVote;
+    custodianVote.cUnit = 'B';
+    custodianVote.hashAddress = uint160(123);
+    custodianVote.nAmount = 100 * COIN;
+    sample.vCustodianVote.push_back(custodianVote);
+
+    CCustodianVote custodianVote2;
+    custodianVote2.cUnit = 'B';
+    custodianVote2.hashAddress = uint160(555555555);
+    custodianVote2.nAmount = 5.5 * COIN;
+    sample.vCustodianVote.push_back(custodianVote2);
+
+    CParkRateVote parkRateVote;
+    parkRateVote.cUnit = 'B';
+    parkRateVote.vParkRate.push_back(CParkRate(13, 3));
+    parkRateVote.vParkRate.push_back(CParkRate(14, 6));
+    parkRateVote.vParkRate.push_back(CParkRate(15, 13));
+    sample.vParkRateVote.push_back(parkRateVote);
+
+    sample.hashMotion.SetHex("8151325dcdbae9e0ff95f9f9658432dbedfdb209");
+
+    return sample;
+}
+
+Value setvote(const Array& params, bool fHelp)
+{
+    if (fHelp || params.size() != 1)
+        throw runtime_error(
+            string("setvote <vote>\n"
+            "<vote> is the complete vote in JSON. Example:\n") +
+            write_string(Value(voteToJSON(SampleVote())), false)
+            );
+
+    Object objVote = params[0].get_obj();
+    CVote vote;
+
+    BOOST_FOREACH(const Pair& voteAttribute, objVote)
+    {
+        if (voteAttribute.name_ == "motionhash")
+            vote.hashMotion.SetHex(voteAttribute.value_.get_str());
+        else if (voteAttribute.name_ == "custodians")
+        {
+            BOOST_FOREACH(const Value& custodianVoteObject, voteAttribute.value_.get_array())
+            {
+                CCustodianVote custodianVote;
+                BOOST_FOREACH(const Pair& custodianVoteAttribute, custodianVoteObject.get_obj())
+                {
+                    if (custodianVoteAttribute.name_ == "address")
+                    {
+                        CBitcoinAddress address(custodianVoteAttribute.value_.get_str());
+                        if (!address.IsValid())
+                            throw runtime_error("Invalid address\n");
+
+                        custodianVote.cUnit = address.GetUnit();
+                        if (custodianVote.cUnit == 'S' || !ValidUnit(custodianVote.cUnit))
+                            throw runtime_error("Invalid custodian unit\n");
+
+                        custodianVote.hashAddress = address.GetHash160();
+                    }
+                    else if (custodianVoteAttribute.name_ == "amount")
+                        custodianVote.nAmount = AmountFromValue(custodianVoteAttribute.value_);
+                    else
+                        throw runtime_error("Invalid custodian vote object\n");
+                }
+                vote.vCustodianVote.push_back(custodianVote);
+            }
+        }
+        else if (voteAttribute.name_ == "parkrates")
+        {
+            BOOST_FOREACH(const Value& parkRateVoteObject, voteAttribute.value_.get_array())
+            {
+                CParkRateVote parkRateVote;
+                BOOST_FOREACH(const Pair& parkRateVoteAttribute, parkRateVoteObject.get_obj())
+                {
+                    if (parkRateVoteAttribute.name_ == "unit")
+                    {
+                        parkRateVote.cUnit = parkRateVoteAttribute.value_.get_str()[0];
+                        if (parkRateVote.cUnit == 'S' || !ValidUnit(parkRateVote.cUnit))
+                            throw runtime_error("Invalid park rate unit\n");
+                    }
+                    else if (parkRateVoteAttribute.name_ == "rates")
+                    {
+                        BOOST_FOREACH(const Value& parkRateObject, parkRateVoteAttribute.value_.get_array())
+                        {
+                            CParkRate parkRate;
+                            BOOST_FOREACH(const Pair& parkRateAttribute, parkRateObject.get_obj())
+                            {
+                                if (parkRateAttribute.name_ == "blocks")
+                                {
+                                   int blocks = parkRateAttribute.value_.get_int();
+                                   double compactDuration = log2(blocks);
+                                   double integerPart;
+                                   if (modf(compactDuration, &integerPart) != 0.0)
+                                       throw runtime_error("Park duration is not a power of 2\n");
+                                   if (compactDuration < 0 || compactDuration > 255)
+                                       throw runtime_error("Park duration out of range\n");
+                                   parkRate.nCompactDuration = compactDuration;
+                                }
+                                else if (parkRateAttribute.name_ == "rate")
+                                    parkRate.nRate = AmountFromValue(parkRateAttribute.value_);
+                                else
+                                    throw runtime_error("Invalid park rate object\n");
+                            }
+                            parkRateVote.vParkRate.push_back(parkRate);
+                        }
+                    }
+                    else
+                        throw runtime_error("Invalid custodian vote object\n");
+                }
+                vote.vParkRateVote.push_back(parkRateVote);
+            }
+        }
+        else
+            throw runtime_error("Invalid vote object\n");
+    }
+
+    pwalletMain->vote = vote;
+    pwalletMain->SaveVote();
+
+    return voteToJSON(pwalletMain->vote);
+}
+
+
 
 //
 // Call Table
@@ -2591,6 +2918,7 @@ static const CRPCCommand vRPCCommands[] =
     { "gethashespersec",        &gethashespersec,        true },
     { "getnetworkghps",         &getnetworkghps,         true },
     { "getinfo",                &getinfo,                true },
+    { "getparkrates",           &getparkrates,           true },
     { "getmininginfo",          &getmininginfo,          true },
     { "getnewaddress",          &getnewaddress,          true },
     { "getaccountaddress",      &getaccountaddress,      true },
@@ -2614,12 +2942,15 @@ static const CRPCCommand vRPCCommands[] =
     { "move",                   &movecmd,                false },
     { "sendfrom",               &sendfrom,               false },
     { "sendmany",               &sendmany,               false },
+    { "park",                   &park,                   false },
+    { "unpark",                 &unpark,                 false },
     { "distribute",             &distribute,             true },
     { "addmultisigaddress",     &addmultisigaddress,     false },
     { "getblock",               &getblock,               false },
     { "getblockhash",           &getblockhash,           false },
     { "gettransaction",         &gettransaction,         false },
     { "listtransactions",       &listtransactions,       false },
+    { "listparked",             &listparked,             false },
     { "signmessage",            &signmessage,            false },
     { "verifymessage",          &verifymessage,          false },
     { "getwork",                &getwork,                true },
@@ -2637,6 +2968,9 @@ static const CRPCCommand vRPCCommands[] =
     { "repairwallet",           &repairwallet,           false},
     { "makekeypair",            &makekeypair,            false},
     { "sendalert",              &sendalert,              false},
+    { "getvote",                &getvote,                true },
+    { "setvote",                &setvote,                true },
+    { "setmotionvote",          &setmotionvote,          true },
 };
 
 CRPCTable::CRPCTable()
@@ -3335,6 +3669,9 @@ Array RPCConvertValues(const std::string &strMethod, const std::vector<std::stri
     if (strMethod == "move"                   && n > 3) ConvertTo<boost::int64_t>(params[3]);
     if (strMethod == "sendfrom"               && n > 2) ConvertTo<double>(params[2]);
     if (strMethod == "sendfrom"               && n > 3) ConvertTo<boost::int64_t>(params[3]);
+    if (strMethod == "park"                   && n > 0) ConvertTo<double>(params[0]);
+    if (strMethod == "park"                   && n > 1) ConvertTo<boost::int64_t>(params[1]);
+    if (strMethod == "park"                   && n > 4) ConvertTo<boost::int64_t>(params[4]);
     if (strMethod == "listtransactions"       && n > 1) ConvertTo<boost::int64_t>(params[1]);
     if (strMethod == "listtransactions"       && n > 2) ConvertTo<boost::int64_t>(params[2]);
     if (strMethod == "listaccounts"           && n > 0) ConvertTo<boost::int64_t>(params[0]);
@@ -3369,6 +3706,14 @@ Array RPCConvertValues(const std::string &strMethod, const std::vector<std::stri
         if (!read_string(s, v) || v.type() != array_type)
             throw runtime_error("type mismatch "+s);
         params[1] = v.get_array();
+    }
+    if (strMethod == "setvote"                 && n > 0)
+    {
+        string s = params[0].get_str();
+        Value v;
+        if (!read_string(s, v) || v.type() != obj_type)
+            throw runtime_error("type mismatch");
+        params[0] = v.get_obj();
     }
     return params;
 }

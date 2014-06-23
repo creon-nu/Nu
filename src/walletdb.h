@@ -143,6 +143,17 @@ public:
         return Erase(std::make_pair(std::string("pool"), nPool));
     }
 
+    bool WriteVote(const CVote& vote)
+    {
+        nWalletDBUpdated++;
+        return Write(std::string("vote"), vote);
+    }
+
+    bool ReadVote(CVote& vote)
+    {
+        return Read(std::string("vote"), vote);
+    }
+
     // Settings are no longer stored in wallet.dat; these are
     // used only for backwards compatibility:
     template<typename T>
@@ -172,6 +183,11 @@ public:
     bool WriteAccountingEntry(const CAccountingEntry& acentry);
     int64 GetAccountCreditDebit(const std::string& strAccount);
     void ListAccountCreditDebit(const std::string& strAccount, std::list<CAccountingEntry>& acentries);
+
+    bool WriteParked(const std::set<COutPoint>& setParked)
+    {
+        return Write(std::string("parked"), setParked);
+    }
 
     int LoadWallet(CWallet* pwallet);
 };
