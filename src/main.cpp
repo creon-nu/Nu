@@ -1848,6 +1848,8 @@ bool CBlock::SetBestChain(CTxDB& txdb, CBlockIndex* pindexNew)
         boost::thread t(runCommand, strCmd); // thread runs free
     }
 
+    RemoveExpiredLiquidityInfo(nBestHeight);
+
     return true;
 }
 

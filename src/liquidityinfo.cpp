@@ -51,3 +51,31 @@ bool CLiquidityInfo::ProcessLiquidityInfo()
     MainFrameRepaint();
     return true;
 }
+
+void RemoveExpiredLiquidityInfo(int nCurrentHeight)
+{
+    bool fAnyRemoved = false;
+    {
+        LOCK(cs_mapLiquidityInfo);
+        LOCK2(cs_main, cs_mapElectedCustodian);
+
+        map<const CBitcoinAddress, CLiquidityInfo>::iterator it;
+        it = mapLiquidityInfo.begin();
+        while (it != mapLiquidityInfo.end())
+        {
+            const CBitcoinAddress& address = it->first;
+            CBlockIndex *pindex = mapElectedCustodian[address];
+
+            if (nCurrentHeight - pindex->nHeight > LIQUIDITY_INFO_MAX_HEIGHT)
+            {
+                mapLiquidityInfo.erase(it++);
+                fAnyRemoved = true;
+            }
+            else
+                it++;
+        }
+    }
+
+    if (fAnyRemoved)
+        MainFrameRepaint();
+}
