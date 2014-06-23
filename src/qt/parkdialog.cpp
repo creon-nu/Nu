@@ -61,8 +61,7 @@ void ParkDialog::setModel(WalletModel *model)
         durationItem->setData(Qt::TextAlignmentRole, QVariant(Qt::AlignRight | Qt::AlignVCenter));
         ui->rates->setItem(i, 0, durationItem);
 
-        double durationInYears = (double)parkRate.GetDuration() * STAKE_TARGET_SPACING / (365.25 * 24 * 3600);
-        double interestRate = (double)parkRate.nRate / durationInYears;
+        double interestRate = GUIUtil::annualInterestRatePercentage(parkRate.nRate, parkRate.GetDuration());
         QString rateString = QString("%L1%").arg(interestRate, 0, 'f', 3);
         QTableWidgetItem *rateItem = new QTableWidgetItem(rateString);
         rateItem->setData(Qt::TextAlignmentRole, QVariant(Qt::AlignRight | Qt::AlignVCenter));

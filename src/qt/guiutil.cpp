@@ -240,5 +240,20 @@ QString blocksToTime(qint64 blocks)
     return QString("%1 years").arg(QString::number(time, 'f', 1));
 }
 
+double durationInYears(qint64 blocks)
+{
+    return (double)blocks * STAKE_TARGET_SPACING / (365.25 * 24 * 3600);
+}
+
+double annualInterestRatePercentage(unsigned int rate, qint64 blocks)
+{
+    return (double)rate / COIN * 100 / durationInYears(blocks);
+}
+
+unsigned int annualInterestRatePercentageToRate(double percentage, qint64 blocks)
+{
+    return round(percentage * durationInYears(blocks) / 100 * COIN);
+}
+
 } // namespace GUIUtil
 

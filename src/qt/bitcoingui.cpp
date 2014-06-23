@@ -29,6 +29,7 @@
 #include "wallet.h"
 #include "distributedivdialog.h"
 #include "parkpage.h"
+#include "votepage.h"
 
 #ifdef Q_WS_MAC
 #include "macdockiconhandler.h"
@@ -117,6 +118,8 @@ BitcoinGUI::BitcoinGUI(QWidget *parent):
 
     parkPage = new ParkPage(this);
 
+    votePage = new VotePage(this);
+
     centralWidget = new QStackedWidget(this);
     centralWidget->addWidget(overviewPage);
     centralWidget->addWidget(transactionsPage);
@@ -127,6 +130,7 @@ BitcoinGUI::BitcoinGUI(QWidget *parent):
     centralWidget->addWidget(messagePage);
 #endif
     centralWidget->addWidget(parkPage);
+    centralWidget->addWidget(votePage);
     setCentralWidget(centralWidget);
 
     // Create status bar
@@ -230,6 +234,12 @@ void BitcoinGUI::createActions()
     parkAction->setShortcut(QKeySequence(Qt::ALT + Qt::Key_6));
     tabGroup->addAction(parkAction);
 
+    voteAction = new QAction(QIcon(":/icons/edit"), tr("&Vote"), this);
+    voteAction->setToolTip(tr("Change your vote"));
+    voteAction->setCheckable(true);
+    voteAction->setShortcut(QKeySequence(Qt::ALT + Qt::Key_7));
+    tabGroup->addAction(voteAction);
+
     connect(overviewAction, SIGNAL(triggered()), this, SLOT(showNormalIfMinimized()));
     connect(overviewAction, SIGNAL(triggered()), this, SLOT(gotoOverviewPage()));
     connect(historyAction, SIGNAL(triggered()), this, SLOT(showNormalIfMinimized()));
@@ -244,6 +254,8 @@ void BitcoinGUI::createActions()
     connect(messageAction, SIGNAL(triggered()), this, SLOT(gotoMessagePage()));
     connect(parkAction, SIGNAL(triggered()), this, SLOT(showNormalIfMinimized()));
     connect(parkAction, SIGNAL(triggered()), this, SLOT(gotoParkPage()));
+    connect(voteAction, SIGNAL(triggered()), this, SLOT(showNormalIfMinimized()));
+    connect(voteAction, SIGNAL(triggered()), this, SLOT(gotoVotePage()));
 
     quitAction = new QAction(QIcon(":/icons/quit"), tr("E&xit"), this);
     quitAction->setToolTip(tr("Quit application"));
@@ -345,6 +357,7 @@ void BitcoinGUI::createToolBars()
     toolbar->addAction(messageAction);
 #endif
     toolbar->addAction(parkAction);
+    toolbar->addAction(voteAction);
 
     QToolBar *toolbar2 = addToolBar(tr("Actions toolbar"));
     toolbar2->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
@@ -407,8 +420,11 @@ void BitcoinGUI::setWalletModel(WalletModel *walletModel)
         messagePage->setModel(walletModel);
         rpcConsole->setModel(walletModel);
         parkPage->setModel(walletModel);
+        votePage->setModel(walletModel);
 
         parkAction->setVisible(walletModel->getUnit() != 'S');
+
+        voteAction->setVisible(walletModel->getUnit() == 'S');
 
         setEncryptionStatus(walletModel->getEncryptionStatus());
         connect(walletModel, SIGNAL(encryptionStatusChanged(int)), this, SLOT(setEncryptionStatus(int)));
@@ -828,6 +844,15 @@ void BitcoinGUI::gotoParkPage()
 {
     parkAction->setChecked(true);
     centralWidget->setCurrentWidget(parkPage);
+
+    exportAction->setEnabled(false);
+    disconnect(exportAction, SIGNAL(triggered()), 0, 0);
+}
+
+void BitcoinGUI::gotoVotePage()
+{
+    voteAction->setChecked(true);
+    centralWidget->setCurrentWidget(votePage);
 
     exportAction->setEnabled(false);
     disconnect(exportAction, SIGNAL(triggered()), 0, 0);

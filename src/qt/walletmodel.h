@@ -13,6 +13,7 @@ class AddressTableModel;
 class TransactionTableModel;
 class ParkTableModel;
 class CWallet;
+class CVote;
 
 class SendCoinsRecipient
 {
@@ -86,6 +87,9 @@ public:
 
     // nubit: Get current premium for this amount and duration
     qint64 getPremium(qint64 amount, qint64 blocks);
+
+    CVote getVote();
+    void setVote(const CVote& vote);
 
     // Wallet encryption
     bool setWalletEncrypted(bool encrypted, const SecureString &passphrase);
