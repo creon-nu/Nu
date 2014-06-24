@@ -170,7 +170,11 @@ HEADERS += src/qt/bitcoingui.h \
     src/vote.h \
     src/qt/parkpage.h \
     src/qt/parktablemodel.h \
-    src/qt/parkdialog.h
+    src/qt/parkdialog.h \
+    src/qt/votepage.h \
+    src/qt/custodianvotedialog.h \
+    src/qt/parkratevotedialog.h \
+    src/qt/motionvotedialog.h
 
 SOURCES += src/qt/bitcoin.cpp src/qt/bitcoingui.cpp \
     src/qt/transactiontablemodel.cpp \
@@ -233,7 +237,11 @@ SOURCES += src/qt/bitcoin.cpp src/qt/bitcoingui.cpp \
     src/vote.cpp \
     src/qt/parkpage.cpp \
     src/qt/parktablemodel.cpp \
-    src/qt/parkdialog.cpp
+    src/qt/parkdialog.cpp \
+    src/qt/votepage.cpp \
+    src/qt/custodianvotedialog.cpp \
+    src/qt/parkratevotedialog.cpp \
+    src/qt/motionvotedialog.cpp
 
 RESOURCES += \
     src/qt/bitcoin.qrc
@@ -251,7 +259,11 @@ FORMS += \
     src/qt/forms/rpcconsole.ui \
     src/qt/forms/distributedivdialog.ui \
     src/qt/forms/parkpage.ui \
-    src/qt/forms/parkdialog.ui
+    src/qt/forms/parkdialog.ui \
+    src/qt/forms/votepage.ui \
+    src/qt/forms/custodianvotedialog.ui \
+    src/qt/forms/parkratevotedialog.ui \
+    src/qt/forms/motionvotedialog.ui
 
 contains(USE_QRCODE, 1) {
 HEADERS += src/qt/qrcodedialog.h

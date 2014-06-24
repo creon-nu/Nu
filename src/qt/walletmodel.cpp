@@ -223,6 +223,25 @@ qint64 WalletModel::getPremium(qint64 amount, qint64 blocks)
     }
 }
 
+CVote WalletModel::getVote()
+{
+    {
+        LOCK(wallet->cs_wallet);
+
+        return wallet->vote;
+    }
+}
+
+void WalletModel::setVote(const CVote& vote)
+{
+    {
+        LOCK(wallet->cs_wallet);
+
+        wallet->vote = vote;
+        wallet->SaveVote();
+    }
+}
+
 OptionsModel *WalletModel::getOptionsModel()
 {
     return optionsModel;
