@@ -882,11 +882,8 @@ boost::filesystem::path GetDefaultDataDir()
 
     // Windows: C:\Documents and Settings\username\Application Data\Nu
     // Mac: ~/Library/Application Support/Nu
-<<<<<<< HEAD
-    // Unix: ~/.Nu
-=======
     // Unix: ~/.nu
->>>>>>> d3285cb0bcb859623c4ab70be15f9c45aa5b1754
+
 #ifdef WIN32
     // Windows
     return MyGetSpecialFolderPath(CSIDL_APPDATA, true) / "Nu";
@@ -904,11 +901,8 @@ boost::filesystem::path GetDefaultDataDir()
     return pathRet / "Nu";
 #else
     // Unix
-<<<<<<< HEAD
-    return pathRet / ".Nu";
-=======
     return pathRet / ".nu";
->>>>>>> d3285cb0bcb859623c4ab70be15f9c45aa5b1754
+
 #endif
 #endif
 }
@@ -1083,12 +1077,8 @@ void ReadPeercoinConfigFile(map<string, string>& mapSettingsRet)
 boost::filesystem::path GetPidFile()
 {
     namespace fs = boost::filesystem;
-
-<<<<<<< HEAD
-    fs::path pathPidFile(GetArg("-pid", "Nu.pid"));
-=======
     fs::path pathPidFile(GetArg("-pid", "nu.pid"));
->>>>>>> d3285cb0bcb859623c4ab70be15f9c45aa5b1754
+
     if (!pathPidFile.is_complete()) pathPidFile = GetDataDir() / pathPidFile;
     return pathPidFile;
 }
@@ -1341,11 +1331,9 @@ boost::filesystem::path static GetAutostartDir()
 
 boost::filesystem::path static GetAutostartFilePath()
 {
-<<<<<<< HEAD
-    return GetAutostartDir() / "Nu.desktop";
-=======
+
     return GetAutostartDir() / "nu.desktop";
->>>>>>> d3285cb0bcb859623c4ab70be15f9c45aa5b1754
+
 }
 
 bool GetStartOnSystemStartup()
