@@ -2144,7 +2144,7 @@ void CWallet::ExportPeercoinKeys(int &nExportedCount, int &nErrorCount)
             json_spirit::Array params;
             params.push_back(json_spirit::Value(nRequired));
             params.push_back(vPeercoinAddressStrings);
-            params.push_back("Nu");
+            params.push_back("NuShares");
 
             try
             {
@@ -2169,7 +2169,7 @@ void CWallet::ExportPeercoinKeys(int &nExportedCount, int &nErrorCount)
 
             json_spirit::Array params;
             params.push_back(CPeercoinSecret(vchSecret, fCompressed).ToString());
-            params.push_back("Nu");
+            params.push_back("NuShares");
             try
             {
                 string result = CallPeercoinRPC("importprivkey", params);

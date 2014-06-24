@@ -803,9 +803,7 @@ void FormatException(char* pszMessage, std::exception* pex, const char* pszThrea
     pszModule[0] = '\0';
     GetModuleFileNameA(NULL, pszModule, sizeof(pszModule));
 #else
-
     const char* pszModule = "nu";
-
 #endif
     if (pex)
         snprintf(pszMessage, 1000,
@@ -883,7 +881,6 @@ boost::filesystem::path GetDefaultDataDir()
     // Windows: C:\Documents and Settings\username\Application Data\Nu
     // Mac: ~/Library/Application Support/Nu
     // Unix: ~/.nu
-
 #ifdef WIN32
     // Windows
     return MyGetSpecialFolderPath(CSIDL_APPDATA, true) / "Nu";
@@ -902,7 +899,6 @@ boost::filesystem::path GetDefaultDataDir()
 #else
     // Unix
     return pathRet / ".nu";
-
 #endif
 #endif
 }
@@ -1077,8 +1073,8 @@ void ReadPeercoinConfigFile(map<string, string>& mapSettingsRet)
 boost::filesystem::path GetPidFile()
 {
     namespace fs = boost::filesystem;
+	
     fs::path pathPidFile(GetArg("-pid", "nu.pid"));
-
     if (!pathPidFile.is_complete()) pathPidFile = GetDataDir() / pathPidFile;
     return pathPidFile;
 }
@@ -1331,9 +1327,7 @@ boost::filesystem::path static GetAutostartDir()
 
 boost::filesystem::path static GetAutostartFilePath()
 {
-
     return GetAutostartDir() / "nu.desktop";
-
 }
 
 bool GetStartOnSystemStartup()
