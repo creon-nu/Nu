@@ -2,6 +2,7 @@
 #include "ui_editaddressdialog.h"
 #include "addresstablemodel.h"
 #include "guiutil.h"
+#include "bitcoinunits.h"
 
 #include <QDataWidgetMapper>
 #include <QMessageBox>
