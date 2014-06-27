@@ -356,7 +356,7 @@ bool AppInit2(int argc, char* argv[])
     // Load data files
     //
     if (fDaemon)
-        fprintf(stdout, "ppcoin server starting\n");
+        fprintf(stdout, "Nu server starting\n");
     int64 nStart;
 
     InitMessage(_("Loading addresses..."));
