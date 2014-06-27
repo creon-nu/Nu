@@ -184,7 +184,7 @@ bool AppInit2(int argc, char* argv[])
             "  nud [options] help              \t\t  " + _("List commands") + "\n" +
             "  nud [options] help <command>    \t\t  " + _("Get help for a command") + "\n" +
           _("Options:") + "\n" +
-            "  -conf=<file>     \t\t  " + _("Specify configuration file (default: ppcoin.conf)") + "\n" +
+            "  -conf=<file>     \t\t  " + _("Specify configuration file (default: nu.conf)") + "\n" +
             "  -pid=<file>      \t\t  " + _("Specify pid file (default: nud.pid)") + "\n" +
             "  -gen             \t\t  " + _("Generate coins") + "\n" +
             "  -gen=0           \t\t  " + _("Don't generate coins") + "\n" +
