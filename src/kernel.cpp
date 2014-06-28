@@ -342,10 +342,6 @@ bool CheckProofOfStake(const CTransaction& tx, unsigned int nBits, uint256& hash
     if (!tx.IsCoinStake())
         return error("CheckProofOfStake() : called on non-coinstake %s", tx.GetHash().ToString().c_str());
 
-    // nu: only one input is allowed
-    if (tx.vin.size() != 1)
-        return tx.DoS(100, error("CheckProofOfStake() : Invalid number of inputs on %s", tx.GetHash().ToString().c_str()));
-
     // Kernel (input 0) must match the stake hash target per coin age (nBits)
     const CTxIn& txin = tx.vin[0];
 
@@ -357,7 +353,7 @@ bool CheckProofOfStake(const CTransaction& tx, unsigned int nBits, uint256& hash
         return tx.DoS(1, error("CheckProofOfStake() : INFO: read txPrev failed"));  // previous transaction not in main chain, may occur during initial download
     txdb.Close();
 
-    // nu: only input with minimum amount is allowed
+    // nu: the kernel must have the minimum amount
     if (txPrev.vout[txin.prevout.n].nValue < MIN_COINSTAKE_VALUE)
         return tx.DoS(100, error("CheckProofOfStake() : Input value too low on coinstake %s", tx.GetHash().ToString().c_str()));
 

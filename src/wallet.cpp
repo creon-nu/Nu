@@ -1416,19 +1416,7 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
                 txNew.vin.push_back(CTxIn(pcoin.first->GetHash(), pcoin.second));
                 nCredit += pcoin.first->vout[pcoin.second].nValue;
                 vwtxPrev.push_back(pcoin.first);
-
-                if (GetBoolArg("-splitshareoutputs", true))
-                    nOutputs = nCredit / MIN_COINSTAKE_VALUE;
-                else
-                    nOutputs = 1;
-
-                // limit the number of outputs to avoid exceeding MAX_COINSTAKE_SIZE
-                if (nOutputs > 10)
-                    nOutputs = 10;
-
-                for (int i = 0; i < nOutputs; i++)
-                    txNew.vout.push_back(CTxOut(0, scriptPubKeyOut));
-
+                txNew.vout.push_back(CTxOut(0, scriptPubKeyOut));
                 if (fDebug && GetBoolArg("-printcoinstake"))
                     printf("CreateCoinStake : added kernel type=%d\n", whichType);
                 fKernelFound = true;
@@ -1440,6 +1428,41 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
     }
     if (nCredit == 0 || nCredit > nBalance - nReserveBalance)
         return false;
+    BOOST_FOREACH(PAIRTYPE(const CWalletTx*, unsigned int) pcoin, setCoins)
+    {
+        // Attempt to add more inputs
+        // Only add coins of the same key/address as kernel
+        if (txNew.vout.size() == 2 && ((pcoin.first->vout[pcoin.second].scriptPubKey == scriptPubKeyKernel || pcoin.first->vout[pcoin.second].scriptPubKey == txNew.vout[1].scriptPubKey))
+            && pcoin.first->GetHash() != txNew.vin[0].prevout.hash)
+        {
+            // Stop adding more inputs if already too many inputs
+            if (txNew.vin.size() >= 5)
+                break;
+            // Stop adding inputs if reached reserve limit
+            if (nCredit + pcoin.first->vout[pcoin.second].nValue > nBalance - nReserveBalance)
+                break;
+            // nu: Do not add inputs able to find a block
+            if (pcoin.first->vout[pcoin.second].nValue >= MIN_COINSTAKE_VALUE)
+                continue;
+            txNew.vin.push_back(CTxIn(pcoin.first->GetHash(), pcoin.second));
+            nCredit += pcoin.first->vout[pcoin.second].nValue;
+            vwtxPrev.push_back(pcoin.first);
+        }
+    }
+
+    // nu: split outputs
+    if (GetBoolArg("-splitshareoutputs", true))
+    {
+        nOutputs = nCredit / MIN_COINSTAKE_VALUE;
+
+        // limit the number of outputs to avoid exceeding MAX_COINSTAKE_SIZE
+        if (nOutputs > 5)
+            nOutputs = 5;
+
+        for (int i = 1; i < nOutputs; i++)
+            txNew.vout.push_back(CTxOut(0, txNew.vout[1].scriptPubKey));
+    }
+
     // Calculate coin age reward
     uint64 nCoinAge;
     {
