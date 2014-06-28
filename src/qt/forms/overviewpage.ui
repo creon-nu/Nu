@@ -34,6 +34,20 @@
         <property name="verticalSpacing">
          <number>12</number>
         </property>
+        <item row="1" column="0">
+         <widget class="QLabel" name="label_5">
+          <property name="font">
+           <font>
+            <pointsize>11</pointsize>
+            <weight>75</weight>
+            <bold>true</bold>
+           </font>
+          </property>
+          <property name="text">
+           <string>Wallet</string>
+          </property>
+         </widget>
+        </item>
         <item row="2" column="0">
          <widget class="QLabel" name="label">
           <property name="text">
@@ -43,34 +57,6 @@
         </item>
         <item row="2" column="1">
          <widget class="QLabel" name="labelBalance">
-          <property name="text">
-           <string notr="true">0 BTC</string>
-          </property>
-         </widget>
-        </item>
-        <item row="5" column="0">
-         <widget class="QLabel" name="label_2">
-          <property name="text">
-           <string>Number of transactions:</string>
-          </property>
-         </widget>
-        </item>
-        <item row="5" column="1">
-         <widget class="QLabel" name="labelNumTransactions">
-          <property name="text">
-           <string>0</string>
-          </property>
-         </widget>
-        </item>
-        <item row="4" column="0">
-         <widget class="QLabel" name="label_3">
-          <property name="text">
-           <string>Unconfirmed:</string>
-          </property>
-         </widget>
-        </item>
-        <item row="4" column="1">
-         <widget class="QLabel" name="labelUnconfirmed">
           <property name="text">
            <string notr="true">0 BTC</string>
           </property>
@@ -90,16 +76,45 @@
           </property>
          </widget>
         </item>
-        <item row="1" column="0">
-         <widget class="QLabel" name="label_5">
-          <property name="font">
-           <font>
-            <pointsize>11</pointsize>
-            <bold>true</bold>
-           </font>
-          </property>
+        <item row="4" column="1">
+         <widget class="QLabel" name="labelUnconfirmed">
           <property name="text">
-           <string>Wallet</string>
+           <string notr="true">0 BTC</string>
+          </property>
+         </widget>
+        </item>
+        <item row="6" column="0">
+         <widget class="QLabel" name="label_2">
+          <property name="text">
+           <string>Number of transactions:</string>
+          </property>
+         </widget>
+        </item>
+        <item row="6" column="1">
+         <widget class="QLabel" name="labelNumTransactions">
+          <property name="text">
+           <string>0</string>
+          </property>
+         </widget>
+        </item>
+        <item row="4" column="0">
+         <widget class="QLabel" name="label_3">
+          <property name="text">
+           <string>Unconfirmed:</string>
+          </property>
+         </widget>
+        </item>
+        <item row="5" column="0">
+         <widget class="QLabel" name="labelParkedLabel">
+          <property name="text">
+           <string>Parked:</string>
+          </property>
+         </widget>
+        </item>
+        <item row="5" column="1">
+         <widget class="QLabel" name="labelParked">
+          <property name="text">
+           <string notr="true">0 BTC</string>
           </property>
          </widget>
         </item>

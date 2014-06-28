@@ -124,6 +124,8 @@ public:
 
     std::map<uint256, CWalletTx> mapWallet;
     std::vector<uint256> vWalletUpdated;
+    std::vector<uint256> vParkWalletUpdated;
+    std::set<COutPoint> setParked;
 
     std::map<uint256, int> mapRequestCount;
 
@@ -267,6 +269,7 @@ public:
         {
             LOCK(cs_wallet);
             vWalletUpdated.push_back(hashTx);
+            vParkWalletUpdated.push_back(hashTx);
         }
     }
 
@@ -305,6 +308,9 @@ public:
 
     void ExportPeercoinKeys(int &nExportedCount, int &nErrorCount);
 
+    void AddParked(const COutPoint& outpoint);
+    void RemoveParked(const COutPoint& outpoint);
+
     void SaveVote() const;
 };
 
@@ -322,17 +328,32 @@ public:
         pwallet = pwalletIn;
     }
 
-    ~CReserveKey()
+    virtual ~CReserveKey()
     {
         if (!fShutdown)
             ReturnKey();
     }
 
     void ReturnKey();
-    std::vector<unsigned char> GetReservedKey();
+    virtual std::vector<unsigned char> GetReservedKey();
     void KeepKey();
 };
 
+// Peershares: A reserve key that always returns the default key
+class CDefaultKey : public CReserveKey
+{
+public:
+    CDefaultKey(CWallet* pwalletIn) :
+        CReserveKey(pwalletIn)
+    {
+    }
+
+    std::vector<unsigned char> GetReservedKey()
+    {
+        vchPubKey = pwallet->vchDefaultKey;
+        return vchPubKey;
+    }
+};
 
 /** A transaction with a bunch of additional info that only the owner cares about. 
  * It includes any unrecorded transactions needed to link it back to the block chain.

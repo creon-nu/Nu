@@ -69,7 +69,9 @@ public:
         RecvWithAddress,
         RecvFromOther,
         SendToSelf,
-        StakeMint
+        StakeMint,
+        Park,
+        Unpark
     };
 
     /** Number of confirmation needed for transaction */

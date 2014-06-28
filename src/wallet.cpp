@@ -314,6 +314,8 @@ void CWallet::WalletUpdateSpent(const CTransaction &tx)
                     wtx.WriteToDisk();
                     vWalletUpdated.push_back(txin.prevout.hash);
                 }
+                if (setParked.count(txin.prevout))
+                    RemoveParked(txin.prevout);
             }
         }
     }
@@ -389,7 +391,24 @@ bool CWallet::AddToWallet(const CWalletTx& wtxIn)
         }
 #endif
         // Notify UI
-        vWalletUpdated.push_back(hash);
+        UpdatedTransaction(hash);
+
+        // nubit: Add parked outputs
+        for (unsigned int i = 0; i < wtx.vout.size(); i++)
+        {
+            const CTxOut& txo = wtx.vout[i];
+
+            uint64 nDuration;
+            CBitcoinAddress unparkAddress;
+
+            if (!ExtractPark(txo.scriptPubKey, wtx.cUnit, nDuration, unparkAddress))
+                continue;
+
+            if (!HaveKey(unparkAddress))
+                continue;
+
+            AddParked(COutPoint(wtx.GetHash(), i));
+        }
 
         // since AddToWallet is called directly for self-originating transactions, check for consumption of own coins
         WalletUpdateSpent(wtx);
@@ -1596,7 +1615,7 @@ bool CWallet::CommitTransaction(CWalletTx& wtxNew, CReserveKey& reservekey)
                 coin.BindWallet(this);
                 coin.MarkSpent(txin.prevout.n);
                 coin.WriteToDisk();
-                vWalletUpdated.push_back(coin.GetHash());
+                UpdatedTransaction(coin.GetHash());
             }
 
             if (fFileBacked)
@@ -2137,7 +2156,7 @@ void CWallet::ExportPeercoinKeys(int &nExportedCount, int &nErrorCount)
             json_spirit::Array params;
             params.push_back(json_spirit::Value(nRequired));
             params.push_back(vPeercoinAddressStrings);
-            params.push_back("Peershares");
+            params.push_back("NuShares");
 
             try
             {
@@ -2162,7 +2181,7 @@ void CWallet::ExportPeercoinKeys(int &nExportedCount, int &nErrorCount)
 
             json_spirit::Array params;
             params.push_back(CPeercoinSecret(vchSecret, fCompressed).ToString());
-            params.push_back("Peershares");
+            params.push_back("NuShares");
             try
             {
                 string result = CallPeercoinRPC("importprivkey", params);
@@ -2176,4 +2195,16 @@ void CWallet::ExportPeercoinKeys(int &nExportedCount, int &nErrorCount)
             }
         }
     }
+}
+
+void CWallet::AddParked(const COutPoint& outpoint)
+{
+    setParked.insert(outpoint);
+    CWalletDB(strWalletFile).WriteParked(setParked);
+}
+
+void CWallet::RemoveParked(const COutPoint& outpoint)
+{
+    setParked.erase(outpoint);
+    CWalletDB(strWalletFile).WriteParked(setParked);
 }

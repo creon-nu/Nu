@@ -803,7 +803,7 @@ void FormatException(char* pszMessage, std::exception* pex, const char* pszThrea
     pszModule[0] = '\0';
     GetModuleFileNameA(NULL, pszModule, sizeof(pszModule));
 #else
-    const char* pszModule = "peershares";
+    const char* pszModule = "nu";
 #endif
     if (pex)
         snprintf(pszMessage, 1000,
@@ -878,12 +878,12 @@ boost::filesystem::path GetDefaultDataDir()
 {
     namespace fs = boost::filesystem;
 
-    // Windows: C:\Documents and Settings\username\Application Data\PPCoin
-    // Mac: ~/Library/Application Support/PPCoin
-    // Unix: ~/.peershares
+    // Windows: C:\Documents and Settings\username\Application Data\Nu
+    // Mac: ~/Library/Application Support/Nu
+    // Unix: ~/.nu
 #ifdef WIN32
     // Windows
-    return MyGetSpecialFolderPath(CSIDL_APPDATA, true) / "Peershares";
+    return MyGetSpecialFolderPath(CSIDL_APPDATA, true) / "Nu";
 #else
     fs::path pathRet;
     char* pszHome = getenv("HOME");
@@ -895,10 +895,10 @@ boost::filesystem::path GetDefaultDataDir()
     // Mac
     pathRet /= "Library/Application Support";
     fs::create_directory(pathRet);
-    return pathRet / "Peershares";
+    return pathRet / "Nu";
 #else
     // Unix
-    return pathRet / ".peershares";
+    return pathRet / ".nu";
 #endif
 #endif
 }
@@ -909,7 +909,7 @@ boost::filesystem::path GetDefaultPeercoinDataDir()
 
     // Windows: C:\Documents and Settings\username\Application Data\PPCoin
     // Mac: ~/Library/Application Support/PPCoin
-    // Unix: ~/.peershares
+    // Unix: ~/.ppcoin
 #ifdef WIN32
     // Windows
     return MyGetSpecialFolderPath(CSIDL_APPDATA, true) / "PPCoin";
@@ -1004,7 +1004,7 @@ boost::filesystem::path GetConfigFile()
 {
     namespace fs = boost::filesystem;
 
-    fs::path pathConfigFile(GetArg("-conf", "peershares.conf"));
+    fs::path pathConfigFile(GetArg("-conf", "nu.conf"));
     if (!pathConfigFile.is_complete()) pathConfigFile = GetDataDir(false) / pathConfigFile;
     return pathConfigFile;
 }
@@ -1073,8 +1073,8 @@ void ReadPeercoinConfigFile(map<string, string>& mapSettingsRet)
 boost::filesystem::path GetPidFile()
 {
     namespace fs = boost::filesystem;
-
-    fs::path pathPidFile(GetArg("-pid", "peershares.pid"));
+	
+    fs::path pathPidFile(GetArg("-pid", "nu.pid"));
     if (!pathPidFile.is_complete()) pathPidFile = GetDataDir() / pathPidFile;
     return pathPidFile;
 }
@@ -1327,7 +1327,7 @@ boost::filesystem::path static GetAutostartDir()
 
 boost::filesystem::path static GetAutostartFilePath()
 {
-    return GetAutostartDir() / "peershares.desktop";
+    return GetAutostartDir() / "nu.desktop";
 }
 
 bool GetStartOnSystemStartup()

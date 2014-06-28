@@ -1,5 +1,5 @@
 TEMPLATE = app
-TARGET = ppcoin-qt
+TARGET = nu-qt
 VERSION = 0.6.3.0
 INCLUDEPATH += src src/json src/qt
 DEFINES += QT_GUI BOOST_THREAD_USE_LIB BOOST_SPIRIT_THREADSAFE
@@ -167,7 +167,14 @@ HEADERS += src/qt/bitcoingui.h \
     src/kernel.h \
     src/distribution.h \
     src/qt/distributedivdialog.h \
-    src/vote.h
+    src/vote.h \
+    src/qt/parkpage.h \
+    src/qt/parktablemodel.h \
+    src/qt/parkdialog.h \
+    src/qt/votepage.h \
+    src/qt/custodianvotedialog.h \
+    src/qt/parkratevotedialog.h \
+    src/qt/motionvotedialog.h
 
 SOURCES += src/qt/bitcoin.cpp src/qt/bitcoingui.cpp \
     src/qt/transactiontablemodel.cpp \
@@ -227,7 +234,14 @@ SOURCES += src/qt/bitcoin.cpp src/qt/bitcoingui.cpp \
     src/distribution.cpp \
     src/scanbalance.cpp \
     src/qt/distributedivdialog.cpp \
-    src/vote.cpp
+    src/vote.cpp \
+    src/qt/parkpage.cpp \
+    src/qt/parktablemodel.cpp \
+    src/qt/parkdialog.cpp \
+    src/qt/votepage.cpp \
+    src/qt/custodianvotedialog.cpp \
+    src/qt/parkratevotedialog.cpp \
+    src/qt/motionvotedialog.cpp
 
 RESOURCES += \
     src/qt/bitcoin.qrc
@@ -243,7 +257,13 @@ FORMS += \
     src/qt/forms/sendcoinsentry.ui \
     src/qt/forms/askpassphrasedialog.ui \
     src/qt/forms/rpcconsole.ui \
-    src/qt/forms/distributedivdialog.ui
+    src/qt/forms/distributedivdialog.ui \
+    src/qt/forms/parkpage.ui \
+    src/qt/forms/parkdialog.ui \
+    src/qt/forms/votepage.ui \
+    src/qt/forms/custodianvotedialog.ui \
+    src/qt/forms/parkratevotedialog.ui \
+    src/qt/forms/motionvotedialog.ui
 
 contains(USE_QRCODE, 1) {
 HEADERS += src/qt/qrcodedialog.h
@@ -339,8 +359,8 @@ macx:HEADERS += src/qt/macdockiconhandler.h
 macx:OBJECTIVE_SOURCES += src/qt/macdockiconhandler.mm
 macx:LIBS += -framework Foundation -framework ApplicationServices -framework AppKit
 macx:DEFINES += MAC_OSX MSG_NOSIGNAL=0
-macx:ICON = src/qt/res/icons/ppcoin.icns
-macx:TARGET = "PPcoin-Qt"
+macx:ICON = src/qt/res/icons/nu.icns
+macx:TARGET = "Nu-Qt"
 
 # Set libraries and includes at end, to use platform-defined defaults if not overridden
 INCLUDEPATH += $$BOOST_INCLUDE_PATH $$BDB_INCLUDE_PATH $$OPENSSL_INCLUDE_PATH $$QRENCODE_INCLUDE_PATH

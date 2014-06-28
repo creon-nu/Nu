@@ -1736,54 +1736,47 @@ Value listparked(const Array& params, bool fHelp)
     bool fAllAccounts = (strAccount == string("*"));
 
     Array ret;
-    for (map<uint256, CWalletTx>::iterator it = pwalletMain->mapWallet.begin(); it != pwalletMain->mapWallet.end(); ++it)
+    for (set<COutPoint>::const_iterator it = pwalletMain->setParked.begin(); it != pwalletMain->setParked.end(); ++it)
     {
-        const CWalletTx& wtx = it->second;
-        for (unsigned int i = 0; i < wtx.vout.size(); i++)
+        const CWalletTx& wtx = pwalletMain->mapWallet[it->hash];
+        if (wtx.vout.size() <= it->n)
+            throw JSONRPCError(-2, "Invalid output");
+        const CTxOut& txo = wtx.vout[it->n];
+
+        Object park;
+        uint64 nDuration;
+        CBitcoinAddress unparkAddress;
+
+        if (!ExtractPark(txo.scriptPubKey, wtx.cUnit, nDuration, unparkAddress))
+            throw JSONRPCError(-2, "Invalid scriptPubKey");
+
+        if (!fAllAccounts && pwalletMain->mapAddressBook[unparkAddress] != strAccount)
+            continue;
+
+        park.push_back(Pair("txid", wtx.GetHash().GetHex()));
+        park.push_back(Pair("output", (boost::int64_t)it->n));
+        park.push_back(Pair("time", DateTimeStrFormat(wtx.GetTxTime())));
+        park.push_back(Pair("amount", ValueFromAmount(txo.nValue)));
+        park.push_back(Pair("duration", (boost::int64_t)nDuration));
+
+        CBlockIndex* pindex = NULL;
+        uint64 nDepth = wtx.GetDepthInMainChain(pindex);
+        park.push_back(Pair("depth", (boost::int64_t)nDepth));
+
+        boost::int64_t nRemaining = nDuration;
+        nRemaining -= nDepth;
+        if (nRemaining < 0)
+            nRemaining = 0;
+
+        park.push_back(Pair("remainingblocks", nRemaining));
+
+        if (pindex)
         {
-            if (wtx.IsSpent(i))
-                continue;
-
-            const CTxOut& txo = wtx.vout[i];
-
-            if (!pwalletMain->IsMine(txo))
-                continue;
-
-            Object park;
-            uint64 nDuration;
-            CBitcoinAddress unparkAddress;
-
-            if (!ExtractPark(txo.scriptPubKey, wtx.cUnit, nDuration, unparkAddress))
-                continue;
-
-            if (!fAllAccounts && pwalletMain->mapAddressBook[unparkAddress] != strAccount)
-                continue;
-
-            park.push_back(Pair("txid", wtx.GetHash().GetHex()));
-            park.push_back(Pair("output", (boost::int64_t)i));
-            park.push_back(Pair("time", DateTimeStrFormat(wtx.GetTxTime())));
-            park.push_back(Pair("amount", ValueFromAmount(txo.nValue)));
-            park.push_back(Pair("duration", (boost::int64_t)nDuration));
-
-            CBlockIndex* pindex = NULL;
-            uint64 nDepth = wtx.GetDepthInMainChain(pindex);
-            park.push_back(Pair("depth", (boost::int64_t)nDepth));
-
-            boost::int64_t nRemaining = nDuration;
-            nRemaining -= nDepth;
-            if (nRemaining < 0)
-                nRemaining = 0;
-
-            park.push_back(Pair("remainingblocks", nRemaining));
-
-            if (pindex)
-            {
-                uint64 nPremium = pindex->GetPremium(txo.nValue, nDuration, wtx.cUnit);
-                park.push_back(Pair("premium", ValueFromAmount(nPremium)));
-            }
-
-            ret.push_back(park);
+            uint64 nPremium = pindex->GetPremium(txo.nValue, nDuration, wtx.cUnit);
+            park.push_back(Pair("premium", ValueFromAmount(nPremium)));
         }
+
+        ret.push_back(park);
     }
 
     return ret;
@@ -3312,7 +3305,7 @@ void ThreadRPCServer2(void* parg)
     {
         unsigned char rand_pwd[32];
         RAND_bytes(rand_pwd, 32);
-        string strWhatAmI = "To use ppcoind";
+        string strWhatAmI = "To use nud";
         if (mapArgs.count("-server"))
             strWhatAmI = strprintf(_("To use the %s option"), "\"-server\"");
         else if (mapArgs.count("-daemon"))
@@ -3320,7 +3313,7 @@ void ThreadRPCServer2(void* parg)
         ThreadSafeMessageBox(strprintf(
             _("%s, you must set a rpcpassword in the configuration file:\n %s\n"
               "It is recommended you use the following random password:\n"
-              "rpcuser=bitcoinrpc\n"
+              "rpcuser=nurpc\n"
               "rpcpassword=%s\n"
               "(you do not need to remember this password)\n"
               "If the file does not exist, create it with owner-readable-only file permissions.\n"),

@@ -54,7 +54,7 @@ void setupAmountWidget(QLineEdit *widget, QWidget *parent)
 
 bool parseBitcoinURI(const QUrl &uri, SendCoinsRecipient *out)
 {
-    if(uri.scheme() != QString("ppcoin"))
+    if(uri.scheme() != QString("nu"))
         return false;
 
     SendCoinsRecipient rv;
@@ -103,9 +103,9 @@ bool parseBitcoinURI(QString uri, SendCoinsRecipient *out)
     //
     //    Cannot handle this later, because bitcoin:// will cause Qt to see the part after // as host,
     //    which will lowercase it (and thus invalidate the address).
-    if(uri.startsWith("ppcoin://"))
+    if(uri.startsWith("nu://"))
     {
-        uri.replace(0, 9, "ppcoin:");
+        uri.replace(0, 9, "nu:");
     }
     QUrl uriInstance(uri);
     return parseBitcoinURI(uriInstance, out);
@@ -212,6 +212,47 @@ bool isObscured(QWidget *w)
            && checkPoint(QPoint(0, w->height() - 1), w)
            && checkPoint(QPoint(w->width() - 1, w->height() - 1), w)
            && checkPoint(QPoint(w->width()/2, w->height()/2), w));
+}
+
+QString blocksToTime(qint64 blocks)
+{
+    double time = (double)blocks * STAKE_TARGET_SPACING / 60;
+    if (time < 55)
+        return QString("%1 min").arg(QString::number(time, 'f', 1));
+    time = time / 60;
+    if (time == 1)
+        return QString("%1 hour").arg(QString::number(time, 'f', 1));
+    if (time < 23.5)
+        return QString("%1 hours").arg(QString::number(time, 'f', 1));
+    time = time / 24;
+    if (time == 1)
+        return QString("%1 day").arg(QString::number(time, 'f', 1));
+    if (time < 30)
+        return QString("%1 days").arg(QString::number(time, 'f', 1));
+    time = time / 30;
+    if (time == 1)
+        return QString("%1 month").arg(QString::number(time, 'f', 1));
+    if (time < 12)
+        return QString("%1 months").arg(QString::number(time, 'f', 1));
+    time = time / 12;
+    if (time == 1)
+        return QString("%1 year").arg(QString::number(time, 'f', 1));
+    return QString("%1 years").arg(QString::number(time, 'f', 1));
+}
+
+double durationInYears(qint64 blocks)
+{
+    return (double)blocks * STAKE_TARGET_SPACING / (365.25 * 24 * 3600);
+}
+
+double annualInterestRatePercentage(unsigned int rate, qint64 blocks)
+{
+    return (double)rate / COIN * 100 / durationInYears(blocks);
+}
+
+unsigned int annualInterestRatePercentageToRate(double percentage, qint64 blocks)
+{
+    return round(percentage * durationInYears(blocks) / 100 * COIN);
 }
 
 } // namespace GUIUtil

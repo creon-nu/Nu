@@ -2,6 +2,12 @@ src/*.exe
 src/peershares
 src/peersharesd
 src/test_peershares
+src/nud
+ppcoin-qt
+nu-qt
+src/ppcoind
+src/test_ppcoin
+src/test_nu
 src/build.h
 .*.swp
 *.*~*
@@ -11,6 +17,7 @@ src/build.h
 *.o
 *.patch
 .peershares
+.nu
 #compilation and Qt preprocessor part
 *.qm
 Makefile
