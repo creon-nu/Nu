@@ -1179,7 +1179,24 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, int64> >& vecSend, CW
                 double dPriority = 0;
                 // vouts to the payees
                 BOOST_FOREACH (const PAIRTYPE(CScript, int64)& s, vecSend)
-                    wtxNew.vout.push_back(CTxOut(s.second, s.first));
+                {
+                    // nu: split shares if appropriate
+                    if (wtxNew.cUnit == 'S' && GetBoolArg("-splitshareoutputs", true) && s.second >= MIN_COINSTAKE_VALUE * 2)
+                    {
+                        int nOutputs = s.second / MIN_COINSTAKE_VALUE;
+                        int64 nRemainingAmount = s.second;
+
+                        for (int i = 0; i < nOutputs - 1; i++)
+                        {
+                            int64 nAmount = MIN_COINSTAKE_VALUE;
+                            wtxNew.vout.push_back(CTxOut(nAmount, s.first));
+                            nRemainingAmount -= nAmount;
+                        }
+                        wtxNew.vout.push_back(CTxOut(nRemainingAmount, s.first));
+                    }
+                    else
+                        wtxNew.vout.push_back(CTxOut(s.second, s.first));
+                }
 
                 // Choose coins to use
                 set<pair<const CWalletTx*,unsigned int> > setCoins;
@@ -1235,9 +1252,25 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, int64> >& vecSend, CW
                     else
                         reservekey.ReturnKey(); // return key in avatar mode
 
-                    // Insert change txn at random position:
+                    // nu: split change if appropriate
+                    int nChangeOutputs;
+                    if (wtxNew.cUnit == 'S' && GetBoolArg("-splitshareoutputs", true) && nChange >= MIN_COINSTAKE_VALUE * 2)
+                        nChangeOutputs = nChange / MIN_COINSTAKE_VALUE;
+                    else
+                        nChangeOutputs = 1;
+
+                    int64 nChangeRemaining = nChange;
+                    for (int i = 0; i < nChangeOutputs - 1; i++)
+                    {
+                        // Insert split change txn at random position:
+                        vector<CTxOut>::iterator position = wtxNew.vout.begin()+GetRandInt(wtxNew.vout.size());
+                        int64 nAmount = MIN_COINSTAKE_VALUE;
+                        wtxNew.vout.insert(position, CTxOut(nAmount, scriptChange));
+                        nChangeRemaining -= nAmount;
+                    }
+                    // Insert remaining change txn at random position:
                     vector<CTxOut>::iterator position = wtxNew.vout.begin()+GetRandInt(wtxNew.vout.size());
-                    wtxNew.vout.insert(position, CTxOut(nChange, scriptChange));
+                    wtxNew.vout.insert(position, CTxOut(nChangeRemaining, scriptChange));
                 }
                 else
                     reservekey.ReturnKey();
@@ -1288,12 +1321,6 @@ bool CWallet::CreateTransaction(CScript scriptPubKey, int64 nValue, CWalletTx& w
 // ppcoin: create coin stake transaction
 bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int64 nSearchInterval, CTransaction& txNew, CBlockIndex* pindexprev)
 {
-    // The following split & combine thresholds are important to security
-    // Should not be adjusted if you don't understand the consequences
-    static unsigned int nStakeSplitAge = (60 * 60 * 24 * 90);
-    int64 nCombineThreshold = GetProofOfWorkReward(GetLastBlockIndex(pindexBest, false)->nBits) / 3;
-    bool fSplit = false;
-
     CBigNum bnTargetPerCoinDay;
     bnTargetPerCoinDay.SetCompact(nBits);
 
@@ -1321,8 +1348,12 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
         return false;
     int64 nCredit = 0;
     CScript scriptPubKeyKernel;
+    int nOutputs = -1;
     BOOST_FOREACH(PAIRTYPE(const CWalletTx*, unsigned int) pcoin, setCoins)
     {
+        if (pcoin.first->vout[pcoin.second].nValue < MIN_COINSTAKE_VALUE)
+            continue; // nu: only count coins meeting min value requirement
+
         CTxDB txdb("r");
         CTxIndex txindex;
         if (!txdb.ReadTxIndex(pcoin.first->GetHash(), txindex))
@@ -1386,11 +1417,6 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
                 nCredit += pcoin.first->vout[pcoin.second].nValue;
                 vwtxPrev.push_back(pcoin.first);
                 txNew.vout.push_back(CTxOut(0, scriptPubKeyOut));
-                if (block.GetBlockTime() + nStakeSplitAge > txNew.nTime)
-                {
-                    txNew.vout.push_back(CTxOut(0, scriptPubKeyOut)); //split stake
-                    fSplit = true;
-                }
                 if (fDebug && GetBoolArg("-printcoinstake"))
                     printf("CreateCoinStake : added kernel type=%d\n", whichType);
                 fKernelFound = true;
@@ -1410,25 +1436,33 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
             && pcoin.first->GetHash() != txNew.vin[0].prevout.hash)
         {
             // Stop adding more inputs if already too many inputs
-            if (txNew.vin.size() >= 100)
-                break;
-            // Stop adding more inputs if value is already pretty significant
-            if (nCredit > nCombineThreshold)
+            if (txNew.vin.size() >= 5)
                 break;
             // Stop adding inputs if reached reserve limit
             if (nCredit + pcoin.first->vout[pcoin.second].nValue > nBalance - nReserveBalance)
                 break;
-            // Do not add additional significant input
-            if (pcoin.first->vout[pcoin.second].nValue > nCombineThreshold)
-                continue;
-            // Do not add input that is still too young
-            if (pcoin.first->nTime + STAKE_MAX_AGE > txNew.nTime)
+            // nu: Do not add inputs able to find a block
+            if (pcoin.first->vout[pcoin.second].nValue >= MIN_COINSTAKE_VALUE)
                 continue;
             txNew.vin.push_back(CTxIn(pcoin.first->GetHash(), pcoin.second));
             nCredit += pcoin.first->vout[pcoin.second].nValue;
             vwtxPrev.push_back(pcoin.first);
         }
     }
+
+    // nu: split outputs
+    if (GetBoolArg("-splitshareoutputs", true))
+    {
+        nOutputs = nCredit / MIN_COINSTAKE_VALUE;
+
+        // limit the number of outputs to avoid exceeding MAX_COINSTAKE_SIZE
+        if (nOutputs > 5)
+            nOutputs = 5;
+
+        for (int i = 1; i < nOutputs; i++)
+            txNew.vout.push_back(CTxOut(0, txNew.vout[1].scriptPubKey));
+    }
+
     // Calculate coin age reward
     uint64 nCoinAge;
     {
@@ -1456,13 +1490,14 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
     loop
     {
         // Set output amount
-        if (fSplit)
+        int64 nAmountToDistribute = nCredit - nMinFee;
+        int i;
+        for (i = 1; i < nOutputs; i++)
         {
-            txNew.vout[1].nValue = ((nCredit - nMinFee) / 2 / CENT) * CENT;
-            txNew.vout[2].nValue = nCredit - nMinFee - txNew.vout[1].nValue;
+            txNew.vout[i].nValue = MIN_COINSTAKE_VALUE;
+            nAmountToDistribute -= txNew.vout[i].nValue;
         }
-        else
-            txNew.vout[1].nValue = nCredit - nMinFee;
+        txNew.vout[i].nValue = nAmountToDistribute;
 
         // Sign
         int nIn = 0;

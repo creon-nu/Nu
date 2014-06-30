@@ -353,6 +353,10 @@ bool CheckProofOfStake(const CTransaction& tx, unsigned int nBits, uint256& hash
         return tx.DoS(1, error("CheckProofOfStake() : INFO: read txPrev failed"));  // previous transaction not in main chain, may occur during initial download
     txdb.Close();
 
+    // nu: the kernel must have the minimum amount
+    if (txPrev.vout[txin.prevout.n].nValue < MIN_COINSTAKE_VALUE)
+        return tx.DoS(100, error("CheckProofOfStake() : Input value too low on coinstake %s", tx.GetHash().ToString().c_str()));
+
     // Verify signature
     if (!VerifySignature(txPrev, tx, 0, true, 0))
         return tx.DoS(100, error("CheckProofOfStake() : VerifySignature failed on coinstake %s", tx.GetHash().ToString().c_str()));
