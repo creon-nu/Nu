@@ -13,7 +13,7 @@ using namespace boost;
 int main(int argc, char *argv[])
 {
     fPrintToConsole = true;
-    printf("PPCoin Begin Genesis Block\n");
+    printf("NuBits Begin Genesis Block\n");
 
     // Genesis block
     const char* pszTimestamp = "Matonis 07-AUG-2012 Parallel Currencies And The Roadmap To Monetary Freedom";
@@ -55,10 +55,10 @@ int main(int argc, char *argv[])
         block.nNonce++;
     }
 
-    printf("PPCoin Found Genesis Block:\n");
+    printf("NuBits Found Genesis Block:\n");
     printf("genesis hash=%s\n", block.GetHash().ToString().c_str());
     printf("merkle root=%s\n", block.hashMerkleRoot.ToString().c_str());
     block.print();
 
-    printf("PPCoin End Genesis Block\n");
+    printf("NuBits End Genesis Block\n");
 }

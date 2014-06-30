@@ -31,7 +31,7 @@ set<pair<COutPoint, unsigned int> > setStakeSeen;
 uint256 hashGenesisBlock = hashGenesisBlockOfficial;
 static CBigNum bnProofOfWorkLimit(~uint256(0) >> 20);
 static CBigNum bnInitialHashTarget(~uint256(0) >> 24);
-static CBigNum bnInitialProofOfStakeHashTarget(~uint256(0) >> 20);
+static CBigNum bnInitialProofOfStakeHashTarget(~uint256(0) >> 30);
 unsigned int nStakeMinAge = STAKE_MIN_AGE;
 int nCoinbaseMaturity = COINBASE_MATURITY;
 int nCoinstakeMaturity = COINSTAKE_MATURITY;
@@ -2461,7 +2461,7 @@ bool LoadBlockIndex(bool fAllowNew)
         nCoinbaseMaturity = 60;
         nCoinstakeMaturity = 60;
         bnInitialHashTarget = CBigNum(~uint256(0) >> 20);
-        bnInitialProofOfStakeHashTarget = CBigNum(~uint256(0) >> 16);
+        bnInitialProofOfStakeHashTarget = CBigNum(~uint256(0) >> 28);
         nModifierInterval = 60 * 20; // test net modifier interval is 20 minutes
     }
 

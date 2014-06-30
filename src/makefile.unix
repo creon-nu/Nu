@@ -114,7 +114,7 @@ OBJS= \
     obj/vote.o
 
 
-all: ppcoind
+all: nud
 
 # auto-generated dependencies:
 -include obj/*.P
@@ -132,7 +132,7 @@ obj/%.o: %.cpp
 	      -e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	  rm -f $(@:%.o=%.d)
 
-ppcoind: $(OBJS:obj/%=obj/%)
+nud: $(OBJS:obj/%=obj/%)
 	$(CXX) $(xCXXFLAGS) -rdynamic -o $@ $^ $(LDFLAGS) $(LIBS)
 
 TESTOBJS := $(patsubst test/%.cpp,obj-test/%.o,$(wildcard test/*.cpp))
@@ -148,7 +148,7 @@ test_ppcoin: $(TESTOBJS) $(filter-out obj/init.o,$(OBJS:obj/%=obj/%))
 	$(CXX) $(xCXXFLAGS) -o $@ $(LIBPATHS) $^ -Wl,-B$(LMODE) -lboost_unit_test_framework $(LDFLAGS) $(LIBS)
 
 clean:
-	-rm -f ppcoind test_ppcoin
+	-rm -f nud test_ppcoin
 	-rm -f obj/*.o
 	-rm -f obj-test/*.o
 	-rm -f obj/*.P

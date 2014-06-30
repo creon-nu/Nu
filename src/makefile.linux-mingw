@@ -9,14 +9,14 @@ USE_UPNP:=0
 INCLUDEPATHS= \
  -I"$(DEPSDIR)/boost_1_47_0" \
  -I"$(DEPSDIR)/db-4.8.30.NC/build_unix" \
- -I"$(DEPSDIR)/openssl-1.0.1b/include" \
+ -I"$(DEPSDIR)/openssl-1.0.1g/include" \
  -I"$(DEPSDIR)" \
  -I"$(CURDIR)"/obj \
 
 LIBPATHS= \
  -L"$(DEPSDIR)/boost_1_47_0/stage/lib" \
  -L"$(DEPSDIR)/db-4.8.30.NC/build_unix" \
- -L"$(DEPSDIR)/openssl-1.0.1b"
+ -L"$(DEPSDIR)/openssl-1.0.1g"
 
 LIBS= \
  -l boost_system-mt-s \
@@ -70,7 +70,7 @@ OBJS= \
     obj/distribution.o \
     obj/vote.o
 
-all: ppcoind.exe
+all: nud.exe
 
 obj/build.h: FORCE
 	/bin/sh ../share/genbuild.sh obj/build.h
@@ -80,7 +80,7 @@ DEFS += -DHAVE_BUILD_INFO
 obj/%.o: %.cpp $(HEADERS)
 	i586-mingw32msvc-g++ -c $(CFLAGS) -o $@ $<
 
-ppcoind.exe: $(OBJS:obj/%=obj/%)
+nud.exe: $(OBJS:obj/%=obj/%)
 	i586-mingw32msvc-g++ $(CFLAGS) -o $@ $(LIBPATHS) $^ $(LIBS)
 
 TESTOBJS := $(patsubst test/%.cpp,obj-test/%.o,$(wildcard test/*.cpp))
@@ -94,7 +94,7 @@ test_bitcoin.exe: $(TESTOBJS) $(filter-out obj/init.o,$(OBJS:obj/%=obj/%))
 
 clean:
 	-rm -f obj/*.o
-	-rm -f ppcoind.exe
+	-rm -f nud.exe
 	-rm -f obj-test/*.o
 	-rm -f test_bitcoin.exe
 	-rm -f src/build.h
