@@ -95,6 +95,8 @@ void VotePage::fillCustodianTable()
             QTableWidgetItem *dateItem = new QTableWidgetItem();
             dateItem->setData(Qt::DisplayRole, GUIUtil::dateTimeStr(pindex->nTime));
             table->setItem(row, 2, dateItem);
+
+            row++;
         }
     }
     table->setVisible(false);
