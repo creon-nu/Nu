@@ -2499,7 +2499,7 @@ bool LoadBlockIndex(bool fAllowNew)
             pszTimestamp="June 24, 2014 LeBron James opts out of final two years of contract with the Miami Heat";
             nTimeGenesis=1403680507;
             nNonceGenesis=115419;
-
+        }
 
         CTransaction txNew;
         txNew.nTime = nTimeGenesis;
