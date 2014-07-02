@@ -1346,6 +1346,16 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
         return false;
     if (setCoins.empty())
         return false;
+
+    // nu: limit the number of outputs because automatic output splitting may generate a lot of outputs and overwhelm the process
+    int nMaxOutputs = GetArg("-maxkernels", 1000);
+    while (setCoins.size() > nMaxOutputs)
+    {
+        set<pair<const CWalletTx*,unsigned int> >::const_iterator it = setCoins.begin();
+        advance(it, GetRandInt(setCoins.size()));
+        setCoins.erase(it);
+    }
+
     int64 nCredit = 0;
     CScript scriptPubKeyKernel;
     int nOutputs = -1;
