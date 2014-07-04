@@ -1478,6 +1478,9 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
             // nu: Do not add inputs able to find a block
             if (pcoin.first->vout[pcoin.second].nValue >= MIN_COINSTAKE_VALUE)
                 continue;
+            // nu: Do not add unconfirmed transactions
+            if (pcoin.first->GetDepthInMainChain() == 0)
+                continue;
             txNew.vin.push_back(CTxIn(txHash, pcoin.second));
             nCredit += pcoin.first->vout[pcoin.second].nValue;
             vwtxPrev.push_back(pcoin.first);
