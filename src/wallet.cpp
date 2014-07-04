@@ -1349,20 +1349,46 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
     int64 nCredit = 0;
     CScript scriptPubKeyKernel;
     int nOutputs = -1;
+
+    map<const CWalletTx*, uint256> mapTxHash;
+    map<const CWalletTx*, CTxIndex> mapTxIndex;
+    map<const CWalletTx*, CBlock> mapTxBlock;
+
     BOOST_FOREACH(PAIRTYPE(const CWalletTx*, unsigned int) pcoin, setCoins)
     {
         if (pcoin.first->vout[pcoin.second].nValue < MIN_COINSTAKE_VALUE)
             continue; // nu: only count coins meeting min value requirement
 
-        CTxDB txdb("r");
-        CTxIndex txindex;
-        if (!txdb.ReadTxIndex(pcoin.first->GetHash(), txindex))
-            continue;
+        map<const CWalletTx*, uint256>::const_iterator itHash = mapTxHash.find(pcoin.first);
+        if (itHash == mapTxHash.end())
+        {
+            pair<const CWalletTx*, uint256> value(pcoin.first, pcoin.first->GetHash());
+            itHash = mapTxHash.insert(value).first;
+        }
+        const uint256& txHash = itHash->second;
+
+        map<const CWalletTx*, CTxIndex>::const_iterator itTxIndex = mapTxIndex.find(pcoin.first);
+        if (itTxIndex == mapTxIndex.end())
+        {
+            pair<const CWalletTx*, CTxIndex> value(pcoin.first, CTxIndex());
+            CTxDB txdb("r");
+            if (!txdb.ReadTxIndex(txHash, value.second))
+                continue;
+            itTxIndex = mapTxIndex.insert(value).first;
+        }
+        const CTxIndex& txindex = itTxIndex->second;
 
         // Read block header
-        CBlock block;
-        if (!block.ReadFromDisk(txindex.pos.nFile, txindex.pos.nBlockPos, false))
-            continue;
+        map<const CWalletTx*, CBlock>::const_iterator itTxBlock = mapTxBlock.find(pcoin.first);
+        if (itTxBlock == mapTxBlock.end())
+        {
+            pair<const CWalletTx*, CBlock> value(pcoin.first, CBlock());
+            if (!value.second.ReadFromDisk(txindex.pos.nFile, txindex.pos.nBlockPos, false))
+                continue;
+            itTxBlock = mapTxBlock.insert(value).first;
+        }
+        const CBlock& block = itTxBlock->second;
+
         static int nMaxStakeSearchInterval = 60;
         if (block.GetBlockTime() + nStakeMinAge > txNew.nTime - nMaxStakeSearchInterval)
             continue; // only count coins meeting min age requirement
@@ -1373,7 +1399,7 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
             // Search backward in time from the given txNew timestamp 
             // Search nSearchInterval seconds back up to nMaxStakeSearchInterval
             uint256 hashProofOfStake = 0;
-            COutPoint prevoutStake = COutPoint(pcoin.first->GetHash(), pcoin.second);
+            COutPoint prevoutStake = COutPoint(txHash, pcoin.second);
             if (CheckStakeKernelHash(nBits, block, txindex.pos.nTxPos - txindex.pos.nBlockPos, *pcoin.first, prevoutStake, txNew.nTime - n, hashProofOfStake))
             {
                 // Found a kernel
@@ -1413,7 +1439,7 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
                     scriptPubKeyOut = scriptPubKeyKernel;
 
                 txNew.nTime -= n; 
-                txNew.vin.push_back(CTxIn(pcoin.first->GetHash(), pcoin.second));
+                txNew.vin.push_back(CTxIn(txHash, pcoin.second));
                 nCredit += pcoin.first->vout[pcoin.second].nValue;
                 vwtxPrev.push_back(pcoin.first);
                 txNew.vout.push_back(CTxOut(0, scriptPubKeyOut));
@@ -1430,10 +1456,18 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
         return false;
     BOOST_FOREACH(PAIRTYPE(const CWalletTx*, unsigned int) pcoin, setCoins)
     {
+        map<const CWalletTx*, uint256>::const_iterator itHash = mapTxHash.find(pcoin.first);
+        if (itHash == mapTxHash.end())
+        {
+            pair<const CWalletTx*, uint256> value(pcoin.first, pcoin.first->GetHash());
+            itHash = mapTxHash.insert(value).first;
+        }
+        const uint256& txHash = itHash->second;
+
         // Attempt to add more inputs
         // Only add coins of the same key/address as kernel
         if (txNew.vout.size() == 2 && ((pcoin.first->vout[pcoin.second].scriptPubKey == scriptPubKeyKernel || pcoin.first->vout[pcoin.second].scriptPubKey == txNew.vout[1].scriptPubKey))
-            && pcoin.first->GetHash() != txNew.vin[0].prevout.hash)
+            && txHash != txNew.vin[0].prevout.hash)
         {
             // Stop adding more inputs if already too many inputs
             if (txNew.vin.size() >= 5)
@@ -1444,7 +1478,7 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
             // nu: Do not add inputs able to find a block
             if (pcoin.first->vout[pcoin.second].nValue >= MIN_COINSTAKE_VALUE)
                 continue;
-            txNew.vin.push_back(CTxIn(pcoin.first->GetHash(), pcoin.second));
+            txNew.vin.push_back(CTxIn(txHash, pcoin.second));
             nCredit += pcoin.first->vout[pcoin.second].nValue;
             vwtxPrev.push_back(pcoin.first);
         }
