@@ -1318,6 +1318,11 @@ bool CWallet::CreateTransaction(CScript scriptPubKey, int64 nValue, CWalletTx& w
     return CreateTransaction(vecSend, wtxNew, reservekey, nFeeRet);
 }
 
+static map<const CWalletTx*, uint256> mapTxHash;
+static map<const CWalletTx*, CTxIndex> mapTxIndex;
+static map<const CWalletTx*, CBlock> mapTxBlock;
+static map<const CWalletTx*, uint64> mapTxLastUse;
+
 // ppcoin: create coin stake transaction
 bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int64 nSearchInterval, CTransaction& txNew, CBlockIndex* pindexprev)
 {
@@ -1325,6 +1330,26 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
     bnTargetPerCoinDay.SetCompact(nBits);
 
     LOCK2(cs_main, cs_wallet);
+
+    // remove from cache the unused transactions
+    uint64 nNow = GetTime();
+    map<const CWalletTx*, uint64>::iterator it = mapTxLastUse.begin();
+    while (it != mapTxLastUse.end())
+    {
+        const CWalletTx* wtx = it->first;
+        uint64& nLastUse = it->second;
+
+        if (nNow > nLastUse + 24 * 60 * 60)
+        {
+            mapTxHash.erase(wtx);
+            mapTxIndex.erase(wtx);
+            mapTxBlock.erase(wtx);
+            mapTxLastUse.erase(it++);
+        }
+        else
+            it++;
+    }
+
     txNew.vin.clear();
     txNew.vout.clear();
     txNew.cUnit = cUnit;
@@ -1350,12 +1375,11 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
     CScript scriptPubKeyKernel;
     int nOutputs = -1;
 
-    map<const CWalletTx*, uint256> mapTxHash;
-    map<const CWalletTx*, CTxIndex> mapTxIndex;
-    map<const CWalletTx*, CBlock> mapTxBlock;
 
     BOOST_FOREACH(PAIRTYPE(const CWalletTx*, unsigned int) pcoin, setCoins)
     {
+        mapTxLastUse[pcoin.first] = nNow;
+
         if (pcoin.first->vout[pcoin.second].nValue < MIN_COINSTAKE_VALUE)
             continue; // nu: only count coins meeting min value requirement
 
