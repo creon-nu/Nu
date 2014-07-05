@@ -10,8 +10,8 @@
 using namespace std;
 
 // Protocol switch time of v0.3 kernel protocol
-unsigned int nProtocolV03SwitchTime     = 1394841600; // 2014-03-15 00:00:00 UTC
-unsigned int nProtocolV03TestSwitchTime = 1396224000; // 2014-03-31 00:00:00 UTC
+unsigned int nProtocolV03SwitchTime     = 1404518400; // 2014-07-05 00:00:00 UTC
+unsigned int nProtocolV03TestSwitchTime = 1404259200; // 2014-07-02 00:00:00 UTC
 
 // Modifier interval: time to elapse before new modifier is computed
 // Set to 6-hour for production network and 20-minute for test network
@@ -352,6 +352,10 @@ bool CheckProofOfStake(const CTransaction& tx, unsigned int nBits, uint256& hash
     if (!txPrev.ReadFromDisk(txdb, txin.prevout, txindex))
         return tx.DoS(1, error("CheckProofOfStake() : INFO: read txPrev failed"));  // previous transaction not in main chain, may occur during initial download
     txdb.Close();
+
+    // nu: the kernel must have the minimum amount
+    if (txPrev.vout[txin.prevout.n].nValue < MIN_COINSTAKE_VALUE)
+        return tx.DoS(100, error("CheckProofOfStake() : Input value too low on coinstake %s", tx.GetHash().ToString().c_str()));
 
     // Verify signature
     if (!VerifySignature(txPrev, tx, 0, true, 0))

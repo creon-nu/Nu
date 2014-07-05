@@ -926,13 +926,10 @@ int64 GetProofOfWorkReward(unsigned int nBits)
 }
 
 // ppcoin: miner's coin stake is rewarded based on coin age spent (coin-days)
+// nu: miner's coin stake reward is constant
 int64 GetProofOfStakeReward(int64 nCoinAge)
 {
-    static int64 nRewardCoinYear = CENT;  // creation amount per coin-year
-    int64 nSubsidy = nCoinAge * 33 / (365 * 33 + 8) * nRewardCoinYear;
-    if (fDebug && GetBoolArg("-printcreation"))
-        printf("GetProofOfStakeReward(): create=%s nCoinAge=%"PRI64d"\n", FormatMoney(nSubsidy).c_str(), nCoinAge);
-    return nSubsidy;
+    return PROOF_OF_STAKE_REWARD;
 }
 
 static const int64 nTargetTimespan = 7 * 24 * 60 * 60;  // one week
@@ -2065,7 +2062,8 @@ bool CBlock::CheckBlock() const
         return DoS(50, error("CheckBlock() : coinstake timestamp violation nTimeBlock=%u nTimeTx=%u", GetBlockTime(), vtx[1].nTime));
 
     // Check coinbase reward
-    if (vtx[0].GetValueOut() > (IsProofOfWork()? (GetProofOfWorkReward(nBits) - vtx[0].GetMinFee() + MIN_TX_FEE) : 0))
+    // nu: proof of work blocks do not have fee to generate the right amount of shares even when outputs are split
+    if (vtx[0].GetValueOut() > (IsProofOfWork()? GetProofOfWorkReward(nBits) : 0))
         return DoS(50, error("CheckBlock() : coinbase reward exceeded %s > %s", 
                    FormatMoney(vtx[0].GetValueOut()).c_str(),
                    FormatMoney(IsProofOfWork()? GetProofOfWorkReward(nBits) : 0).c_str()));
@@ -2492,17 +2490,16 @@ bool LoadBlockIndex(bool fAllowNew)
         //   vMerkleTree: 4a5e1e
 
         // Genesis block
-        const char* pszTimestamp = "Matonis 07-AUG-2012 Parallel Currencies And The Roadmap To Monetary Freedom";
-        unsigned int nTimeGenesis=1394140389;
-        unsigned int nNonceGenesis=0;
+        const char* pszTimestamp = "24-JUN-2014 Bitcoin is a means of payment, Switzerland's FINMA says";
+        unsigned int nTimeGenesis=1403680493;
+        unsigned int nNonceGenesis=729527;
 
         if (fTestNet)
         {
-            pszTimestamp="Mar 7, 2014 Dorian Satoshi Nakamoto denies creating Bitcoin in AP interview";
-            nTimeGenesis=1394250000;
-            nNonceGenesis=125399;
+            pszTimestamp="June 24, 2014 LeBron James opts out of final two years of contract with the Miami Heat";
+            nTimeGenesis=1403680507;
+            nNonceGenesis=115419;
         }
-
 
         CTransaction txNew;
         txNew.nTime = nTimeGenesis;
@@ -2545,9 +2542,9 @@ bool LoadBlockIndex(bool fAllowNew)
         printf("%s\n", hashGenesisBlock.ToString().c_str());
         printf("%s\n", block.hashMerkleRoot.ToString().c_str());
         if (!fTestNet)
-            assert(block.hashMerkleRoot == uint256("0xcad706dc4aa0835b8975fbaa4816497c310853239900caaf0b656d584fa62b34"));
+            assert(block.hashMerkleRoot == uint256("0x95672e298ba92bcfaaf2c20fa8de479a7b51a7f9d551ec3ed63538b2434ab5ea"));
         else
-            assert(block.hashMerkleRoot == uint256("0x8b2874310ab6015b75dafbd3cde22fbe41b0f914e01e2d4a7ebce488e528f92c"));
+            assert(block.hashMerkleRoot == uint256("0x6c21b58ba0d0d6c02e18097b54b7f20c143cff11880c9948bc2dbc8138565ab3"));
 
         block.print();
         assert(block.GetHash() == hashGenesisBlock);
@@ -4043,7 +4040,26 @@ CBlock* CreateNewBlock(CReserveKey& reservekey, CWallet* pwallet, bool fProofOfS
 
     }
     if (pblock->IsProofOfWork())
-        pblock->vtx[0].vout[0].nValue = GetProofOfWorkReward(pblock->nBits);
+    {
+        int64 nReward = GetProofOfWorkReward(pblock->nBits);
+
+        if (GetBoolArg("-splitshareoutputs", true) && nReward >= MIN_COINSTAKE_VALUE * 2)
+        {
+            // nu: split output of generated shares
+            int nOutputs = nReward / MIN_COINSTAKE_VALUE;
+            int64 nRemainingAmount = nReward;
+
+            for (int i = 0; i < nOutputs - 1; i++)
+            {
+                int64 nAmount = MIN_COINSTAKE_VALUE;
+                pblock->vtx[0].vout.push_back(CTxOut(nAmount, pblock->vtx[0].vout[0].scriptPubKey));
+                nRemainingAmount -= nAmount;
+            }
+            pblock->vtx[0].vout[0].nValue = nRemainingAmount;
+        }
+        else
+            pblock->vtx[0].vout[0].nValue = nReward;
+    }
 
     // Fill in header
     pblock->hashPrevBlock  = pindexPrev->GetBlockHash();
@@ -4136,7 +4152,7 @@ bool CheckWork(CBlock* pblock, CWallet& wallet, CReserveKey& reservekey)
     printf("new block found  \n  hash: %s  \ntarget: %s\n", hash.GetHex().c_str(), hashTarget.GetHex().c_str());
     pblock->print();
     printf("%s ", DateTimeStrFormat(GetTime()).c_str());
-    printf("generated %s\n", FormatMoney(pblock->vtx[0].vout[0].nValue).c_str());
+    printf("generated %s\n", FormatMoney(pblock->vtx[0].GetValueOut()).c_str());
 
     // Found a solution
     {
@@ -4376,7 +4392,8 @@ void static ThreadBitcoinMiner(void* parg)
 void GenerateBitcoins(bool fGenerate, CWallet* pwallet)
 {
     fGenerateBitcoins = fGenerate;
-    nLimitProcessors = GetArg("-genproclimit", -1);
+    // nu: defaults to 1 processor because spliting outputs makes block generation and verification slow so we easily generate stale blocks
+    nLimitProcessors = GetArg("-genproclimit", 1);
     if (nLimitProcessors == 0)
         fGenerateBitcoins = false;
     fLimitProcessors = (nLimitProcessors != -1);
