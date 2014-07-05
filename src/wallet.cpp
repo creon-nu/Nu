@@ -1349,6 +1349,7 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
         else
             it++;
     }
+    CleanStakeModifierCache();
 
     txNew.vin.clear();
     txNew.vout.clear();
