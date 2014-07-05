@@ -61,7 +61,10 @@ void VotePage::update()
         return;
 
     {
-        LOCK(cs_main);
+        TRY_LOCK(cs_main, lockMain);
+        if (!lockMain)
+            return;
+
         if (pindexBest == lastBestBlock)
             return;
 
