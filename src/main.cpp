@@ -65,6 +65,7 @@ int64 nHPSTimerStart;
 
 // Settings
 int64 nTransactionFee = MIN_TX_FEE;
+int64 nSplitShareOutputs = MIN_COINSTAKE_VALUE;
 
 
 
@@ -4043,15 +4044,15 @@ CBlock* CreateNewBlock(CReserveKey& reservekey, CWallet* pwallet, bool fProofOfS
     {
         int64 nReward = GetProofOfWorkReward(pblock->nBits);
 
-        if (GetBoolArg("-splitshareoutputs", true) && nReward >= MIN_COINSTAKE_VALUE * 2)
+        if (nSplitShareOutputs > 0 && nReward >= nSplitShareOutputs * 2)
         {
             // nu: split output of generated shares
-            int nOutputs = nReward / MIN_COINSTAKE_VALUE;
+            int nOutputs = nReward / nSplitShareOutputs;
             int64 nRemainingAmount = nReward;
 
             for (int i = 0; i < nOutputs - 1; i++)
             {
-                int64 nAmount = MIN_COINSTAKE_VALUE;
+                int64 nAmount = nSplitShareOutputs;
                 pblock->vtx[0].vout.push_back(CTxOut(nAmount, pblock->vtx[0].vout[0].scriptPubKey));
                 nRemainingAmount -= nAmount;
             }
