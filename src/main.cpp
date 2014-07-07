@@ -1568,14 +1568,17 @@ bool CBlock::ConnectBlock(CTxDB& txdb, CBlockIndex* pindex)
             if (tx.vout.size() < 1)
                 return error("Connect() : not output in CurrencyCoinBase");
 
-            CBitcoinAddress address;
-            if (!ExtractAddress(tx.vout[0].scriptPubKey, address, tx.cUnit))
-                return error("Connect() : ExtractAddress on CurrencyCoinBase failed");
+            BOOST_FOREACH(const CTxOut& txo, tx.vout)
+            {
+                CBitcoinAddress address;
+                if (!ExtractAddress(txo.scriptPubKey, address, tx.cUnit))
+                    return error("Connect() : ExtractAddress on CurrencyCoinBase failed");
 
-            if (setElectedCustodian.count(address))
-                return error("Connect() : custodian has already been elected");
+                if (setElectedCustodian.count(address))
+                    return error("Connect() : custodian has already been elected");
 
-            setElectedCustodian.insert(address);
+                setElectedCustodian.insert(address);
+            }
         }
     }
 
@@ -1972,16 +1975,21 @@ bool CBlock::AddToBlockIndex(unsigned int nFile, unsigned int nBlockPos)
     {
         if (tx.IsCurrencyCoinBase())
         {
-            CCustodianVote electedCustodian;
-            electedCustodian.cUnit = tx.cUnit;
-            CBitcoinAddress address;
             if (tx.vout.size() < 1)
                 return error("Not enough outputs in currency coinbase");
-            if (!ExtractAddress(tx.vout[0].scriptPubKey, address, tx.cUnit))
-                return error("Unable to extract address from currency coinbase");
-            electedCustodian.hashAddress = address.GetHash160();
-            electedCustodian.nAmount = tx.GetValueOut();
-            pindexNew->vElectedCustodian.push_back(electedCustodian);
+
+            BOOST_FOREACH(const CTxOut& txo, tx.vout)
+            {
+                CBitcoinAddress address;
+                if (!ExtractAddress(txo.scriptPubKey, address, tx.cUnit))
+                    return error("Unable to extract address from currency coinbase");
+
+                CCustodianVote electedCustodian;
+                electedCustodian.cUnit = tx.cUnit;
+                electedCustodian.hashAddress = address.GetHash160();
+                electedCustodian.nAmount = txo.nValue;
+                pindexNew->vElectedCustodian.push_back(electedCustodian);
+            }
         }
     }
 
