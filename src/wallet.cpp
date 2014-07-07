@@ -1181,14 +1181,14 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, int64> >& vecSend, CW
                 BOOST_FOREACH (const PAIRTYPE(CScript, int64)& s, vecSend)
                 {
                     // nu: split shares if appropriate
-                    if (wtxNew.cUnit == 'S' && GetBoolArg("-splitshareoutputs", true) && s.second >= MIN_COINSTAKE_VALUE * 2)
+                    if (wtxNew.cUnit == 'S' && nSplitShareOutputs > 0 && s.second >= nSplitShareOutputs * 2)
                     {
-                        int nOutputs = s.second / MIN_COINSTAKE_VALUE;
+                        int nOutputs = s.second / nSplitShareOutputs;
                         int64 nRemainingAmount = s.second;
 
                         for (int i = 0; i < nOutputs - 1; i++)
                         {
-                            int64 nAmount = MIN_COINSTAKE_VALUE;
+                            int64 nAmount = nSplitShareOutputs;
                             wtxNew.vout.push_back(CTxOut(nAmount, s.first));
                             nRemainingAmount -= nAmount;
                         }
@@ -1254,8 +1254,8 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, int64> >& vecSend, CW
 
                     // nu: split change if appropriate
                     int nChangeOutputs;
-                    if (wtxNew.cUnit == 'S' && GetBoolArg("-splitshareoutputs", true) && nChange >= MIN_COINSTAKE_VALUE * 2)
-                        nChangeOutputs = nChange / MIN_COINSTAKE_VALUE;
+                    if (wtxNew.cUnit == 'S' && nSplitShareOutputs > 0 && nChange >= nSplitShareOutputs * 2)
+                        nChangeOutputs = nChange / nSplitShareOutputs;
                     else
                         nChangeOutputs = 1;
 
@@ -1264,7 +1264,7 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, int64> >& vecSend, CW
                     {
                         // Insert split change txn at random position:
                         vector<CTxOut>::iterator position = wtxNew.vout.begin()+GetRandInt(wtxNew.vout.size());
-                        int64 nAmount = MIN_COINSTAKE_VALUE;
+                        int64 nAmount = nSplitShareOutputs;
                         wtxNew.vout.insert(position, CTxOut(nAmount, scriptChange));
                         nChangeRemaining -= nAmount;
                     }
@@ -1513,9 +1513,9 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
     }
 
     // nu: split outputs
-    if (GetBoolArg("-splitshareoutputs", true))
+    if (nSplitShareOutputs > 0)
     {
-        nOutputs = nCredit / MIN_COINSTAKE_VALUE;
+        nOutputs = nCredit / nSplitShareOutputs;
 
         // limit the number of outputs to avoid exceeding MAX_COINSTAKE_SIZE
         if (nOutputs > 5)
@@ -1556,7 +1556,7 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
         int i;
         for (i = 1; i < nOutputs; i++)
         {
-            txNew.vout[i].nValue = MIN_COINSTAKE_VALUE;
+            txNew.vout[i].nValue = nSplitShareOutputs;
             nAmountToDistribute -= txNew.vout[i].nValue;
         }
         txNew.vout[i].nValue = nAmountToDistribute;
