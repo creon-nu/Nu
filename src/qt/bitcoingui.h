@@ -155,9 +155,9 @@ private slots:
     void gotoHistoryPage();
     /** Switch to address book page */
     void gotoAddressBookPage();
-    /** Switch to receive coins page */
+    /** Switch to receive shares page */
     void gotoReceiveCoinsPage();
-    /** Switch to send coins page */
+    /** Switch to send shares page */
     void gotoSendCoinsPage();
     /** Switch to park page */
     void gotoParkPage();

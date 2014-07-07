@@ -1,5 +1,6 @@
 // Copyright (c) 2009-2012 Bitcoin Developers
-// Copyright (c) 2012-2013 The PPCoin developers
+// Copyright (c) 2012-2013 The Peercoin developers
+// Copyright (c) 2013-2014 The Peershares developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -60,7 +61,7 @@ Value importprivkey(const Array& params, bool fHelp)
     if (!fGood) throw JSONRPCError(-5,"Invalid private key");
     if (pwalletMain->IsLocked())
         throw JSONRPCError(-13, "Error: Please enter the wallet passphrase with walletpassphrase first.");
-    if (fWalletUnlockMintOnly) // ppcoin: no importprivkey in mint-only mode
+    if (fWalletUnlockMintOnly) // peercoin: no importprivkey in mint-only mode
         throw JSONRPCError(-102, "Wallet is unlocked for minting only.");
 
     CKey key;
@@ -100,7 +101,7 @@ Value dumpprivkey(const Array& params, bool fHelp)
         throw JSONRPCError(-5, "Invalid address");
     if (pwalletMain->IsLocked())
         throw JSONRPCError(-13, "Error: Please enter the wallet passphrase with walletpassphrase first.");
-    if (fWalletUnlockMintOnly) // ppcoin: no dumpprivkey in mint-only mode
+    if (fWalletUnlockMintOnly) // peercoin: no dumpprivkey in mint-only mode
         throw JSONRPCError(-102, "Wallet is unlocked for minting only.");
     CSecret vchSecret;
     bool fCompressed;
@@ -118,7 +119,7 @@ Value exportpeercoinkeys(const Array& params, bool fHelp)
 
     if (pwalletMain->IsLocked())
         throw JSONRPCError(-13, "Error: Please enter the wallet passphrase with walletpassphrase first.");
-    if (fWalletUnlockMintOnly) // ppcoin: no dumpprivkey in mint-only mode
+    if (fWalletUnlockMintOnly) // peercoin: no dumpprivkey in mint-only mode
         throw JSONRPCError(-102, "Wallet is unlocked for minting only.");
 
     Object ret;
