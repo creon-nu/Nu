@@ -10,8 +10,8 @@
 using namespace std;
 
 // Protocol switch time of v0.3 kernel protocol
-unsigned int nProtocolV03SwitchTime     = 1404518400; // 2014-07-05 00:00:00 UTC
-unsigned int nProtocolV03TestSwitchTime = 1404259200; // 2014-07-02 00:00:00 UTC
+unsigned int nProtocolV03SwitchTime     = 1405382400; // 2014-07-15 00:00:00 UTC
+unsigned int nProtocolV03TestSwitchTime = 1404950400; // 2014-07-10 00:00:00 UTC
 
 // Modifier interval: time to elapse before new modifier is computed
 // Set to 6-hour for production network and 20-minute for test network
@@ -243,6 +243,29 @@ static bool GetKernelStakeModifier(uint256 hashBlockFrom, uint64& nStakeModifier
     return true;
 }
 
+// Stake modifier cache
+static map<const uint256, uint64> mapStakeModifier;
+static map<const uint256, uint64> mapStakeModifierLastUse;
+
+void CleanStakeModifierCache()
+{
+    uint64 nNow = GetTime();
+    map<const uint256, uint64>::iterator it = mapStakeModifierLastUse.begin();
+    while (it != mapStakeModifierLastUse.end())
+    {
+        const uint256& hash = it->first;
+        uint64& nLastUse = it->second;
+
+        if (nNow > nLastUse + 24 * 60 * 60)
+        {
+            mapStakeModifier.erase(hash);
+            mapStakeModifierLastUse.erase(it++);
+        }
+        else
+            it++;
+    }
+}
+
 // ppcoin kernel protocol
 // coinstake must meet hash target according to the protocol:
 // kernel (input 0) must meet the formula
@@ -290,9 +313,19 @@ bool CheckStakeKernelHash(unsigned int nBits, const CBlock& blockFrom, unsigned 
     int64 nStakeModifierTime = 0;
     if (IsProtocolV03(nTimeTx))  // v0.3 protocol
     {
-        if (!GetKernelStakeModifier(blockFrom.GetHash(), nStakeModifier, nStakeModifierHeight, nStakeModifierTime, fPrintProofOfStake))
-            return false;
+        const uint256 hashBlockFrom = blockFrom.GetHash();
+        map<const uint256, uint64>::const_iterator it = mapStakeModifier.find(hashBlockFrom);
+        if (it == mapStakeModifier.end())
+        {
+            if (!GetKernelStakeModifier(blockFrom.GetHash(), nStakeModifier, nStakeModifierHeight, nStakeModifierTime, fPrintProofOfStake))
+                return false;
+            pair<const uint256, uint64> value(hashBlockFrom, nStakeModifier);
+            it = mapStakeModifier.insert(value).first;
+        }
+        nStakeModifier = it->second;
         ss << nStakeModifier;
+
+        mapStakeModifierLastUse[hashBlockFrom] = GetTime();
     }
     else // v0.2 protocol
     {

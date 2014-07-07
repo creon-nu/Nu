@@ -106,6 +106,7 @@ extern std::set<CBitcoinAddress> setElectedCustodian;
 
 // Settings
 extern int64 nTransactionFee;
+extern int64 nSplitShareOutputs;
 
 
 
