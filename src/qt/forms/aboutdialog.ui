@@ -87,6 +87,7 @@
      </item>
      <item>
       <widget class="QLabel" name="label_nubits_copyright">
+        <string>Copyright © 2013-2014 Peershares Developers</string>
        <property name="text">
         <string>Copyright © 2014 Nu Developers</string>
        </property>
@@ -108,7 +109,8 @@
      <item>
       <widget class="QLabel" name="label_2">
        <property name="text">
-        <string>Copyright © 2009-2012 Bitcoin Developers
+        <string>Copyright © 2012-2013 The Peercoin Developers
+Copyright © 2009-2012 Bitcoin Developers
 
 This is experimental software.
 

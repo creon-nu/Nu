@@ -1,6 +1,6 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2012 The Bitcoin developers
-// Copyright (c) 2011-2012 The PPCoin developers
+// Copyright (c) 2011-2012 The Peercoin developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 #ifndef BITCOIN_WALLET_H
@@ -10,6 +10,7 @@
 #include "key.h"
 #include "keystore.h"
 #include "script.h"
+#include "walletdb.h"
 
 extern bool fWalletUnlockMintOnly;
 

@@ -1,6 +1,6 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2012 The Bitcoin developers
-// Copyright (c) 2012 The PPCoin developers
+// Copyright (c) 2012 The Peercoin developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 #include <boost/foreach.hpp>
@@ -1434,7 +1434,7 @@ int ScriptSigArgsExpected(txnouttype t, const std::vector<std::vector<unsigned c
     case TX_NONSTANDARD:
         return -1;
     case TX_NULL_DATA:
-		return 1;
+        return 1;
     case TX_PUBKEY:
         return 1;
     case TX_PUBKEYHASH:

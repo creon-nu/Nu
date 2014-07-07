@@ -4,17 +4,17 @@
     <name>AboutDialog</name>
     <message>
         <location filename="../forms/aboutdialog.ui" line="14"/>
-        <source>About PPCoin</source>
-        <translation>Sobre o PPCoin</translation>
+        <source>About Peershares</source>
+        <translation>Sobre o Peershares</translation>
     </message>
     <message>
         <location filename="../forms/aboutdialog.ui" line="53"/>
-        <source>&lt;b&gt;PPCoin&lt;/b&gt; version</source>
-        <translation>&lt;b&gt;PPCoin&lt;/b&gt; versão</translation>
+        <source>&lt;b&gt;Peershares&lt;/b&gt; version</source>
+        <translation>&lt;b&gt;Peershares&lt;/b&gt; versão</translation>
     </message>
     <message>
         <location filename="../forms/aboutdialog.ui" line="85"/>
-        <source>Copyright © 2011-2013 PPCoin Developers
+        <source>Copyright © 2011-2013 Peershares Developers
 
 This is experimental software.
 
@@ -33,8 +33,8 @@ This product includes software developed by the OpenSSL Project for use in the O
     </message>
     <message>
         <location filename="../forms/addressbookpage.ui" line="20"/>
-        <source>These are your PPCoin addresses for receiving payments.  You may want to give a different one to each sender so you can keep track of who is paying you.</source>
-        <translation>Estes são os seus endereços PPCoin para receber pagamentos. Você pode querer enviar um endereço diferente para cada remetente, para acompanhar quem está pagando.</translation>
+        <source>These are your Peershares addresses for receiving shares.  You may want to give a different one to each sender so you can keep track of who is transferring shares you.</source>
+        <translation>Estes são os seus endereços Peershares para receber pagamentos. Você pode querer enviar um endereço diferente para cada remetente, para acompanhar quem está pagando.</translation>
     </message>
     <message>
         <location filename="../forms/addressbookpage.ui" line="33"/>
@@ -175,32 +175,32 @@ This product includes software developed by the OpenSSL Project for use in the O
     </message>
     <message>
         <location filename="../askpassphrasedialog.cpp" line="34"/>
-        <source>Enter the new passphrase to the wallet.&lt;br/&gt;Please use a passphrase of &lt;b&gt;10 or more random characters&lt;/b&gt;, or &lt;b&gt;eight or more words&lt;/b&gt;.</source>
+        <source>Enter the new passphrase to the portfolio.&lt;br/&gt;Please use a passphrase of &lt;b&gt;10 or more random characters&lt;/b&gt;, or &lt;b&gt;eight or more words&lt;/b&gt;.</source>
         <translation>Digite a nova frase de seguraça da sua carteira. &lt;br/&gt; Por favor, use uma frase de &lt;b&gt;10 ou mais caracteres aleatórios,&lt;/b&gt; ou &lt;b&gt;oito ou mais palavras.&lt;/b&gt;</translation>
     </message>
     <message>
         <location filename="../askpassphrasedialog.cpp" line="35"/>
-        <source>Encrypt wallet</source>
+        <source>Encrypt portfolio</source>
         <translation>Criptografar carteira</translation>
     </message>
     <message>
         <location filename="../askpassphrasedialog.cpp" line="38"/>
-        <source>This operation needs your wallet passphrase to unlock the wallet.</source>
+        <source>This operation needs your portfolio passphrase to unlock the portfolio.</source>
         <translation>Esta operação precisa de sua frase de segurança para desbloquear a carteira.</translation>
     </message>
     <message>
         <location filename="../askpassphrasedialog.cpp" line="43"/>
-        <source>Unlock wallet</source>
+        <source>Unlock portfolio</source>
         <translation>Desbloquear carteira</translation>
     </message>
     <message>
         <location filename="../askpassphrasedialog.cpp" line="46"/>
-        <source>This operation needs your wallet passphrase to decrypt the wallet.</source>
+        <source>This operation needs your portfolio passphrase to decrypt the portfolio.</source>
         <translation>Esta operação precisa de sua frase de segurança para descriptografar a carteira.</translation>
     </message>
     <message>
         <location filename="../askpassphrasedialog.cpp" line="51"/>
-        <source>Decrypt wallet</source>
+        <source>Decrypt portfolio</source>
         <translation>Descriptografar carteira</translation>
     </message>
     <message>
@@ -210,29 +210,29 @@ This product includes software developed by the OpenSSL Project for use in the O
     </message>
     <message>
         <location filename="../askpassphrasedialog.cpp" line="55"/>
-        <source>Enter the old and new passphrase to the wallet.</source>
+        <source>Enter the old and new passphrase to the portfolio.</source>
         <translation>Digite a frase de segurança antiga e nova para a carteira.</translation>
     </message>
     <message>
         <location filename="../askpassphrasedialog.cpp" line="101"/>
-        <source>Confirm wallet encryption</source>
+        <source>Confirm portfolio encryption</source>
         <translation>Confirmar criptografia da carteira</translation>
     </message>
     <message>
         <location filename="../askpassphrasedialog.cpp" line="102"/>
-        <source>WARNING: If you encrypt your wallet and lose your passphrase, you will &lt;b&gt;LOSE ALL OF YOUR PPCoinS&lt;/b&gt;!
-Are you sure you wish to encrypt your wallet?</source>
-        <translation>AVISO: Se você criptografar sua carteira e perder sua senha, você vai &lt;b&gt;perder todos os seus PPCoinS!&lt;/b&gt; Tem certeza de que deseja criptografar sua carteira?</translation>
+        <source>WARNING: If you encrypt your portfolio and lose your passphrase, you will &lt;b&gt;LOSE ALL OF YOUR PeersharesS&lt;/b&gt;!
+Are you sure you wish to encrypt your portfolio?</source>
+        <translation>AVISO: Se você criptografar sua carteira e perder sua senha, você vai &lt;b&gt;perder todos os seus PeersharesS!&lt;/b&gt; Tem certeza de que deseja criptografar sua carteira?</translation>
     </message>
     <message>
         <location filename="../askpassphrasedialog.cpp" line="111"/>
         <location filename="../askpassphrasedialog.cpp" line="160"/>
-        <source>Wallet encrypted</source>
+        <source>Portfolio encrypted</source>
         <translation>Carteira criptografada</translation>
     </message>
     <message>
         <location filename="../askpassphrasedialog.cpp" line="112"/>
-        <source>PPCoin will close now to finish the encryption process. Remember that encrypting your wallet cannot fully protect your PPCoins from being stolen by malware infecting your computer.</source>
+        <source>Peershares will close now to finish the encryption process. Remember that encrypting your portfolio cannot fully protect your Peersharess from being stolen by malware infecting your computer.</source>
         <translation type="unfinished"/>
     </message>
     <message>
@@ -246,12 +246,12 @@ Are you sure you wish to encrypt your wallet?</source>
         <location filename="../askpassphrasedialog.cpp" line="124"/>
         <location filename="../askpassphrasedialog.cpp" line="166"/>
         <location filename="../askpassphrasedialog.cpp" line="172"/>
-        <source>Wallet encryption failed</source>
+        <source>Portfolio encryption failed</source>
         <translation>A criptografia da carteira falhou</translation>
     </message>
     <message>
         <location filename="../askpassphrasedialog.cpp" line="118"/>
-        <source>Wallet encryption failed due to an internal error. Your wallet was not encrypted.</source>
+        <source>Portfolio encryption failed due to an internal error. Your portfolio was not encrypted.</source>
         <translation>A criptografia da carteira falhou devido a um erro interno. Sua carteira não estava criptografada.</translation>
     </message>
     <message>
@@ -262,33 +262,33 @@ Are you sure you wish to encrypt your wallet?</source>
     </message>
     <message>
         <location filename="../askpassphrasedialog.cpp" line="136"/>
-        <source>Wallet unlock failed</source>
+        <source>Portfolio unlock failed</source>
         <translation>A abertura da carteira falhou</translation>
     </message>
     <message>
         <location filename="../askpassphrasedialog.cpp" line="137"/>
         <location filename="../askpassphrasedialog.cpp" line="148"/>
         <location filename="../askpassphrasedialog.cpp" line="167"/>
-        <source>The passphrase entered for the wallet decryption was incorrect.</source>
+        <source>The passphrase entered for the portfolio decryption was incorrect.</source>
         <translation>A frase de segurança digitada para a descriptografia da carteira estava incorreta.</translation>
     </message>
     <message>
         <location filename="../askpassphrasedialog.cpp" line="147"/>
-        <source>Wallet decryption failed</source>
+        <source>Portfolio decryption failed</source>
         <translation>A descriptografia da carteira falhou</translation>
     </message>
     <message>
         <location filename="../askpassphrasedialog.cpp" line="161"/>
-        <source>Wallet passphrase was succesfully changed.</source>
+        <source>Portfolio passphrase was succesfully changed.</source>
         <translation>A frase de segurança da carteira foi alterada com êxito.</translation>
     </message>
 </context>
 <context>
-    <name>PPCoinGUI</name>
+    <name>PeersharesGUI</name>
     <message>
         <location filename="../bitcoingui.cpp" line="69"/>
-        <source>PPCoin Wallet</source>
-        <translation>Carteira PPCoin</translation>
+        <source>Peershares Portfolio</source>
+        <translation>Carteira Peershares</translation>
     </message>
     <message>
         <location filename="../bitcoingui.cpp" line="142"/>
@@ -308,7 +308,7 @@ Are you sure you wish to encrypt your wallet?</source>
     </message>
     <message>
         <location filename="../bitcoingui.cpp" line="177"/>
-        <source>Show general overview of wallet</source>
+        <source>Show general overview of portfolio</source>
         <translation>Mostrar visão geral da carteira</translation>
     </message>
     <message>
@@ -348,8 +348,8 @@ Are you sure you wish to encrypt your wallet?</source>
     </message>
     <message>
         <location filename="../bitcoingui.cpp" line="201"/>
-        <source>Send coins to a PPCoin address</source>
-        <translation>Enviar moedas para um endereço PPCoin</translation>
+        <source>Send coins to a Peershares address</source>
+        <translation>Enviar moedas para um endereço Peershares</translation>
     </message>
     <message>
         <location filename="../bitcoingui.cpp" line="206"/>
@@ -378,8 +378,8 @@ Are you sure you wish to encrypt your wallet?</source>
     </message>
     <message>
         <location filename="../bitcoingui.cpp" line="231"/>
-        <source>Show information about PPCoin</source>
-        <translation>Mostrar informação sobre PPCoin</translation>
+        <source>Show information about Peershares</source>
+        <translation>Mostrar informação sobre Peershares</translation>
     </message>
     <message>
         <location filename="../bitcoingui.cpp" line="233"/>
@@ -398,18 +398,18 @@ Are you sure you wish to encrypt your wallet?</source>
     </message>
     <message>
         <location filename="../bitcoingui.cpp" line="237"/>
-        <source>Modify configuration options for PPCoin</source>
-        <translation>Modificar opções de configuração para PPCoin</translation>
+        <source>Modify configuration options for Peershares</source>
+        <translation>Modificar opções de configuração para Peershares</translation>
     </message>
     <message>
         <location filename="../bitcoingui.cpp" line="239"/>
-        <source>Open &amp;PPCoin</source>
-        <translation>Abrir &amp;PPCoin</translation>
+        <source>Open &amp;Peershares</source>
+        <translation>Abrir &amp;Peershares</translation>
     </message>
     <message>
         <location filename="../bitcoingui.cpp" line="240"/>
-        <source>Show the PPCoin window</source>
-        <translation>Mostrar a janela PPCoin</translation>
+        <source>Show the Peershares window</source>
+        <translation>Mostrar a janela Peershares</translation>
     </message>
     <message>
         <location filename="../bitcoingui.cpp" line="241"/>
@@ -423,22 +423,22 @@ Are you sure you wish to encrypt your wallet?</source>
     </message>
     <message>
         <location filename="../bitcoingui.cpp" line="243"/>
-        <source>&amp;Encrypt Wallet</source>
+        <source>&amp;Encrypt Portfolio</source>
         <translation>&amp;Criptografar Carteira</translation>
     </message>
     <message>
         <location filename="../bitcoingui.cpp" line="244"/>
-        <source>Encrypt or decrypt wallet</source>
+        <source>Encrypt or decrypt portfolio</source>
         <translation>Criptografar ou decriptogravar carteira</translation>
     </message>
     <message>
         <location filename="../bitcoingui.cpp" line="246"/>
-        <source>&amp;Backup Wallet</source>
+        <source>&amp;Backup Portfolio</source>
         <translation type="unfinished"/>
     </message>
     <message>
         <location filename="../bitcoingui.cpp" line="247"/>
-        <source>Backup wallet to another location</source>
+        <source>Backup portfolio to another location</source>
         <translation type="unfinished"/>
     </message>
     <message>
@@ -448,7 +448,7 @@ Are you sure you wish to encrypt your wallet?</source>
     </message>
     <message>
         <location filename="../bitcoingui.cpp" line="249"/>
-        <source>Change the passphrase used for wallet encryption</source>
+        <source>Change the passphrase used for portfolio encryption</source>
         <translation>Mudar a frase de segurança utilizada na criptografia da carteira</translation>
     </message>
     <message>
@@ -483,13 +483,13 @@ Are you sure you wish to encrypt your wallet?</source>
     </message>
     <message>
         <location filename="../bitcoingui.cpp" line="407"/>
-        <source>PPCoin-qt</source>
-        <translation>PPCoin-qt</translation>
+        <source>Peershares-qt</source>
+        <translation>Peershares-qt</translation>
     </message>
     <message numerus="yes">
         <location filename="../bitcoingui.cpp" line="449"/>
-        <source>%n active connection(s) to PPCoin network</source>
-        <translation><numerusform>%n conexão ativa na rede PPCoin</numerusform><numerusform>%n conexões ativas na rede PPCoin</numerusform></translation>
+        <source>%n active connection(s) to Peershares network</source>
+        <translation><numerusform>%n conexão ativa na rede Peershares</numerusform><numerusform>%n conexões ativas na rede Peershares</numerusform></translation>
     </message>
     <message>
         <location filename="../bitcoingui.cpp" line="475"/>
@@ -538,8 +538,8 @@ Are you sure you wish to encrypt your wallet?</source>
     </message>
     <message>
         <location filename="../bitcoingui.cpp" line="597"/>
-        <source>This transaction is over the size limit.  You can still send it for a fee of %1, which goes to the nodes that process your transaction and helps to support the network.  Do you want to pay the fee?</source>
-        <translation>This transaction is over the size limit.  You can still send it for a fee of %1, which goes to the nodes that process your transaction and helps to support the network.  Do you want to pay the fee?</translation>
+        <source>You will be charged a %1 network fee to conduct this transaction. Would you like to continue?</source>
+        <translation>You will be charged a %1 network fee to conduct this transaction. Would you like to continue?</translation>
     </message>
     <message>
         <location filename="../bitcoingui.cpp" line="602"/>
@@ -570,22 +570,22 @@ Endereço: %4</translation>
     </message>
     <message>
         <location filename="../bitcoingui.cpp" line="751"/>
-        <source>Wallet is &lt;b&gt;encrypted&lt;/b&gt; and currently &lt;b&gt;unlocked&lt;/b&gt;</source>
-        <translation>Wallet is &lt;b&gt;encrypted&lt;/b&gt; and currently &lt;b&gt;unlocked&lt;/b&gt;</translation>
+        <source>Portfolio is &lt;b&gt;encrypted&lt;/b&gt; and currently &lt;b&gt;unlocked&lt;/b&gt;</source>
+        <translation>Portfolio is &lt;b&gt;encrypted&lt;/b&gt; and currently &lt;b&gt;unlocked&lt;/b&gt;</translation>
     </message>
     <message>
         <location filename="../bitcoingui.cpp" line="759"/>
-        <source>Wallet is &lt;b&gt;encrypted&lt;/b&gt; and currently &lt;b&gt;locked&lt;/b&gt;</source>
-        <translation>Wallet is &lt;b&gt;encrypted&lt;/b&gt; and currently &lt;b&gt;locked&lt;/b&gt;</translation>
+        <source>Portfolio is &lt;b&gt;encrypted&lt;/b&gt; and currently &lt;b&gt;locked&lt;/b&gt;</source>
+        <translation>Portfolio is &lt;b&gt;encrypted&lt;/b&gt; and currently &lt;b&gt;locked&lt;/b&gt;</translation>
     </message>
     <message>
         <location filename="../bitcoingui.cpp" line="782"/>
-        <source>Backup Wallet</source>
+        <source>Backup Portfolio</source>
         <translation type="unfinished"/>
     </message>
     <message>
         <location filename="../bitcoingui.cpp" line="782"/>
-        <source>Wallet Data (*.dat)</source>
+        <source>Portfolio Data (*.dat)</source>
         <translation type="unfinished"/>
     </message>
     <message>
@@ -595,7 +595,7 @@ Endereço: %4</translation>
     </message>
     <message>
         <location filename="../bitcoingui.cpp" line="785"/>
-        <source>There was an error trying to save the wallet data to the new location.</source>
+        <source>There was an error trying to save the portfolio data to the new location.</source>
         <translation type="unfinished"/>
     </message>
 </context>
@@ -671,13 +671,13 @@ Endereço: %4</translation>
     </message>
     <message>
         <location filename="../editaddressdialog.cpp" line="96"/>
-        <source>The entered address &quot;%1&quot; is not a valid PPCoin address.</source>
-        <translation>The entered address &quot;%1&quot; is not a valid PPCoin address.</translation>
+        <source>The entered address &quot;%1&quot; is not a valid Peershares address.</source>
+        <translation>The entered address &quot;%1&quot; is not a valid Peershares address.</translation>
     </message>
     <message>
         <location filename="../editaddressdialog.cpp" line="101"/>
-        <source>Could not unlock wallet.</source>
-        <translation>Could not unlock wallet.</translation>
+        <source>Could not unlock portfolio.</source>
+        <translation>Could not unlock portfolio.</translation>
     </message>
     <message>
         <location filename="../editaddressdialog.cpp" line="106"/>
@@ -689,13 +689,13 @@ Endereço: %4</translation>
     <name>MainOptionsPage</name>
     <message>
         <location filename="../optionsdialog.cpp" line="170"/>
-        <source>&amp;Start PPCoin on window system startup</source>
-        <translation>&amp;Start PPCoin on window system startup</translation>
+        <source>&amp;Start Peershares on window system startup</source>
+        <translation>&amp;Start Peershares on window system startup</translation>
     </message>
     <message>
         <location filename="../optionsdialog.cpp" line="171"/>
-        <source>Automatically start PPCoin after the computer is turned on</source>
-        <translation>Automatically start PPCoin after the computer is turned on</translation>
+        <source>Automatically start Peershares after the computer is turned on</source>
+        <translation>Automatically start Peershares after the computer is turned on</translation>
     </message>
     <message>
         <location filename="../optionsdialog.cpp" line="175"/>
@@ -714,8 +714,8 @@ Endereço: %4</translation>
     </message>
     <message>
         <location filename="../optionsdialog.cpp" line="181"/>
-        <source>Automatically open the PPCoin client port on the router. This only works when your router supports UPnP and it is enabled.</source>
-        <translation>Automatically open the PPCoin client port on the router. This only works when your router supports UPnP and it is enabled.</translation>
+        <source>Automatically open the Peershares client port on the router. This only works when your router supports UPnP and it is enabled.</source>
+        <translation>Automatically open the Peershares client port on the router. This only works when your router supports UPnP and it is enabled.</translation>
     </message>
     <message>
         <location filename="../optionsdialog.cpp" line="185"/>
@@ -924,12 +924,12 @@ Endereço: %4</translation>
 &lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
 p, li { white-space: pre-wrap; }
 &lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'Ubuntu'; font-size:11pt; font-weight:400; font-style:normal;&quot;&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Wallet&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Portfolio&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
 &lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
 p, li { white-space: pre-wrap; }
 &lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:&apos;Ubuntu&apos;; font-size:11pt; font-weight:400; font-style:normal;&quot;&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Wallet&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Portfolio&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../forms/overviewpage.ui" line="122"/>
@@ -948,8 +948,8 @@ p, li { white-space: pre-wrap; }
     </message>
     <message>
         <location filename="../overviewpage.cpp" line="111"/>
-        <source>Total number of transactions in wallet</source>
-        <translation>Total number of transactions in wallet</translation>
+        <source>Total number of transactions in portfolio</source>
+        <translation>Total number of transactions in portfolio</translation>
     </message>
 </context>
 <context>
@@ -1111,8 +1111,8 @@ p, li { white-space: pre-wrap; }
     </message>
     <message>
         <location filename="../sendcoinsdialog.cpp" line="154"/>
-        <source>Error: The transaction was rejected.  This might happen if some of the coins in your wallet were already spent, such as if you used a copy of wallet.dat and coins were spent in the copy but not marked as spent here.</source>
-        <translation>Error: The transaction was rejected.  This might happen if some of the coins in your wallet were already spent, such as if you used a copy of wallet.dat and coins were spent in the copy but not marked as spent here.</translation>
+        <source>Error: The transaction was rejected.  This might happen if some of the coins in your portfolio were already spent, such as if you used a copy of portfolio.dat and coins were spent in the copy but not marked as spent here.</source>
+        <translation>Error: The transaction was rejected.  This might happen if some of the coins in your portfolio were already spent, such as if you used a copy of portfolio.dat and coins were spent in the copy but not marked as spent here.</translation>
     </message>
 </context>
 <context>
@@ -1175,8 +1175,8 @@ p, li { white-space: pre-wrap; }
     </message>
     <message>
         <location filename="../sendcoinsentry.cpp" line="25"/>
-        <source>Enter a PPCoin address (e.g. 1NS17iag9jJgTHD1VXjvLCEnZuQ3rJDE9L)</source>
-        <translation>Enter a PPCoin address (e.g. 1NS17iag9jJgTHD1VXjvLCEnZuQ3rJDE9L)</translation>
+        <source>Enter a Peershares address (e.g. 1NS17iag9jJgTHD1VXjvLCEnZuQ3rJDE9L)</source>
+        <translation>Enter a Peershares address (e.g. 1NS17iag9jJgTHD1VXjvLCEnZuQ3rJDE9L)</translation>
     </message>
 </context>
 <context>
@@ -1616,19 +1616,19 @@ p, li { white-space: pre-wrap; }
     </message>
 </context>
 <context>
-    <name>WalletModel</name>
+    <name>PortfolioModel</name>
     <message>
-        <location filename="../walletmodel.cpp" line="145"/>
+        <location filename="../portfoliomodel.cpp" line="145"/>
         <source>Sending...</source>
         <translation>Sending...</translation>
     </message>
 </context>
 <context>
-    <name>PPCoin-core</name>
+    <name>Peershares-core</name>
     <message>
         <location filename="../bitcoinstrings.cpp" line="3"/>
-        <source>PPCoin version</source>
-        <translation>PPCoin version</translation>
+        <source>Peershares version</source>
+        <translation>Peershares version</translation>
     </message>
     <message>
         <location filename="../bitcoinstrings.cpp" line="4"/>
@@ -1661,8 +1661,8 @@ p, li { white-space: pre-wrap; }
     </message>
     <message>
         <location filename="../bitcoinstrings.cpp" line="9"/>
-        <source>Specify configuration file (default: PPCoin.conf)</source>
-        <translation>Specify configuration file (default: PPCoin.conf)
+        <source>Specify configuration file (default: Peershares.conf)</source>
+        <translation>Specify configuration file (default: Peershares.conf)
 </translation>
     </message>
     <message>
@@ -1859,16 +1859,16 @@ p, li { white-space: pre-wrap; }
     </message>
     <message>
         <location filename="../bitcoinstrings.cpp" line="46"/>
-        <source>Rescan the block chain for missing wallet transactions</source>
-        <translation>Rescan the block chain for missing wallet transactions
+        <source>Rescan the block chain for missing portfolio transactions</source>
+        <translation>Rescan the block chain for missing portfolio transactions
 </translation>
     </message>
     <message>
         <location filename="../bitcoinstrings.cpp" line="47"/>
         <source>
-SSL options: (see the PPCoin Wiki for SSL setup instructions)</source>
+SSL options: (see the Peershares Wiki for SSL setup instructions)</source>
         <translation>
-SSL options: (see the PPCoin Wiki for SSL setup instructions)
+SSL options: (see the Peershares Wiki for SSL setup instructions)
 </translation>
     </message>
     <message>
@@ -1903,8 +1903,8 @@ SSL options: (see the PPCoin Wiki for SSL setup instructions)
     </message>
     <message>
         <location filename="../bitcoinstrings.cpp" line="57"/>
-        <source>Cannot obtain a lock on data directory %s.  PPCoin is probably already running.</source>
-        <translation>Cannot obtain a lock on data directory %s.  PPCoin is probably already running.</translation>
+        <source>Cannot obtain a lock on data directory %s.  Peershares is probably already running.</source>
+        <translation>Cannot obtain a lock on data directory %s.  Peershares is probably already running.</translation>
     </message>
     <message>
         <location filename="../bitcoinstrings.cpp" line="60"/>
@@ -1923,22 +1923,22 @@ SSL options: (see the PPCoin Wiki for SSL setup instructions)
     </message>
     <message>
         <location filename="../bitcoinstrings.cpp" line="65"/>
-        <source>Error loading wallet.dat: Wallet corrupted</source>
+        <source>Error loading portfolio.dat: Portfolio corrupted</source>
         <translation type="unfinished"/>
     </message>
     <message>
         <location filename="../bitcoinstrings.cpp" line="66"/>
-        <source>Error loading wallet.dat: Wallet requires newer version of PPCoin</source>
+        <source>Error loading portfolio.dat: Portfolio requires newer version of Peershares</source>
         <translation type="unfinished"/>
     </message>
     <message>
         <location filename="../bitcoinstrings.cpp" line="67"/>
-        <source>Wallet needed to be rewritten: restart PPCoin to complete</source>
+        <source>Portfolio needed to be rewritten: restart Peershares to complete</source>
         <translation type="unfinished"/>
     </message>
     <message>
         <location filename="../bitcoinstrings.cpp" line="68"/>
-        <source>Error loading wallet.dat</source>
+        <source>Error loading portfolio.dat</source>
         <translation type="unfinished"/>
     </message>
     <message>
@@ -1948,8 +1948,8 @@ SSL options: (see the PPCoin Wiki for SSL setup instructions)
     </message>
     <message>
         <location filename="../bitcoinstrings.cpp" line="64"/>
-        <source>Loading wallet...</source>
-        <translation>Loading wallet...</translation>
+        <source>Loading portfolio...</source>
+        <translation>Loading portfolio...</translation>
     </message>
     <message>
         <location filename="../bitcoinstrings.cpp" line="69"/>
@@ -1988,13 +1988,13 @@ SSL options: (see the PPCoin Wiki for SSL setup instructions)
     </message>
     <message>
         <location filename="../bitcoinstrings.cpp" line="78"/>
-        <source>Unable to bind to port %d on this computer.  PPCoin is probably already running.</source>
-        <translation>Unable to bind to port %d on this computer.  PPCoin is probably already running.</translation>
+        <source>Unable to bind to port %d on this computer.  Peershares is probably already running.</source>
+        <translation>Unable to bind to port %d on this computer.  Peershares is probably already running.</translation>
     </message>
     <message>
         <location filename="../bitcoinstrings.cpp" line="81"/>
-        <source>Warning: Please check that your computer&apos;s date and time are correct.  If your clock is wrong PPCoin will not work properly.</source>
-        <translation>Warning: Please check that your computer&apos;s date and time are correct.  If your clock is wrong PPCoin will not work properly.</translation>
+        <source>Warning: Please check that your computer&apos;s date and time are correct.  If your clock is wrong Peershares will not work properly.</source>
+        <translation>Warning: Please check that your computer&apos;s date and time are correct.  If your clock is wrong Peershares will not work properly.</translation>
     </message>
     <message>
         <location filename="../bitcoinstrings.cpp" line="84"/>
