@@ -1430,7 +1430,7 @@ void ThreadMessageHandler2(void* parg)
     }
 }
 
-// peercoin: stake minter thread
+// ppcoin: stake minter thread
 void static ThreadStakeMinter(void* parg)
 {
     printf("ThreadStakeMinter started\n");

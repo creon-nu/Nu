@@ -486,7 +486,7 @@ Value gethashespersec(const Array& params, bool fHelp)
 }
 
 
-// peercoin: get network Gh/s estimate
+// ppcoin: get network Gh/s estimate
 // peershares note: this is only useful during the initial proof-of-work 'IPO' phase of the network
 Value getnetworkghps(const Array& params, bool fHelp)
 {
@@ -2052,7 +2052,7 @@ Value walletpassphrase(const Array& params, bool fHelp)
     int64* pnSleepTime = new int64(params[1].get_int64());
     CreateThread(ThreadCleanWalletPassphrase, pnSleepTime);
 
-    // peercoin: if user OS account compromised prevent trivial sendmoney commands
+    // ppcoin: if user OS account compromised prevent trivial sendmoney commands
     if (params.size() > 2)
         fWalletUnlockMintOnly = params[2].get_bool();
     else
@@ -2488,7 +2488,7 @@ Value submitblock(const Array& params, bool fHelp)
         throw JSONRPCError(-22, "Block decode failed");
     }
 
-    // peercoin: sign block
+    // ppcoin: sign block
     if (!block.SignBlock(*pwalletMain))
         throw JSONRPCError(-100, "Unable to sign block, portfolio locked?");
 
@@ -2540,7 +2540,7 @@ Value getblock(const Array& params, bool fHelp)
 }
 
 
-// peercoin: get information of sync-checkpoint
+// ppcoin: get information of sync-checkpoint
 Value getcheckpoint(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 0)
@@ -2562,7 +2562,7 @@ Value getcheckpoint(const Array& params, bool fHelp)
 }
 
 
-// peercoin: reserve balance from being staked for network protection
+// ppcoin: reserve balance from being staked for network protection
 Value reservebalance(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() > 2)
@@ -2604,7 +2604,7 @@ Value reservebalance(const Array& params, bool fHelp)
 }
 
 
-// peercoin: check wallet integrity
+// ppcoin: check wallet integrity
 Value checkwallet(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() > 0)
@@ -2627,7 +2627,7 @@ Value checkwallet(const Array& params, bool fHelp)
 }
 
 
-// peercoin: repair wallet
+// ppcoin: repair wallet
 Value repairwallet(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() > 0)
@@ -2649,7 +2649,7 @@ Value repairwallet(const Array& params, bool fHelp)
     return result;
 }
 
-// peercoin: make a public-private key pair
+// ppcoin: make a public-private key pair
 Value makekeypair(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() > 1)
@@ -2683,7 +2683,7 @@ Value makekeypair(const Array& params, bool fHelp)
 extern CCriticalSection cs_mapAlerts;
 extern map<uint256, CAlert> mapAlerts;
 
-// peercoin: send alert.  
+// ppcoin: send alert.  
 // There is a known deadlock situation with ThreadMessageHandler
 // ThreadMessageHandler: holds cs_vSend and acquiring cs_main in SendMessages()
 // ThreadRPCServer: holds cs_main and acquiring cs_vSend in alert.RelayTo()/PushMessage()/BeginMessage()
