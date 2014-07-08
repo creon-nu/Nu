@@ -1,6 +1,6 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2012 The Bitcoin developers
-// Copyright (c) 2011-2013 The Peercoin developers
+// Copyright (c) 2011-2013 The PPCoin developers
 // Copyright (c) 2013-2014 The Peershares developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -144,7 +144,7 @@ void static SyncWithWallets(const CTransaction& tx, const CBlock* pblock = NULL,
 {
     if (!fConnect)
     {
-        // Peershares: wallets need to refund inputs when disconnecting coinstake
+        // ppcoin: wallets need to refund inputs when disconnecting coinstake
         if (tx.IsCoinStake())
         {
             BOOST_FOREACH(CWallet* pwallet, setpwalletRegistered)
@@ -927,7 +927,7 @@ int64 GetProofOfWorkReward(unsigned int nBits)
     return IPO_SHARES / PROOF_OF_WORK_BLOCKS; //this will only be used to create initial shares
 }
 
-// peershares: minter's coin stake is rewarded based on coin age spent (coin-days)
+// ppcoin: minter's coin stake is rewarded based on coin age spent (coin-days)
 // nu: miner's coin stake reward is constant
 int64 GetProofOfStakeReward(int64 nCoinAge)
 {

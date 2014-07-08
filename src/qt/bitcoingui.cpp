@@ -3,7 +3,7 @@
  *
  * W.J. van der Laan 2011-2012
  * The Bitcoin Developers 2011-2012
- * The Peercoin Developers 2011-2013
+ * The PPCoin developers 2011-2013
  * The Peershares Developers 2013-2014
  */
 #include "bitcoingui.h"

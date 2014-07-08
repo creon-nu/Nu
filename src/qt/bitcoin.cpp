@@ -1,6 +1,6 @@
 /*
  * W.J. van der Laan 2011-2012
- * The Peercoin Developers 2013
+ * The PPCoin developers 2013
  */
 #include "bitcoingui.h"
 #include "clientmodel.h"
