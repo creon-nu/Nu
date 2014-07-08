@@ -265,6 +265,15 @@ Object blockToJSON(const CBlock& block, const CBlockIndex* blockindex, bool fPri
     BOOST_FOREACH(const CParkRateVote& parkRateResult, blockindex->vParkRateResult)
         parkRateResults.push_back(parkRateVoteToJSON(parkRateResult));
     result.push_back(Pair("parkrates", parkRateResults));
+    if (blockindex->vElectedCustodian.size() > 0)
+    {
+        Object electedCustodians;
+        BOOST_FOREACH(const CCustodianVote& custodianVote, blockindex->vElectedCustodian)
+        {
+            electedCustodians.push_back(Pair(custodianVote.GetAddress().ToString(), (double)custodianVote.nAmount / COIN));
+        }
+        result.push_back(Pair("electedcustodians", electedCustodians));
+    }
     return result;
 }
 

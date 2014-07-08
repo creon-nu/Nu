@@ -18,6 +18,7 @@
 #include <boost/filesystem/convenience.hpp>
 #include <boost/interprocess/sync/file_lock.hpp>
 #include <boost/format.hpp>
+#include <boost/lexical_cast.hpp>
 
 #ifndef WIN32
 #include <signal.h>
@@ -561,6 +562,11 @@ bool AppInit2(int argc, char* argv[])
 
     fAllowDNS = GetBoolArg("-dns");
     fNoListen = !GetBoolArg("-listen", true);
+
+    if (mapArgs.count("-splitshareoutputs"))
+        nSplitShareOutputs = boost::lexical_cast<double>(mapArgs["-splitshareoutputs"]) * COIN;
+    else
+        nSplitShareOutputs = MIN_COINSTAKE_VALUE;
 
     // Continue to put "/P2SH/" in the coinbase to monitor
     // BIP16 support.
