@@ -343,7 +343,7 @@ bool CTransaction::IsStandard() const
 		if (nDataOut > 1) {
 			return false;
 		}
-            
+    }        
             
     return true;
 }
@@ -358,7 +358,7 @@ bool CTransaction::AreInputsSameUnit(const MapPrevTx& mapInputs) const
 
         const CTransaction& txPrev = (mi->second).second;
         if (txPrev.cUnit != cUnit)
-        return false;
+            return false;
     }
 
 
