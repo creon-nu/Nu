@@ -1,6 +1,6 @@
 TEMPLATE = app
-TARGET = nu-qt
-VERSION = 0.6.3.0
+TARGET = nu
+VERSION = 0.1.0.0
 INCLUDEPATH += src src/json src/qt
 DEFINES += QT_GUI BOOST_THREAD_USE_LIB BOOST_SPIRIT_THREADSAFE
 CONFIG += no_include_pwd
@@ -14,6 +14,19 @@ CONFIG += no_include_pwd
 # Dependency library locations can be customized with BOOST_INCLUDE_PATH, 
 #    BOOST_LIB_PATH, BDB_INCLUDE_PATH, BDB_LIB_PATH
 #    OPENSSL_INCLUDE_PATH and OPENSSL_LIB_PATH respectively
+
+#BOOST_INCLUDE_PATH=/opt/local/include/boost
+#BOOST_LIB_PATH=/opt/local/lib
+#BDB_INCLUDE_PATH=/opt/local/include/db48
+#BDB_LIB_PATH=/opt/local/lib/db48
+#OPENSSL_INCLUDE_PATH=/opt/local/include/openssl
+#OPENSSL_LIB_PATH=/opt/local/lib
+
+#MINIUPNPC_INCLUDE_PATH=/opt/local/include/miniupnpc
+#MINIUPNPC_LIB_PATH=/opt/local/lib
+
+#QRENCODE_INCLUDE_PATH=/opt/local/include
+#QRENCODE_LIB_PATH=/opt/local/lib
 
 OBJECTS_DIR = build
 MOC_DIR = build
@@ -308,7 +321,7 @@ OTHER_FILES += \
 # platform specific defaults, if not overridden on command line
 isEmpty(BOOST_LIB_SUFFIX) {
     macx:BOOST_LIB_SUFFIX = -mt
-    windows:BOOST_LIB_SUFFIX = -mgw44-mt-1_43
+    windows:BOOST_LIB_SUFFIX = -mgw48-mt-1_55
 }
 
 isEmpty(BOOST_THREAD_LIB_SUFFIX) {
@@ -360,7 +373,7 @@ macx:OBJECTIVE_SOURCES += src/qt/macdockiconhandler.mm
 macx:LIBS += -framework Foundation -framework ApplicationServices -framework AppKit
 macx:DEFINES += MAC_OSX MSG_NOSIGNAL=0
 macx:ICON = src/qt/res/icons/nu.icns
-macx:TARGET = "Nu-Qt"
+macx:TARGET = "nu"
 
 # Set libraries and includes at end, to use platform-defined defaults if not overridden
 INCLUDEPATH += $$BOOST_INCLUDE_PATH $$BDB_INCLUDE_PATH $$OPENSSL_INCLUDE_PATH $$QRENCODE_INCLUDE_PATH

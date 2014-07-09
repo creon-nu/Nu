@@ -910,7 +910,7 @@ boost::filesystem::path GetDefaultPeercoinDataDir()
 
     // Windows: C:\Documents and Settings\username\Application Data\PPCoin
     // Mac: ~/Library/Application Support/PPCoin
-    // Unix: ~/.ppcoin
+    // Unix: ~/.nu
 #ifdef WIN32
     // Windows
     return MyGetSpecialFolderPath(CSIDL_APPDATA, true) / "PPCoin";

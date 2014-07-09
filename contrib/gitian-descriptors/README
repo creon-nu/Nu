@@ -14,7 +14,7 @@ Sanity checks:
 
 Once you've got the right hardware and software:
 
-    git clone git://github.com/peershares/peershares.git
+    git clone git@bitbucket.org:JordanLeePeershares/nubit.git
     git clone git://github.com/devrandom/gitian-builder.git
     mkdir gitian-builder/inputs
 
@@ -29,11 +29,11 @@ If you don't have the dependencies yet, get them and copy them to the inputs dir
     ...
 See doc/release-process.txt for the complete list of dependencies.
 
-    cd peershares
+    cd nubit
     git pull
     cd ../gitian-builder
     git pull
-    ./bin/gbuild --commit peershares=HEAD ../bitcoin/contrib/gitian.yml
+    ./bin/gbuild --commit nubit=HEAD ../nubit/contrib/gitian.yml
 
 If you get a permission issue when you try to use gbuild:
     sudo adduser <your username> kvm

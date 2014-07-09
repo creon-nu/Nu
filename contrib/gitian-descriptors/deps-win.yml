@@ -1,5 +1,5 @@
 ---
-name: "peershares-deps"
+name: "nu-deps"
 suites:
 - "precise"
 architectures:
@@ -124,5 +124,5 @@ script: |
     done
     #
     cd $INSTALLPREFIX
-    find include lib | sort | zip -X@ $OUTDIR/peershares-deps-win$BITS-gitian-r12.zip
+    find include lib | sort | zip -X@ $OUTDIR/nu-deps-win$BITS-gitian-r12.zip
   done # for BITS in

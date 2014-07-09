@@ -18,7 +18,6 @@ INCLUDEPATHS= \
 LIBPATHS= \
  -L"$(DEPSDIR)" \
  -L"$(DEPSDIR)/lib"
- -L"$(DEPSDIR)/openssl-1.0.1g"
 
 LIBS= \
  -static-libgcc \
@@ -85,14 +84,14 @@ obj/%.o: %.cpp $(HEADERS)
 	${HOST}-g++ -c $(CFLAGS) -o $@ $<
 
 nud.exe: $(OBJS:obj/%=obj/%)
-	i586-mingw32msvc-g++ $(CFLAGS) -o $@ $(LIBPATHS) $^ $(LIBS)
+	${HOST}-g++ $(CFLAGS) -o $@ $(LIBPATHS) $^ $(LIBS)
 
 TESTOBJS := $(patsubst test/%.cpp,obj-test/%.o,$(wildcard test/*.cpp))
 
 obj-test/%.o: test/%.cpp $(HEADERS)
 	${HOST}-g++ -c $(TESTDEFS) $(CFLAGS) -o $@ $<
 
-test_peershares.exe: $(TESTOBJS) $(filter-out obj/init.o,$(OBJS:obj/%=obj/%))
+test_nu.exe: $(TESTOBJS) $(filter-out obj/init.o,$(OBJS:obj/%=obj/%))
 	${HOST}-g++ $(CFLAGS) -o $@ $(LIBPATHS) $^ -lboost_unit_test_framework $(LIBS)
 
 
@@ -100,7 +99,7 @@ clean:
 	-rm -f obj/*.o
 	-rm -f nud.exe
 	-rm -f obj-test/*.o
-	-rm -f test_peershares.exe
+	-rm -f test_nu.exe
 	-rm -f src/build.h
 
 FORCE:
