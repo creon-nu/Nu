@@ -5,6 +5,7 @@ src/test_peershares
 src/nud
 ppcoin-qt
 nu-qt
+nu
 src/ppcoind
 src/test_ppcoin
 src/test_nu
