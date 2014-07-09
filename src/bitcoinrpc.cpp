@@ -549,7 +549,7 @@ Value getinfo(const Array& params, bool fHelp)
     obj.push_back(Pair("testnet",       fTestNet));
     obj.push_back(Pair("keypoololdest", (boost::int64_t)pwalletMain->GetOldestKeyPoolTime()));
     obj.push_back(Pair("keypoolsize",   pwalletMain->GetKeyPoolSize()));
-    obj.push_back(Pair("paytxfee",      ValueFromAmount(nTransactionFee)));
+    obj.push_back(Pair("paytxfee",      ValueFromAmount(pwalletMain->GetMinTxFee())));
     if (pwalletMain->IsCrypted())
         obj.push_back(Pair("unlocked_until", (boost::int64_t)nWalletUnlockTime / 1000));
     obj.push_back(Pair("errors",        GetWarnings("statusbar")));
@@ -782,19 +782,6 @@ Value getpeercoinaddresses(const Array& params, bool fHelp)
     return ret;
 }
 
-Value settxfee(const Array& params, bool fHelp)
-{
-    if (fHelp || params.size() < 1 || params.size() > 1 || AmountFromValue(params[0]) < MIN_TX_FEE)
-        throw runtime_error(
-            "settxfee <amount>\n"
-            "<amount> is a real and is rounded to 0.01 (cent)\n"
-            "Minimum and default transaction fee per KB is 1 cent");
-
-    nTransactionFee = AmountFromValue(params[0]);
-    nTransactionFee = (nTransactionFee / CENT) * CENT;  // round to cent
-    return true;
-}
-
 Value sendtoaddress(const Array& params, bool fHelp)
 {
     if (pwalletMain->IsCrypted() && (fHelp || params.size() < 2 || params.size() > 4))
@@ -813,7 +800,7 @@ Value sendtoaddress(const Array& params, bool fHelp)
 
     // Amount
     int64 nAmount = AmountFromValue(params[1]);
-    if (nAmount < MIN_TXOUT_AMOUNT)
+    if (nAmount < pwalletMain->GetMinTxOutAmount())
         throw JSONRPCError(-101, "Send amount too small");
 
     // Wallet comments
@@ -1137,7 +1124,7 @@ Value sendfrom(const Array& params, bool fHelp)
     if (!pwalletMain->IsAddressValid(address))
         throw JSONRPCError(-5, "Invalid address");
     int64 nAmount = AmountFromValue(params[2]);
-    if (nAmount < MIN_TXOUT_AMOUNT)
+    if (nAmount < pwalletMain->GetMinTxOutAmount())
         throw JSONRPCError(-101, "Send amount too small");
     int nMinDepth = 1;
     if (params.size() > 3)
@@ -1279,7 +1266,7 @@ Value sendmany(const Array& params, bool fHelp)
         CScript scriptPubKey;
         scriptPubKey.SetBitcoinAddress(address, pwalletMain->Unit());
         int64 nAmount = AmountFromValue(s.value_); 
-        if (nAmount < MIN_TXOUT_AMOUNT)
+        if (nAmount < pwalletMain->GetMinTxOutAmount())
             throw JSONRPCError(-101, "Send amount too small");
         totalAmount += nAmount;
 
@@ -2964,7 +2951,6 @@ static const CRPCCommand vRPCCommands[] =
     { "verifymessage",          &verifymessage,          false },
     { "getwork",                &getwork,                true },
     { "listaccounts",           &listaccounts,           false },
-    { "settxfee",               &settxfee,               false },
     { "getblocktemplate",       &getblocktemplate,       true },
     { "submitblock",            &submitblock,            false },
     { "listsinceblock",         &listsinceblock,         false },
@@ -3664,7 +3650,6 @@ Array RPCConvertValues(const std::string &strMethod, const std::vector<std::stri
     if (strMethod == "setgenerate"            && n > 0) ConvertTo<bool>(params[0]);
     if (strMethod == "setgenerate"            && n > 1) ConvertTo<boost::int64_t>(params[1]);
     if (strMethod == "sendtoaddress"          && n > 1) ConvertTo<double>(params[1]);
-    if (strMethod == "settxfee"               && n > 0) ConvertTo<double>(params[0]);
     if (strMethod == "getreceivedbyaddress"   && n > 1) ConvertTo<boost::int64_t>(params[1]);
     if (strMethod == "getreceivedbyaccount"   && n > 1) ConvertTo<boost::int64_t>(params[1]);
     if (strMethod == "listreceivedbyaddress"  && n > 0) ConvertTo<boost::int64_t>(params[0]);

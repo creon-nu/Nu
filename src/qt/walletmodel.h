@@ -63,6 +63,8 @@ public:
     int getNumTransactions() const;
     EncryptionStatus getEncryptionStatus() const;
     unsigned char getUnit() const;
+    qint64 getMinTxFee() const;
+    qint64 getMinTxOutAmount() const;
 
     // Check address for validity
     bool validateAddress(const QString &address);
