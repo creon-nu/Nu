@@ -2949,8 +2949,11 @@ Value liquidityinfo(const Array& params, bool fHelp)
     info.nVersion = PROTOCOL_VERSION;
     info.cUnit = cUnit;
     info.nTime = GetAdjustedTime();
-    info.nBuyAmount = AmountFromValue(params[1]);
-    info.nSellAmount = AmountFromValue(params[2]);
+    info.nBuyAmount = roundint64(params[1].get_real() * COIN);
+    info.nSellAmount = roundint64(params[2].get_real() * COIN);
+
+    if (info.nBuyAmount < 0 || info.nSellAmount < 0)
+        throw JSONRPCError(-3, "Invalid amount");
 
     info.cCustodianUnit = address.GetUnit();
     info.vchCustodianPubKey = key.GetPubKey();
