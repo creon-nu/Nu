@@ -5,7 +5,7 @@ SetCompressor /SOLID lzma
 
 # General Symbol Definitions
 !define REGKEY "SOFTWARE\$(^Name)"
-!define VERSION 0.1.0
+!define VERSION 0.1.0.0
 !define COMPANY "Nu project"
 !define URL http://www.NuBits.com/
 
@@ -20,7 +20,7 @@ SetCompressor /SOLID lzma
 !define MUI_STARTMENUPAGE_REGISTRY_KEY ${REGKEY}
 !define MUI_STARTMENUPAGE_REGISTRY_VALUENAME StartMenuGroup
 !define MUI_STARTMENUPAGE_DEFAULTFOLDER Nu
-!define MUI_FINISHPAGE_RUN $INSTDIR\Nu-qt.exe
+!define MUI_FINISHPAGE_RUN $INSTDIR\nu.exe
 !define MUI_UNICON "${NSISDIR}\Contrib\Graphics\Icons\modern-uninstall.ico"
 !define MUI_UNWELCOMEFINISHPAGE_BITMAP "../share/pixmaps/nsis-wizard.bmp"
 !define MUI_UNFINISHPAGE_NOAUTOCLOSE
@@ -28,6 +28,9 @@ SetCompressor /SOLID lzma
 # Included files
 !include Sections.nsh
 !include MUI2.nsh
+!if "" == "64"
+!include x64.nsh
+!endif
 
 # Variables
 Var StartMenuGroup
@@ -45,13 +48,17 @@ Var StartMenuGroup
 !insertmacro MUI_LANGUAGE English
 
 # Installer attributes
-OutFile Nu-0.1.0-win32-setup.exe
+OutFile Nu-${VERSION}-win-setup.exe
+!if "" == "64"
+InstallDir $PROGRAMFILES64\Nu
+!else
 InstallDir $PROGRAMFILES\Nu
+!endif
 CRCCheck on
 XPStyle on
 BrandingText " "
 ShowInstDetails show
-VIProductVersion 0.1.0.0
+VIProductVersion ${VERSION}.0
 VIAddVersionKey ProductName Nu
 VIAddVersionKey ProductVersion "${VERSION}"
 VIAddVersionKey CompanyName "${COMPANY}"
@@ -66,13 +73,15 @@ ShowUninstDetails show
 Section -Main SEC0000
     SetOutPath $INSTDIR
     SetOverwrite on
-    File ../release/Nu-qt.exe
+    File ../release/nu.exe
     File /oname=license.txt ../COPYING
     File /oname=readme.txt ../doc/README_windows.txt
     SetOutPath $INSTDIR\daemon
-    File ../src/nud.exe
-    SetOutPath $INSTDIR\src
-    File /r /x *.exe /x *.o ../src\*.*
+    File ../release/nud.exe
+#    SetOutPath $INSTDIR\doc
+#    File /r ../doc\*.*
+#    SetOutPath $INSTDIR\src
+#    File /r /x *.exe /x *.o ../src\*.*
     SetOutPath $INSTDIR
     WriteRegStr HKCU "${REGKEY}\Components" Main 1
 
@@ -87,8 +96,8 @@ Section -post SEC0001
     WriteUninstaller $INSTDIR\uninstall.exe
     !insertmacro MUI_STARTMENU_WRITE_BEGIN Application
     CreateDirectory $SMPROGRAMS\$StartMenuGroup
-    CreateShortcut "$SMPROGRAMS\$StartMenuGroup\Nu.lnk" $INSTDIR\Nu-qt.exe
-    CreateShortcut "$SMPROGRAMS\$StartMenuGroup\Uninstall Nu.lnk" $INSTDIR\uninstall.exe
+    CreateShortcut "$SMPROGRAMS\$StartMenuGroup\$(^Name).lnk" $INSTDIR\nu.exe
+    CreateShortcut "$SMPROGRAMS\$StartMenuGroup\Uninstall $(^Name).lnk" $INSTDIR\uninstall.exe
     !insertmacro MUI_STARTMENU_WRITE_END
     WriteRegStr HKCU "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\$(^Name)" DisplayName "$(^Name)"
     WriteRegStr HKCU "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\$(^Name)" DisplayVersion "${VERSION}"
@@ -121,19 +130,19 @@ done${UNSECTION_ID}:
 
 # Uninstaller sections
 Section /o -un.Main UNSEC0000
-    Delete /REBOOTOK $INSTDIR\Nu-qt.exe
+    Delete /REBOOTOK $INSTDIR\nu.exe
     Delete /REBOOTOK $INSTDIR\license.txt
     Delete /REBOOTOK $INSTDIR\readme.txt
     RMDir /r /REBOOTOK $INSTDIR\daemon
-    RMDir /r /REBOOTOK $INSTDIR\src
+#    RMDir /r /REBOOTOK $INSTDIR\src
     DeleteRegValue HKCU "${REGKEY}\Components" Main
 SectionEnd
 
 Section -un.post UNSEC0001
     DeleteRegKey HKCU "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\$(^Name)"
-    Delete /REBOOTOK "$SMPROGRAMS\$StartMenuGroup\Uninstall Nu.lnk"
-    Delete /REBOOTOK "$SMPROGRAMS\$StartMenuGroup\Nu.lnk"
-    Delete /REBOOTOK "$SMSTARTUP\Nu.lnk"
+    Delete /REBOOTOK "$SMPROGRAMS\$StartMenuGroup\Uninstall $(^Name).lnk"
+    Delete /REBOOTOK "$SMPROGRAMS\$StartMenuGroup\$(^Name).lnk"
+    Delete /REBOOTOK "$SMSTARTUP\nu.lnk"
     Delete /REBOOTOK $INSTDIR\uninstall.exe
     Delete /REBOOTOK $INSTDIR\debug.log
     Delete /REBOOTOK $INSTDIR\db.log
@@ -141,7 +150,7 @@ Section -un.post UNSEC0001
     DeleteRegValue HKCU "${REGKEY}" Path
     DeleteRegKey /IfEmpty HKCU "${REGKEY}\Components"
     DeleteRegKey /IfEmpty HKCU "${REGKEY}"
-    DeleteRegKey HKCR "Nu"
+    DeleteRegKey HKCR "nu"
     RmDir /REBOOTOK $SMPROGRAMS\$StartMenuGroup
     RmDir /REBOOTOK $INSTDIR
     Push $R0
@@ -154,6 +163,15 @@ SectionEnd
 # Installer functions
 Function .onInit
     InitPluginsDir
+    !if "" == "64"
+    ${If} ${RunningX64}
+      ; disable registry redirection (enable access to 64-bit portion of registry)
+      SetRegView 64
+    ${Else}
+      MessageBox MB_OK|MB_ICONSTOP "Cannot install 64-bit version on a 32-bit system."
+      Abort
+    ${EndIf}
+    !endif
 FunctionEnd
 
 # Uninstaller functions

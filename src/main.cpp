@@ -65,6 +65,7 @@ int64 nHPSTimerStart;
 
 // Settings
 int64 nTransactionFee = MIN_TX_FEE;
+int64 nSplitShareOutputs = MIN_COINSTAKE_VALUE;
 
 
 
@@ -1567,14 +1568,17 @@ bool CBlock::ConnectBlock(CTxDB& txdb, CBlockIndex* pindex)
             if (tx.vout.size() < 1)
                 return error("Connect() : not output in CurrencyCoinBase");
 
-            CBitcoinAddress address;
-            if (!ExtractAddress(tx.vout[0].scriptPubKey, address, tx.cUnit))
-                return error("Connect() : ExtractAddress on CurrencyCoinBase failed");
+            BOOST_FOREACH(const CTxOut& txo, tx.vout)
+            {
+                CBitcoinAddress address;
+                if (!ExtractAddress(txo.scriptPubKey, address, tx.cUnit))
+                    return error("Connect() : ExtractAddress on CurrencyCoinBase failed");
 
-            if (setElectedCustodian.count(address))
-                return error("Connect() : custodian has already been elected");
+                if (setElectedCustodian.count(address))
+                    return error("Connect() : custodian has already been elected");
 
-            setElectedCustodian.insert(address);
+                setElectedCustodian.insert(address);
+            }
         }
     }
 
@@ -1971,16 +1975,21 @@ bool CBlock::AddToBlockIndex(unsigned int nFile, unsigned int nBlockPos)
     {
         if (tx.IsCurrencyCoinBase())
         {
-            CCustodianVote electedCustodian;
-            electedCustodian.cUnit = tx.cUnit;
-            CBitcoinAddress address;
             if (tx.vout.size() < 1)
                 return error("Not enough outputs in currency coinbase");
-            if (!ExtractAddress(tx.vout[0].scriptPubKey, address, tx.cUnit))
-                return error("Unable to extract address from currency coinbase");
-            electedCustodian.hashAddress = address.GetHash160();
-            electedCustodian.nAmount = tx.GetValueOut();
-            pindexNew->vElectedCustodian.push_back(electedCustodian);
+
+            BOOST_FOREACH(const CTxOut& txo, tx.vout)
+            {
+                CBitcoinAddress address;
+                if (!ExtractAddress(txo.scriptPubKey, address, tx.cUnit))
+                    return error("Unable to extract address from currency coinbase");
+
+                CCustodianVote electedCustodian;
+                electedCustodian.cUnit = tx.cUnit;
+                electedCustodian.hashAddress = address.GetHash160();
+                electedCustodian.nAmount = txo.nValue;
+                pindexNew->vElectedCustodian.push_back(electedCustodian);
+            }
         }
     }
 
@@ -4043,15 +4052,15 @@ CBlock* CreateNewBlock(CReserveKey& reservekey, CWallet* pwallet, bool fProofOfS
     {
         int64 nReward = GetProofOfWorkReward(pblock->nBits);
 
-        if (GetBoolArg("-splitshareoutputs", true) && nReward >= MIN_COINSTAKE_VALUE * 2)
+        if (nSplitShareOutputs > 0 && nReward >= nSplitShareOutputs * 2)
         {
             // nu: split output of generated shares
-            int nOutputs = nReward / MIN_COINSTAKE_VALUE;
+            int nOutputs = nReward / nSplitShareOutputs;
             int64 nRemainingAmount = nReward;
 
             for (int i = 0; i < nOutputs - 1; i++)
             {
-                int64 nAmount = MIN_COINSTAKE_VALUE;
+                int64 nAmount = nSplitShareOutputs;
                 pblock->vtx[0].vout.push_back(CTxOut(nAmount, pblock->vtx[0].vout[0].scriptPubKey));
                 nRemainingAmount -= nAmount;
             }

@@ -32,7 +32,8 @@ LIBS += \
    -l boost_thread$(BOOST_LIB_SUFFIX) \
    -l db_cxx$(BDB_LIB_SUFFIX) \
    -l ssl \
-   -l crypto
+   -l crypto \
+   -l rt
 
 ifndef USE_UPNP
 	override USE_UPNP = -
@@ -144,11 +145,11 @@ obj-test/%.o: test/%.cpp
 	      -e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	  rm -f $(@:%.o=%.d)
 
-test_ppcoin: $(TESTOBJS) $(filter-out obj/init.o,$(OBJS:obj/%=obj/%))
+test_nu: $(TESTOBJS) $(filter-out obj/init.o,$(OBJS:obj/%=obj/%))
 	$(CXX) $(xCXXFLAGS) -o $@ $(LIBPATHS) $^ -Wl,-B$(LMODE) -lboost_unit_test_framework $(LDFLAGS) $(LIBS)
 
 clean:
-	-rm -f nud test_ppcoin
+	-rm -f nud test_nu
 	-rm -f obj/*.o
 	-rm -f obj-test/*.o
 	-rm -f obj/*.P

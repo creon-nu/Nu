@@ -41,4 +41,7 @@ unsigned int GetStakeModifierChecksum(const CBlockIndex* pindex);
 // Check stake modifier hard checkpoints
 bool CheckStakeModifierCheckpoints(int nHeight, unsigned int nStakeModifierChecksum);
 
+// Expire old stake modifier cache
+void CleanStakeModifierCache();
+
 #endif // PPCOIN_KERNEL_H
