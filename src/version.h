@@ -41,22 +41,22 @@ extern const std::string CLIENT_DATE;
 // network protocol versioning
 //
 
-static const int PROTOCOL_VERSION = 60001;
+static const int PROTOCOL_VERSION = 1;
 
 // earlier versions not supported as of Feb 2012, and are disconnected
 // NOTE: as of bitcoin v0.6 message serialization (vSend, vRecv) still
 // uses MIN_PROTO_VERSION(209), where message format uses PROTOCOL_VERSION
-static const int MIN_PROTO_VERSION = 209;
+static const int MIN_PROTO_VERSION = 1;
 
 // nTime field added to CAddress, starting with this version;
 // if possible, avoid requesting addresses nodes older than this
-static const int CADDR_TIME_VERSION = 31402;
+static const int CADDR_TIME_VERSION = 1;
 
 // only request blocks from nodes outside this range of versions
-static const int NOBLKS_VERSION_START = 32000;
-static const int NOBLKS_VERSION_END = 32400;
+static const int NOBLKS_VERSION_START = 1;
+static const int NOBLKS_VERSION_END = 1;
 
 // BIP 0031, pong message, is enabled for all versions AFTER this one
-static const int BIP0031_VERSION = 60000;
+static const int BIP0031_VERSION = 1;
 
 #endif
