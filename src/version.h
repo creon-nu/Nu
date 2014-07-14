@@ -16,12 +16,12 @@
 // These need to be macro's, as version.cpp's voodoo requires it
 
 // nu version
-#define NU_VERSION_MAJOR       0
-#define NU_VERSION_MINOR       1
-#define NU_VERSION_REVISION    0
-#define NU_VERSION_BUILD       0
+#define CLIENT_VERSION_MAJOR       0
+#define CLIENT_VERSION_MINOR       1
+#define CLEINT_VERSION_REVISION    0
+#define CLIENT_VERSION_BUILD       0
 
-static const int NU_VERSION =
+static const int CLIENT_VERSION =
                            1000000 * NU_VERSION_MAJOR
                          +   10000 * NU_VERSION_MINOR
                          +     100 * NU_VERSION_REVISION
@@ -31,7 +31,6 @@ static const int NU_VERSION =
 
 // bitcoin version 0.6.3.0 - reference for code tracking
 
-static const int CLIENT_VERSION = NU_VERSION;
 
 extern const std::string CLIENT_NAME;
 extern const std::string CLIENT_BUILD;
@@ -42,7 +41,7 @@ extern const std::string CLIENT_DATE;
 // network protocol versioning
 //
 
-static const int PROTOCOL_VERSION = 60003;
+static const int PROTOCOL_VERSION = 60001;
 
 // earlier versions not supported as of Feb 2012, and are disconnected
 // NOTE: as of bitcoin v0.6 message serialization (vSend, vRecv) still
