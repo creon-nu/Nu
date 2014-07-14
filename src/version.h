@@ -1,3 +1,5 @@
+// Copyright (c) 2014 The Nu developers
+// Copyright (c) 2013-2014 The Peershares developers
 // Copyright (c) 2012 The Bitcoin developers
 // Copyright (c) 2012-2013 The PPCoin developers
 // Distributed under the MIT/X11 software license, see the accompanying
@@ -12,22 +14,20 @@
 //
 
 // These need to be macro's, as version.cpp's voodoo requires it
-#define CLIENT_VERSION_MAJOR       0
-#define CLIENT_VERSION_MINOR       6
-#define CLIENT_VERSION_REVISION    3
-#define CLIENT_VERSION_BUILD       0
 
-static const int CLIENT_VERSION =
-                           1000000 * CLIENT_VERSION_MAJOR
-                         +   10000 * CLIENT_VERSION_MINOR 
-                         +     100 * CLIENT_VERSION_REVISION
-                         +       1 * CLIENT_VERSION_BUILD;
+// nu version - intended for display purpose only
+#define NU_VERSION_MAJOR       0
+#define NU_VERSION_MINOR       1
+#define NU_VERSION_REVISION    0
+#define NU_VERSION_BUILD       0
 
-extern const std::string CLIENT_NAME;
-extern const std::string CLIENT_BUILD;
-extern const std::string CLIENT_DATE;
+static const int NU_VERSION =
+                           1000000 * NU_VERSION_MAJOR
+                         +   10000 * NU_VERSION_MINOR
+                         +     100 * NU_VERSION_REVISION
+                         +       1 * NU_VERSION_BUILD;
 
-// ppcoin version - intended for display purpose ONLY
+// ppcoin version - reference for code tracking
 #define PPCOIN_VERSION_MAJOR       0
 #define PPCOIN_VERSION_MINOR       3
 #define PPCOIN_VERSION_REVISION    0
@@ -38,6 +38,25 @@ static const int PPCOIN_VERSION =
                          +   10000 * PPCOIN_VERSION_MINOR
                          +     100 * PPCOIN_VERSION_REVISION
                          +       1 * PPCOIN_VERSION_BUILD;
+
+// bitcoin version - reference for code tracking
+#define BITCOIN_VERSION_MAJOR       0
+#define BITCOIN_VERSION_MINOR       6
+#define BITCOIN_VERSION_REVISION    3
+#define BITCOIN_VERSION_BUILD       0
+
+static const int BITCOIN_VERSION =
+                           1000000 * BITCOIN_VERSION_MAJOR
+                         +   10000 * BITCOIN_VERSION_MINOR 
+                         +     100 * BITCOIN_VERSION_REVISION
+                         +       1 * BITCOIN_VERSION_BUILD;
+
+static const int CLIENT_VERSION = BITCOIN_VERSION;
+
+extern const std::string CLIENT_NAME;
+extern const std::string CLIENT_BUILD;
+extern const std::string CLIENT_DATE;
+
 
 //
 // network protocol versioning
