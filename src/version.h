@@ -1,9 +1,11 @@
+// Copyright (c) 2014 The Nu developers
+// Copyright (c) 2013-2014 The Peershares developers
 // Copyright (c) 2012 The Bitcoin developers
 // Copyright (c) 2012-2013 The PPCoin developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
-#ifndef BITCOIN_VERSION_H
-#define BITCOIN_VERSION_H
+#ifndef NU_VERSION_H
+#define NU_VERSION_H
 
 #include <string>
 
@@ -12,32 +14,29 @@
 //
 
 // These need to be macro's, as version.cpp's voodoo requires it
-#define CLIENT_VERSION_MAJOR       0
-#define CLIENT_VERSION_MINOR       6
-#define CLIENT_VERSION_REVISION    3
-#define CLIENT_VERSION_BUILD       0
 
-static const int CLIENT_VERSION =
-                           1000000 * CLIENT_VERSION_MAJOR
-                         +   10000 * CLIENT_VERSION_MINOR 
-                         +     100 * CLIENT_VERSION_REVISION
-                         +       1 * CLIENT_VERSION_BUILD;
+// nu version
+#define NU_VERSION_MAJOR       0
+#define NU_VERSION_MINOR       1
+#define NU_VERSION_REVISION    0
+#define NU_VERSION_BUILD       0
+
+static const int NU_VERSION =
+                           1000000 * NU_VERSION_MAJOR
+                         +   10000 * NU_VERSION_MINOR
+                         +     100 * NU_VERSION_REVISION
+                         +       1 * NU_VERSION_BUILD;
+
+// peercoin version 0.3.0.0 - reference for code tracking
+
+// bitcoin version 0.6.3.0 - reference for code tracking
+
+static const int CLIENT_VERSION = NU_VERSION;
 
 extern const std::string CLIENT_NAME;
 extern const std::string CLIENT_BUILD;
 extern const std::string CLIENT_DATE;
 
-// ppcoin version - intended for display purpose ONLY
-#define PPCOIN_VERSION_MAJOR       0
-#define PPCOIN_VERSION_MINOR       3
-#define PPCOIN_VERSION_REVISION    0
-#define PPCOIN_VERSION_BUILD       0
-
-static const int PPCOIN_VERSION =
-                           1000000 * PPCOIN_VERSION_MAJOR
-                         +   10000 * PPCOIN_VERSION_MINOR
-                         +     100 * PPCOIN_VERSION_REVISION
-                         +       1 * PPCOIN_VERSION_BUILD;
 
 //
 // network protocol versioning
