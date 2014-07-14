@@ -22,10 +22,10 @@
 #define CLIENT_VERSION_BUILD       0
 
 static const int CLIENT_VERSION =
-                           1000000 * NU_VERSION_MAJOR
-                         +   10000 * NU_VERSION_MINOR
-                         +     100 * NU_VERSION_REVISION
-                         +       1 * NU_VERSION_BUILD;
+                           1000000 * CLIENT_VERSION_MAJOR
+                         +   10000 * CLIENT_VERSION_MINOR
+                         +     100 * CLIENT_VERSION_REVISION
+                         +       1 * CLIENT_VERSION_BUILD;
 
 // peercoin version 0.3.0.0 - reference for code tracking
 
