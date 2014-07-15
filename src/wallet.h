@@ -10,6 +10,7 @@
 #include "key.h"
 #include "keystore.h"
 #include "script.h"
+#include "walletdb.h"
 
 extern bool fWalletUnlockMintOnly;
 
@@ -20,12 +21,12 @@ class CWalletDB;
 /** (client) version numbers for particular wallet features */
 enum WalletFeature
 {
-    FEATURE_BASE = 10500, // the earliest version new wallets supports (only useful for getinfo's clientversion output)
+    FEATURE_BASE = 1, // the earliest version new wallets supports (only useful for getinfo's clientversion output)
 
-    FEATURE_WALLETCRYPT = 40000, // wallet encryption
-    FEATURE_COMPRPUBKEY = 60000, // compressed public keys
+    FEATURE_WALLETCRYPT = 1, // wallet encryption
+    FEATURE_COMPRPUBKEY = 1, // compressed public keys
 
-    FEATURE_LATEST = 60000
+    FEATURE_LATEST = 1
 };
 
 

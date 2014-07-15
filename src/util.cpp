@@ -45,7 +45,7 @@ namespace boost {
 #ifdef _WIN32_IE
 #undef _WIN32_IE
 #endif
-#define _WIN32_IE 0x0400
+#define _WIN32_IE 0x0501
 #define WIN32_LEAN_AND_MEAN 1
 #ifndef NOMINMAX
 #define NOMINMAX
@@ -909,7 +909,7 @@ boost::filesystem::path GetDefaultPeercoinDataDir()
 
     // Windows: C:\Documents and Settings\username\Application Data\PPCoin
     // Mac: ~/Library/Application Support/PPCoin
-    // Unix: ~/.ppcoin
+    // Unix: ~/.nu
 #ifdef WIN32
     // Windows
     return MyGetSpecialFolderPath(CSIDL_APPDATA, true) / "PPCoin";
@@ -1238,7 +1238,7 @@ std::string FormatSubVersion(const std::string& name, int nClientVersion, const 
     if (!comments.empty())
         ss << "(" << boost::algorithm::join(comments, "; ") << ")";
     ss << "/";
-    ss << "Peercoin:" << FormatVersion(PPCOIN_VERSION);
+    ss << "Nu:" << FormatVersion(CLIENT_VERSION);
     ss << "(" << CLIENT_BUILD << ")/";
     return ss.str();
 }
