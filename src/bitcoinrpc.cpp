@@ -1979,7 +1979,8 @@ Value keypoolrefill(const Array& params, bool fHelp)
 
 void ThreadTopUpKeyPool(void* parg)
 {
-    pwalletMain->TopUpKeyPool();
+    CWallet* wallet = (CWallet*)parg;
+    wallet->TopUpKeyPool();
 }
 
 void ThreadCleanWalletPassphrase(void* parg)
@@ -2055,7 +2056,7 @@ Value walletpassphrase(const Array& params, bool fHelp)
             "walletpassphrase <passphrase> <timeout>\n"
             "Stores the wallet decryption key in memory for <timeout> seconds.");
 
-    CreateThread(ThreadTopUpKeyPool, NULL);
+    CreateThread(ThreadTopUpKeyPool, pwalletMain);
     int64* pnSleepTime = new int64(params[1].get_int64());
     CreateThread(ThreadCleanWalletPassphrase, pnSleepTime);
 
