@@ -1983,9 +1983,16 @@ void ThreadTopUpKeyPool(void* parg)
     wallet->TopUpKeyPool();
 }
 
-void ThreadCleanWalletPassphrase(void* parg)
+struct CleanWalletPassphraseArg
 {
-    int64 nMyWakeTime = GetTimeMillis() + *((int64*)parg) * 1000;
+    CWallet* wallet;
+    int64 nSleepTime;
+};
+
+void ThreadCleanWalletPassphrase(void* pvarg)
+{
+    CleanWalletPassphraseArg* parg = (CleanWalletPassphraseArg*)pvarg;
+    int64 nMyWakeTime = GetTimeMillis() + parg->nSleepTime * 1000;
 
     ENTER_CRITICAL_SECTION(cs_nWalletUnlockTime);
 
@@ -2010,7 +2017,7 @@ void ThreadCleanWalletPassphrase(void* parg)
         if (nWalletUnlockTime)
         {
             nWalletUnlockTime = 0;
-            pwalletMain->Lock();
+            parg->wallet->Lock();
         }
     }
     else
@@ -2021,7 +2028,7 @@ void ThreadCleanWalletPassphrase(void* parg)
 
     LEAVE_CRITICAL_SECTION(cs_nWalletUnlockTime);
 
-    delete (int64*)parg;
+    delete parg;
 }
 
 Value walletpassphrase(const Array& params, bool fHelp)
@@ -2057,8 +2064,10 @@ Value walletpassphrase(const Array& params, bool fHelp)
             "Stores the wallet decryption key in memory for <timeout> seconds.");
 
     CreateThread(ThreadTopUpKeyPool, pwalletMain);
-    int64* pnSleepTime = new int64(params[1].get_int64());
-    CreateThread(ThreadCleanWalletPassphrase, pnSleepTime);
+    CleanWalletPassphraseArg* cleanWalletPassphraseArg = new CleanWalletPassphraseArg;
+    cleanWalletPassphraseArg->nSleepTime = params[1].get_int64();
+    cleanWalletPassphraseArg->wallet = pwalletMain;
+    CreateThread(ThreadCleanWalletPassphrase, cleanWalletPassphraseArg);
 
     // ppcoin: if user OS account compromised prevent trivial sendmoney commands
     if (params.size() > 2)
