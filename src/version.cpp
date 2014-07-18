@@ -6,9 +6,9 @@
 #include "version.h"
 
 // Name of client reported in the 'version' message. Report the same name
-// for both peersharesd and peershares-qt, to make it harder for attackers to
+// for both nud and Nu, to make it harder for attackers to
 // target servers or GUI users specifically.
-const std::string CLIENT_NAME("MarketGenesis");
+const std::string CLIENT_NAME("Siglee");
 
 // Client version number
 #define CLIENT_VERSION_SUFFIX   "-beta"
@@ -49,9 +49,9 @@ const std::string CLIENT_NAME("MarketGenesis");
 
 #ifndef BUILD_DESC
 #    ifdef GIT_COMMIT_ID
-#        define BUILD_DESC BUILD_DESC_FROM_COMMIT(PEERSHARES_VERSION_MAJOR, PEERSHARES_VERSION_MINOR, PEERSHARES_VERSION_REVISION, PEERSHARES_VERSION_BUILD, GIT_COMMIT_ID)
+#        define BUILD_DESC BUILD_DESC_FROM_COMMIT(CLIENT_VERSION_MAJOR, CLIENT_VERSION_MINOR, CLIENT_VERSION_REVISION, CLIENT_VERSION_BUILD, GIT_COMMIT_ID)
 #    else
-#        define BUILD_DESC BUILD_DESC_FROM_UNKNOWN(PEERSHARES_VERSION_MAJOR, PEERSHARES_VERSION_MINOR, PEERSHARES_VERSION_REVISION, PEERSHARES_VERSION_BUILD)
+#        define BUILD_DESC BUILD_DESC_FROM_UNKNOWN(CLIENT_VERSION_MAJOR, CLIENT_VERSION_MINOR, CLIENT_VERSION_REVISION, CLIENT_VERSION_BUILD)
 #    endif
 #endif
 
