@@ -87,7 +87,6 @@
      </item>
      <item>
       <widget class="QLabel" name="label_nubits_copyright">
-        <string>Copyright © 2013-2014 Peershares Developers</string>
        <property name="text">
         <string>Copyright © 2014 Nu Developers</string>
        </property>
