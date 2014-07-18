@@ -10,8 +10,8 @@
 using namespace std;
 
 // Protocol switch time of v0.3 kernel protocol
-unsigned int nProtocolV03SwitchTime     = 1405449916; // Tue, 15 Jul 2014 18:45:16 GMT
-unsigned int nProtocolV03TestSwitchTime     = 1405449916; // Tue, 15 Jul 2014 18:45:16 GMT
+unsigned int nProtocolV03SwitchTime     = 1405987200; // Tue, 22 Jul 2014 00:00:00 GMT
+unsigned int nProtocolV03TestSwitchTime     = 1405728000; // Tue, 19 Jul 2014 00:00:00 GMT
 
 // Modifier interval: time to elapse before new modifier is computed
 // Set to 6-hour for production network and 20-minute for test network
