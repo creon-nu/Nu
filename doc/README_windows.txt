@@ -7,13 +7,12 @@ This product includes software developed by the OpenSSL Project for use in
 the OpenSSL Toolkit (http://www.openssl.org/).  This product includes
 cryptographic software written by Eric Young (eay@cryptsoft.com).
 
-
 Intro
+
 -----
 // todo: Add intro text
 
-
-Setup
+# Setup
 -----
 After completing windows setup then run Nu.
 Alternatively you can run windows command line (cmd) in nu program dir.
@@ -26,8 +25,8 @@ applications if necessary.
 The software automatically finds other nodes to connect to.  You can
 enable Universal Plug and Play (UPnP) with your router/firewall
 or forward port 9901 (TCP) to your computer so you can receive
-incoming connections.  PPCoin works without incoming connections,
-but allowing incoming connections helps the PPCoin network.
+incoming connections.  Nu works without incoming connections,
+but allowing incoming connections helps the Nu network.
 
 
 Upgrade
