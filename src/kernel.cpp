@@ -1,4 +1,5 @@
 // Copyright (c) 2012-2013 The PPCoin developers
+// Copyright (c) 2013-2014 The Peershares developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -10,8 +11,8 @@
 using namespace std;
 
 // Protocol switch time of v0.3 kernel protocol
-unsigned int nProtocolV03SwitchTime     = 1405449916; // Tue, 15 Jul 2014 18:45:16 GMT
-unsigned int nProtocolV03TestSwitchTime     = 1405449916; // Tue, 15 Jul 2014 18:45:16 GMT
+unsigned int nProtocolV03SwitchTime     = 1405987200; // Tue, 22 Jul 2014 00:00:00 GMT
+unsigned int nProtocolV03TestSwitchTime     = 1405728000; // Tue, 19 Jul 2014 00:00:00 GMT
 
 // Modifier interval: time to elapse before new modifier is computed
 // Set to 6-hour for production network and 20-minute for test network
@@ -266,7 +267,7 @@ void CleanStakeModifierCache()
     }
 }
 
-// ppcoin kernel protocol
+// Peershares kernel protocol
 // coinstake must meet hash target according to the protocol:
 // kernel (input 0) must meet the formula
 //     hash(nStakeModifier + txPrev.block.nTime + txPrev.offset + txPrev.nTime + txPrev.vout.n + nTime) < bnTarget * nCoinDayWeight
@@ -301,9 +302,10 @@ bool CheckStakeKernelHash(unsigned int nBits, const CBlock& blockFrom, unsigned 
     CBigNum bnTargetPerCoinDay;
     bnTargetPerCoinDay.SetCompact(nBits);
     int64 nValueIn = txPrev.vout[prevout.n].nValue;
-    // v0.3 protocol kernel hash weight starts from 0 at the 30-day min age
+    // ppcoin: v0.3 protocol kernel hash weight starts from 0 at the 30-day min age
     // this change increases active coins participating the hash and helps
     // to secure the network when proof-of-stake difficulty is low
+    // peershares: v0.1 protocol default kernel hash weight starts from 0 at the 3-day min age
     int64 nTimeWeight = min((int64)nTimeTx - txPrev.nTime, (int64)STAKE_MAX_AGE) - (IsProtocolV03(nTimeTx)? nStakeMinAge : 0);
     CBigNum bnCoinDayWeight = CBigNum(nValueIn) * nTimeWeight / COIN / (24 * 60 * 60);
     // Calculate hash
