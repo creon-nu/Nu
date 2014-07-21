@@ -65,7 +65,6 @@ double dHashesPerSec;
 int64 nHPSTimerStart;
 
 // Settings
-int64 nTransactionFee = MIN_TX_FEE;
 int64 nSplitShareOutputs = MIN_COINSTAKE_VALUE;
 
 
@@ -528,7 +527,7 @@ bool CTransaction::CheckTransaction() const
         if (txout.IsEmpty() && (!IsCoinBase()) && (!IsCoinStake()) && (!IsCurrencyCoinBase()))
             return DoS(100, error("CTransaction::CheckTransaction() : txout empty for user transaction"));
         // ppcoin: enforce minimum output amount
-        if ((!txout.IsEmpty()) && !(IsCoinStake() && (txout.IsVote() || txout.IsParkRateResult())) && txout.nValue < MIN_TXOUT_AMOUNT)
+        if ((!txout.IsEmpty()) && !(IsCoinStake() && (txout.IsVote() || txout.IsParkRateResult())) && txout.nValue < GetMinTxOutAmount())
             return DoS(100, error("CTransaction::CheckTransaction() : txout.nValue below minimum"));
         if (txout.nValue > MAX_MONEY)
             return DoS(100, error("CTransaction::CheckTransaction() : txout.nValue too high"));
@@ -685,7 +684,7 @@ bool CTxMemPool::accept(CTxDB& txdb, CTransaction &tx, bool fCheckInputs,
         // Continuously rate-limit free transactions
         // This mitigates 'penny-flooding' -- sending thousands of free transactions just to
         // be annoying or make other's transactions take longer to confirm.
-        if (!tx.IsUnpark() && nFees < MIN_RELAY_TX_FEE)
+        if (!tx.IsUnpark() && nFees < tx.GetMinRelayFee())
         {
             static CCriticalSection cs;
             static double dFreeCount;
@@ -1355,7 +1354,7 @@ bool CTransaction::ConnectInputs(CTxDB& txdb, MapPrevTx inputs,
             if (!GetCoinAge(txdb, nCoinAge))
                 return error("ConnectInputs() : %s unable to get coin age for coinstake", GetHash().ToString().substr(0,10).c_str());
             int64 nStakeReward = GetValueOut() - nValueIn;
-            if (nStakeReward > GetProofOfStakeReward(nCoinAge) - GetMinFee() + MIN_TX_FEE)
+            if (nStakeReward > GetProofOfStakeReward(nCoinAge) - GetMinFee() + GetUnitMinFee())
                 return DoS(100, error("ConnectInputs() : %s stake reward exceeded", GetHash().ToString().substr(0,10).c_str()));
         }
         else if (!fValidUnpark)

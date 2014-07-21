@@ -35,11 +35,13 @@ static const unsigned int MAX_BLOCK_SIZE_GEN = MAX_BLOCK_SIZE/2;
 static const unsigned int MAX_BLOCK_SIGOPS = MAX_BLOCK_SIZE/50;
 static const unsigned int MAX_ORPHAN_TRANSACTIONS = MAX_BLOCK_SIZE/100;
 static const unsigned int MAX_COINSTAKE_SIZE = 1000; // nubit: maximum size of CoinStake transactions
-static const int64 MIN_TX_FEE = CENT;
-static const int64 MIN_RELAY_TX_FEE = CENT;
+static const int64 MIN_SHARE_TX_FEE = COIN;
+static const int64 MIN_SHARE_RELAY_TX_FEE = COIN;
+static const int64 MIN_SHARE_TXOUT_AMOUNT = MIN_SHARE_TX_FEE;
+static const int64 MIN_CURRENCY_TX_FEE = CENT;
+static const int64 MIN_CURRENCY_RELAY_TX_FEE = CENT;
+static const int64 MIN_CURRENCY_TXOUT_AMOUNT = MIN_CURRENCY_TX_FEE;
 static const int64 MAX_MONEY = 2000000000 * COIN;
-static const int64 MAX_MINT_PROOF_OF_WORK = 9999 * COIN;
-static const int64 MIN_TXOUT_AMOUNT = MIN_TX_FEE;
 inline bool MoneyRange(int64 nValue) { return (nValue >= 0 && nValue <= MAX_MONEY); }
 static const int COINBASE_MATURITY  = 100; // Must be smaller than PROOF_OF_WORK_BLOCKS
 static const int COINSTAKE_MATURITY = 5000; // Same average time as Peercoin (500 * 10 minutes vs 5000 * 1 minute)
@@ -106,7 +108,6 @@ extern std::map<uint256, CBlock*> mapOrphanBlocks;
 extern std::set<CBitcoinAddress> setElectedCustodian;
 
 // Settings
-extern int64 nTransactionFee;
 extern int64 nSplitShareOutputs;
 
 
@@ -151,6 +152,20 @@ inline int GetMaturity(bool fProofOfStake)
     return fProofOfStake ? nCoinstakeMaturity : nCoinbaseMaturity;
 }
 
+inline int64 MinTxFee(unsigned char cUnit)
+{
+    return cUnit == 'S' ? MIN_SHARE_TX_FEE : MIN_CURRENCY_TX_FEE;
+}
+
+inline int64 MinRelayTxFee(unsigned char cUnit)
+{
+    return cUnit == 'S' ? MIN_SHARE_RELAY_TX_FEE : MIN_CURRENCY_RELAY_TX_FEE;
+}
+
+inline int64 MinTxOutAmount(unsigned char cUnit)
+{
+    return cUnit == 'S' ? MIN_SHARE_TXOUT_AMOUNT : MIN_CURRENCY_TXOUT_AMOUNT;
+}
 
 
 
@@ -648,10 +663,25 @@ public:
         return dPriority > COIN * 144 / 250;
     }
 
+    int64 GetUnitMinFee() const
+    {
+        return MinTxFee(cUnit);
+    }
+
+    int64 GetMinRelayFee() const
+    {
+        return MinRelayTxFee(cUnit);
+    }
+
+    int64 GetMinTxOutAmount() const
+    {
+        return MinTxOutAmount(cUnit);
+    }
+
     int64 GetMinFee(unsigned int nBlockSize=1, bool fAllowFree=false, enum GetMinFee_mode mode=GMF_BLOCK) const
     {
         // Base fee is either MIN_TX_FEE or MIN_RELAY_TX_FEE
-        int64 nBaseFee = (mode == GMF_RELAY) ? MIN_RELAY_TX_FEE : MIN_TX_FEE;
+        int64 nBaseFee = (mode == GMF_RELAY) ? GetMinRelayFee() : GetUnitMinFee();
 
         unsigned int nBytes = ::GetSerializeSize(*this, SER_NETWORK, PROTOCOL_VERSION);
         unsigned int nNewBlockSize = nBlockSize + nBytes;
