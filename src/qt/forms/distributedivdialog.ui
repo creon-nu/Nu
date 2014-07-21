@@ -57,7 +57,7 @@
    <item row="1" column="0">
     <widget class="QLabel" name="label">
      <property name="text">
-      <string>Number of Peercoins to distribute to shareholders:</string>
+      <string>Number of peercoins to distribute to shareholders:</string>
      </property>
      <property name="alignment">
       <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
