@@ -23,7 +23,6 @@ public:
         ConnectSOCKS4, // bool
         ProxyIP, // QString
         ProxyPort, // QString
-        Fee, // qint64
         DisplayUnit, // BitcoinUnits::Unit
         DisplayAddresses, // bool
         DetachDatabases, // bool
@@ -40,7 +39,6 @@ public:
     bool setData(const QModelIndex & index, const QVariant & value, int role = Qt::EditRole);
 
     /* Explicit getters */
-    qint64 getTransactionFee();
     bool getMinimizeToTray();
     bool getMinimizeOnClose();
     int getDisplayUnit();

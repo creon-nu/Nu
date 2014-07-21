@@ -62,11 +62,11 @@ int ThreadSafeMessageBox(const std::string& message, const std::string& caption,
     return 4;
 }
 
-bool ThreadSafeAskFee(int64 nFeeRequired, const std::string& strCaption)
+bool ThreadSafeAskFee(int64 nFeeRequired, const std::string& strCaption, unsigned char cUnit)
 {
     if(!guiref)
         return false;
-    if(nFeeRequired < MIN_TX_FEE || nFeeRequired <= nTransactionFee || fDaemon)
+    if(nFeeRequired < MinTxFee(cUnit) || fDaemon)
         return true;
     bool payFee = false;
 

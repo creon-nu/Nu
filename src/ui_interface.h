@@ -39,7 +39,7 @@
 /* These UI communication functions are implemented in bitcoin.cpp (for ui) and noui.cpp (no ui) */
 
 extern int ThreadSafeMessageBox(const std::string& message, const std::string& caption, int style=wxOK);
-extern bool ThreadSafeAskFee(int64 nFeeRequired, const std::string& strCaption);
+extern bool ThreadSafeAskFee(int64 nFeeRequired, const std::string& strCaption, unsigned char cUnit);
 extern void ThreadSafeHandleURI(const std::string& strURI);
 extern void MainFrameRepaint();
 extern void AddressBookRepaint();

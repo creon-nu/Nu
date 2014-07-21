@@ -20,7 +20,6 @@ void OptionsModel::Init()
     bDisplayAddresses = settings.value("bDisplayAddresses", false).toBool();
     fMinimizeToTray = settings.value("fMinimizeToTray", false).toBool();
     fMinimizeOnClose = settings.value("fMinimizeOnClose", false).toBool();
-    nTransactionFee = settings.value("nTransactionFee").toLongLong();
 
     // These are shared with core bitcoin; we want
     // command-line options to override the GUI settings:
@@ -66,8 +65,6 @@ QVariant OptionsModel::data(const QModelIndex & index, int role) const
             return QVariant(QString::fromStdString(addrProxy.ToStringIP()));
         case ProxyPort:
             return QVariant(addrProxy.GetPort());
-        case Fee:
-            return QVariant(nTransactionFee);
         case DisplayUnit:
             return QVariant(nDisplayUnit);
         case DisplayAddresses:
@@ -140,11 +137,6 @@ bool OptionsModel::setData(const QModelIndex & index, const QVariant & value, in
                 }
             }
             break;
-        case Fee: {
-            nTransactionFee = value.toLongLong();
-            settings.setValue("nTransactionFee", nTransactionFee);
-            }
-            break;
         case DisplayUnit: {
             int unit = value.toInt();
             nDisplayUnit = unit;
@@ -169,11 +161,6 @@ bool OptionsModel::setData(const QModelIndex & index, const QVariant & value, in
     emit dataChanged(index, index);
 
     return successful;
-}
-
-qint64 OptionsModel::getTransactionFee()
-{
-    return nTransactionFee;
 }
 
 bool OptionsModel::getMinimizeToTray()
