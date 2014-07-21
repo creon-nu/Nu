@@ -36,3 +36,6 @@ dist
 *.app
 *.dmg
 .afpDeleted*
+
+# temporary
+src/qt/res/styles
