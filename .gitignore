@@ -35,3 +35,4 @@ PortIndex*
 dist
 *.app
 *.dmg
+.afpDeleted*

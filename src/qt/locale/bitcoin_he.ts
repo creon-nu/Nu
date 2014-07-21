@@ -4,24 +4,24 @@
     <name>AboutDialog</name>
     <message>
         <location filename="../forms/aboutdialog.ui" line="14"/>
-        <source>About PPCoin</source>
+        <source>About Peershares</source>
         <translation>אודות ביטקוין</translation>
     </message>
     <message>
         <location filename="../forms/aboutdialog.ui" line="53"/>
-        <source>&lt;b&gt;PPCoin&lt;/b&gt; version</source>
+        <source>&lt;b&gt;Peershares&lt;/b&gt; version</source>
         <translation>גרסת &lt;b&gt;ביטקוין&lt;/b&gt;</translation>
     </message>
     <message>
         <location filename="../forms/aboutdialog.ui" line="85"/>
-        <source>Copyright © 2011-2013 PPCoin Developers
+        <source>Copyright © 2011-2013 Peershares Developers
 
 This is experimental software.
 
 Distributed under the MIT/X11 software license, see the accompanying file license.txt or http://www.opensource.org/licenses/mit-license.php.
 
 This product includes software developed by the OpenSSL Project for use in the OpenSSL Toolkit (http://www.openssl.org/) and cryptographic software written by Eric Young (eay@cryptsoft.com) and UPnP software written by Thomas Bernard.</source>
-        <translation>זכויות יוצרים © 2011-2013 PPCoin Developers שמורות למפתחי ביטקוין
+        <translation>זכויות יוצרים © 2011-2013 Peershares Developers שמורות למפתחי ביטקוין
 
 זוהי תוכנה ניסיונית.
 
@@ -39,7 +39,7 @@ This product includes software developed by the OpenSSL Project for use in the O
     </message>
     <message>
         <location filename="../forms/addressbookpage.ui" line="20"/>
-        <source>These are your PPCoin addresses for receiving payments.  You may want to give a different one to each sender so you can keep track of who is paying you.</source>
+        <source>These are your Peershares addresses for receiving shares.  You may want to give a different one to each sender so you can keep track of who is transferring shares you.</source>
         <translation>אלה כתובות הביטקוין שלך עבור קבלת תשלומים.  אתה עשוי לרצות לתת כתובת שונה לכל שולח כדי שתוכל לעקוב אחר מי משלם לך.</translation>
     </message>
     <message>
@@ -181,32 +181,32 @@ This product includes software developed by the OpenSSL Project for use in the O
     </message>
     <message>
         <location filename="../askpassphrasedialog.cpp" line="34"/>
-        <source>Enter the new passphrase to the wallet.&lt;br/&gt;Please use a passphrase of &lt;b&gt;10 or more random characters&lt;/b&gt;, or &lt;b&gt;eight or more words&lt;/b&gt;.</source>
+        <source>Enter the new passphrase to the portfolio.&lt;br/&gt;Please use a passphrase of &lt;b&gt;10 or more random characters&lt;/b&gt;, or &lt;b&gt;eight or more words&lt;/b&gt;.</source>
         <translation>הכנס את הסיסמה החדשה לארנק. &lt;br/&gt;אנא השתמש בסיסמה המכילה &lt;b&gt;10 תוים אקראיים או יותר&lt;/b&gt;, או &lt;b&gt;שמונה מילים או יותר&lt;/b&gt;.</translation>
     </message>
     <message>
         <location filename="../askpassphrasedialog.cpp" line="35"/>
-        <source>Encrypt wallet</source>
+        <source>Encrypt portfolio</source>
         <translation>הצפנת ארנק</translation>
     </message>
     <message>
         <location filename="../askpassphrasedialog.cpp" line="38"/>
-        <source>This operation needs your wallet passphrase to unlock the wallet.</source>
+        <source>This operation needs your portfolio passphrase to unlock the portfolio.</source>
         <translation>הפעולה הזו דורשת את סיסמת הארנק שלך בשביל לפתוח את הארנק.</translation>
     </message>
     <message>
         <location filename="../askpassphrasedialog.cpp" line="43"/>
-        <source>Unlock wallet</source>
+        <source>Unlock portfolio</source>
         <translation>פתיחת ארנק</translation>
     </message>
     <message>
         <location filename="../askpassphrasedialog.cpp" line="46"/>
-        <source>This operation needs your wallet passphrase to decrypt the wallet.</source>
+        <source>This operation needs your portfolio passphrase to decrypt the portfolio.</source>
         <translation>הפעולה הזו דורשת את סיסמת הארנק שלך בשביל לפענח את הארנק.</translation>
     </message>
     <message>
         <location filename="../askpassphrasedialog.cpp" line="51"/>
-        <source>Decrypt wallet</source>
+        <source>Decrypt portfolio</source>
         <translation>פענוח ארנק</translation>
     </message>
     <message>
@@ -216,30 +216,30 @@ This product includes software developed by the OpenSSL Project for use in the O
     </message>
     <message>
         <location filename="../askpassphrasedialog.cpp" line="55"/>
-        <source>Enter the old and new passphrase to the wallet.</source>
+        <source>Enter the old and new passphrase to the portfolio.</source>
         <translation>הכנס את הסיסמות הישנה והחדשה לארנק.</translation>
     </message>
     <message>
         <location filename="../askpassphrasedialog.cpp" line="101"/>
-        <source>Confirm wallet encryption</source>
+        <source>Confirm portfolio encryption</source>
         <translation>אשר הצפנת ארנק</translation>
     </message>
     <message>
         <location filename="../askpassphrasedialog.cpp" line="102"/>
-        <source>WARNING: If you encrypt your wallet and lose your passphrase, you will &lt;b&gt;LOSE ALL OF YOUR PPCoinS&lt;/b&gt;!
-Are you sure you wish to encrypt your wallet?</source>
+        <source>WARNING: If you encrypt your portfolio and lose your passphrase, you will &lt;b&gt;LOSE ALL OF YOUR PeersharesS&lt;/b&gt;!
+Are you sure you wish to encrypt your portfolio?</source>
         <translation>אזהרה: אם תצפין את הארנק שלך ותאבד את הסיסמה אתה &lt;b&gt;תאבד את כל הביטקוין שלך&lt;/b&gt;!
 אתה בטוח שברצונך להצפין את הארנק?</translation>
     </message>
     <message>
         <location filename="../askpassphrasedialog.cpp" line="111"/>
         <location filename="../askpassphrasedialog.cpp" line="160"/>
-        <source>Wallet encrypted</source>
+        <source>Portfolio encrypted</source>
         <translation>הארנק הוצפן</translation>
     </message>
     <message>
         <location filename="../askpassphrasedialog.cpp" line="112"/>
-        <source>PPCoin will close now to finish the encryption process. Remember that encrypting your wallet cannot fully protect your PPCoins from being stolen by malware infecting your computer.</source>
+        <source>Peershares will close now to finish the encryption process. Remember that encrypting your portfolio cannot fully protect your Peersharess from being stolen by malware infecting your computer.</source>
         <translation>ביטקוין ייסגר עכשיו כדי להשלים את תהליך ההצפנה. זכור שהצפנת הארנק שלך אינו יכול להגן באופן מלא על הביטקוינים שלך מתוכנות זדוניות המושתלות על המחשב.</translation>
     </message>
     <message>
@@ -253,12 +253,12 @@ Are you sure you wish to encrypt your wallet?</source>
         <location filename="../askpassphrasedialog.cpp" line="124"/>
         <location filename="../askpassphrasedialog.cpp" line="166"/>
         <location filename="../askpassphrasedialog.cpp" line="172"/>
-        <source>Wallet encryption failed</source>
+        <source>Portfolio encryption failed</source>
         <translation>הצפנת הארנק נכשלה</translation>
     </message>
     <message>
         <location filename="../askpassphrasedialog.cpp" line="118"/>
-        <source>Wallet encryption failed due to an internal error. Your wallet was not encrypted.</source>
+        <source>Portfolio encryption failed due to an internal error. Your portfolio was not encrypted.</source>
         <translation>הצפנת הארנק נכשלה עקב שגיאה פנימית. הארנק שלך לא הוצפן.</translation>
     </message>
     <message>
@@ -269,32 +269,32 @@ Are you sure you wish to encrypt your wallet?</source>
     </message>
     <message>
         <location filename="../askpassphrasedialog.cpp" line="136"/>
-        <source>Wallet unlock failed</source>
+        <source>Portfolio unlock failed</source>
         <translation>פתיחת הארנק נכשלה</translation>
     </message>
     <message>
         <location filename="../askpassphrasedialog.cpp" line="137"/>
         <location filename="../askpassphrasedialog.cpp" line="148"/>
         <location filename="../askpassphrasedialog.cpp" line="167"/>
-        <source>The passphrase entered for the wallet decryption was incorrect.</source>
+        <source>The passphrase entered for the portfolio decryption was incorrect.</source>
         <translation>הסיסמה שהוכנסה לפענוח הארנק שגויה.</translation>
     </message>
     <message>
         <location filename="../askpassphrasedialog.cpp" line="147"/>
-        <source>Wallet decryption failed</source>
+        <source>Portfolio decryption failed</source>
         <translation>פענוח הארנק נכשל</translation>
     </message>
     <message>
         <location filename="../askpassphrasedialog.cpp" line="161"/>
-        <source>Wallet passphrase was succesfully changed.</source>
+        <source>Portfolio passphrase was succesfully changed.</source>
         <translation>סיסמת הארנק שונתה בהצלחה.</translation>
     </message>
 </context>
 <context>
-    <name>PPCoinGUI</name>
+    <name>PeersharesGUI</name>
     <message>
         <location filename="../bitcoingui.cpp" line="69"/>
-        <source>PPCoin Wallet</source>
+        <source>Peershares Portfolio</source>
         <translation>ארנק ביטקוין</translation>
     </message>
     <message>
@@ -315,7 +315,7 @@ Are you sure you wish to encrypt your wallet?</source>
     </message>
     <message>
         <location filename="../bitcoingui.cpp" line="177"/>
-        <source>Show general overview of wallet</source>
+        <source>Show general overview of portfolio</source>
         <translation>הצג סקירה כללית של הארנק</translation>
     </message>
     <message>
@@ -355,7 +355,7 @@ Are you sure you wish to encrypt your wallet?</source>
     </message>
     <message>
         <location filename="../bitcoingui.cpp" line="201"/>
-        <source>Send coins to a PPCoin address</source>
+        <source>Send coins to a Peershares address</source>
         <translation>שלח מטבעות לכתובת ביטקוין</translation>
     </message>
     <message>
@@ -385,7 +385,7 @@ Are you sure you wish to encrypt your wallet?</source>
     </message>
     <message>
         <location filename="../bitcoingui.cpp" line="231"/>
-        <source>Show information about PPCoin</source>
+        <source>Show information about Peershares</source>
         <translation>הצג מידע על ביטקוין</translation>
     </message>
     <message>
@@ -405,17 +405,17 @@ Are you sure you wish to encrypt your wallet?</source>
     </message>
     <message>
         <location filename="../bitcoingui.cpp" line="237"/>
-        <source>Modify configuration options for PPCoin</source>
+        <source>Modify configuration options for Peershares</source>
         <translation>שנה הגדרות עבור ביטקוין</translation>
     </message>
     <message>
         <location filename="../bitcoingui.cpp" line="239"/>
-        <source>Open &amp;PPCoin</source>
+        <source>Open &amp;Peershares</source>
         <translation>פתח את &amp;ביטקוין</translation>
     </message>
     <message>
         <location filename="../bitcoingui.cpp" line="240"/>
-        <source>Show the PPCoin window</source>
+        <source>Show the Peershares window</source>
         <translation>הצג את חלון ביטקוין</translation>
     </message>
     <message>
@@ -430,22 +430,22 @@ Are you sure you wish to encrypt your wallet?</source>
     </message>
     <message>
         <location filename="../bitcoingui.cpp" line="243"/>
-        <source>&amp;Encrypt Wallet</source>
+        <source>&amp;Encrypt Portfolio</source>
         <translation>הצ&amp;פן ארנק</translation>
     </message>
     <message>
         <location filename="../bitcoingui.cpp" line="244"/>
-        <source>Encrypt or decrypt wallet</source>
+        <source>Encrypt or decrypt portfolio</source>
         <translation>הצפן או פענח ארנק</translation>
     </message>
     <message>
         <location filename="../bitcoingui.cpp" line="246"/>
-        <source>&amp;Backup Wallet</source>
+        <source>&amp;Backup Portfolio</source>
         <translation>&amp;גיבוי ארנק</translation>
     </message>
     <message>
         <location filename="../bitcoingui.cpp" line="247"/>
-        <source>Backup wallet to another location</source>
+        <source>Backup portfolio to another location</source>
         <translation>גיבוי הארנק למקום אחר</translation>
     </message>
     <message>
@@ -455,7 +455,7 @@ Are you sure you wish to encrypt your wallet?</source>
     </message>
     <message>
         <location filename="../bitcoingui.cpp" line="249"/>
-        <source>Change the passphrase used for wallet encryption</source>
+        <source>Change the passphrase used for portfolio encryption</source>
         <translation>שנה את הסיסמה להצפנת הארנק</translation>
     </message>
     <message>
@@ -490,12 +490,12 @@ Are you sure you wish to encrypt your wallet?</source>
     </message>
     <message>
         <location filename="../bitcoingui.cpp" line="407"/>
-        <source>PPCoin-qt</source>
-        <translation>PPCoin-qt</translation>
+        <source>Peershares-qt</source>
+        <translation>Peershares-qt</translation>
     </message>
     <message numerus="yes">
         <location filename="../bitcoingui.cpp" line="449"/>
-        <source>%n active connection(s) to PPCoin network</source>
+        <source>%n active connection(s) to Peershares network</source>
         <translation><numerusform>חיבור פעיל אחד לרשת הביטקוין</numerusform><numerusform>%n חיבורים פעילים לרשת הביטקוין</numerusform></translation>
     </message>
     <message>
@@ -545,7 +545,7 @@ Are you sure you wish to encrypt your wallet?</source>
     </message>
     <message>
         <location filename="../bitcoingui.cpp" line="597"/>
-        <source>This transaction is over the size limit.  You can still send it for a fee of %1, which goes to the nodes that process your transaction and helps to support the network.  Do you want to pay the fee?</source>
+        <source>You will be charged a %1 network fee to conduct this transaction. Would you like to continue?</source>
         <translation>הפעולה הזאת חורגת מהמגבלה.  ניתן לשלוח אותה תמורת עמלה בסך %1, שמגיעה לצמתים שמעבדים את הפעולה ועוזרת לתמוך ברשת.  האם אתה מעוניין לשלם את העמלה?</translation>
     </message>
     <message>
@@ -577,22 +577,22 @@ Address: %4
     </message>
     <message>
         <location filename="../bitcoingui.cpp" line="751"/>
-        <source>Wallet is &lt;b&gt;encrypted&lt;/b&gt; and currently &lt;b&gt;unlocked&lt;/b&gt;</source>
+        <source>Portfolio is &lt;b&gt;encrypted&lt;/b&gt; and currently &lt;b&gt;unlocked&lt;/b&gt;</source>
         <translation>הארנק &lt;b&gt;מוצפן&lt;/b&gt; וכרגע &lt;b&gt;פתוח&lt;/b&gt;</translation>
     </message>
     <message>
         <location filename="../bitcoingui.cpp" line="759"/>
-        <source>Wallet is &lt;b&gt;encrypted&lt;/b&gt; and currently &lt;b&gt;locked&lt;/b&gt;</source>
+        <source>Portfolio is &lt;b&gt;encrypted&lt;/b&gt; and currently &lt;b&gt;locked&lt;/b&gt;</source>
         <translation>הארנק &lt;b&gt;מוצפן&lt;/b&gt; וכרגע &lt;b&gt;נעול&lt;/b&gt;</translation>
     </message>
     <message>
         <location filename="../bitcoingui.cpp" line="782"/>
-        <source>Backup Wallet</source>
+        <source>Backup Portfolio</source>
         <translation>גיבוי ארנק</translation>
     </message>
     <message>
         <location filename="../bitcoingui.cpp" line="782"/>
-        <source>Wallet Data (*.dat)</source>
+        <source>Portfolio Data (*.dat)</source>
         <translation>נתוני ארנק (*.dat)</translation>
     </message>
     <message>
@@ -602,7 +602,7 @@ Address: %4
     </message>
     <message>
         <location filename="../bitcoingui.cpp" line="785"/>
-        <source>There was an error trying to save the wallet data to the new location.</source>
+        <source>There was an error trying to save the portfolio data to the new location.</source>
         <translation>היתה שגיאה בניסיון לשמור את מידע הארנק למיקום החדש.</translation>
     </message>
 </context>
@@ -678,12 +678,12 @@ Address: %4
     </message>
     <message>
         <location filename="../editaddressdialog.cpp" line="96"/>
-        <source>The entered address &quot;%1&quot; is not a valid PPCoin address.</source>
+        <source>The entered address &quot;%1&quot; is not a valid Peershares address.</source>
         <translation>הכתובת שהכנסת &quot;%1&quot; אינה כתובת ביטקוין תקינה.</translation>
     </message>
     <message>
         <location filename="../editaddressdialog.cpp" line="101"/>
-        <source>Could not unlock wallet.</source>
+        <source>Could not unlock portfolio.</source>
         <translation>פתיחת הארנק נכשלה.</translation>
     </message>
     <message>
@@ -696,12 +696,12 @@ Address: %4
     <name>MainOptionsPage</name>
     <message>
         <location filename="../optionsdialog.cpp" line="170"/>
-        <source>&amp;Start PPCoin on window system startup</source>
+        <source>&amp;Start Peershares on window system startup</source>
         <translation>התח&amp;ל את ביטקוין בהפעלת מערכת חלונות</translation>
     </message>
     <message>
         <location filename="../optionsdialog.cpp" line="171"/>
-        <source>Automatically start PPCoin after the computer is turned on</source>
+        <source>Automatically start Peershares after the computer is turned on</source>
         <translation>התחל את ביטקוין אוטומטית כשהמחשב נדלק</translation>
     </message>
     <message>
@@ -721,7 +721,7 @@ Address: %4
     </message>
     <message>
         <location filename="../optionsdialog.cpp" line="181"/>
-        <source>Automatically open the PPCoin client port on the router. This only works when your router supports UPnP and it is enabled.</source>
+        <source>Automatically open the Peershares client port on the router. This only works when your router supports UPnP and it is enabled.</source>
         <translation>פתח את פורט ביטקוין בנתב באופן אוטומטי. עובד רק אם UPnP מאופשר ונתמך ע&quot;י הנתב.</translation>
     </message>
     <message>
@@ -931,12 +931,12 @@ Address: %4
 &lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
 p, li { white-space: pre-wrap; }
 &lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'Ubuntu'; font-size:11pt; font-weight:400; font-style:normal;&quot;&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Wallet&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Portfolio&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</source>
         <translation>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
 &lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
 p, li { white-space: pre-wrap; }
 &lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:&apos;Ubuntu&apos;; font-size:11pt; font-weight:400; font-style:normal;&quot;&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Wallet&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Portfolio&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</translation>
     </message>
     <message>
         <location filename="../forms/overviewpage.ui" line="122"/>
@@ -955,7 +955,7 @@ p, li { white-space: pre-wrap; }
     </message>
     <message>
         <location filename="../overviewpage.cpp" line="111"/>
-        <source>Total number of transactions in wallet</source>
+        <source>Total number of transactions in portfolio</source>
         <translation>המספר הכולל של פעולות בארנק</translation>
     </message>
 </context>
@@ -1118,8 +1118,8 @@ p, li { white-space: pre-wrap; }
     </message>
     <message>
         <location filename="../sendcoinsdialog.cpp" line="154"/>
-        <source>Error: The transaction was rejected.  This might happen if some of the coins in your wallet were already spent, such as if you used a copy of wallet.dat and coins were spent in the copy but not marked as spent here.</source>
-        <translation>שגיאה: הפעולה נדחתה.  זה עשוי לקרות אם חלק מהמטבעות בארנק שלך כבר נוצלו, למשל אם השתמשת בעותק של הקובץ wallet.dat ומטבעות נוצלו בהעתק אך לא סומנו כמנוצלות כאן.</translation>
+        <source>Error: The transaction was rejected.  This might happen if some of the coins in your portfolio were already spent, such as if you used a copy of portfolio.dat and coins were spent in the copy but not marked as spent here.</source>
+        <translation>שגיאה: הפעולה נדחתה.  זה עשוי לקרות אם חלק מהמטבעות בארנק שלך כבר נוצלו, למשל אם השתמשת בעותק של הקובץ portfolio.dat ומטבעות נוצלו בהעתק אך לא סומנו כמנוצלות כאן.</translation>
     </message>
 </context>
 <context>
@@ -1182,7 +1182,7 @@ p, li { white-space: pre-wrap; }
     </message>
     <message>
         <location filename="../sendcoinsentry.cpp" line="25"/>
-        <source>Enter a PPCoin address (e.g. 1NS17iag9jJgTHD1VXjvLCEnZuQ3rJDE9L)</source>
+        <source>Enter a Peershares address (e.g. 1NS17iag9jJgTHD1VXjvLCEnZuQ3rJDE9L)</source>
         <translation>הכנס כתובת ביטקוין (למשל 1NS17iag9jJgTHD1VXjvLCEnZuQ3rJDE9L)</translation>
     </message>
 </context>
@@ -1623,18 +1623,18 @@ p, li { white-space: pre-wrap; }
     </message>
 </context>
 <context>
-    <name>WalletModel</name>
+    <name>PortfolioModel</name>
     <message>
-        <location filename="../walletmodel.cpp" line="145"/>
+        <location filename="../portfoliomodel.cpp" line="145"/>
         <source>Sending...</source>
         <translation>שולח...</translation>
     </message>
 </context>
 <context>
-    <name>PPCoin-core</name>
+    <name>Peershares-core</name>
     <message>
         <location filename="../bitcoinstrings.cpp" line="3"/>
-        <source>PPCoin version</source>
+        <source>Peershares version</source>
         <translation>גרסת ביטקוין</translation>
     </message>
     <message>
@@ -1664,8 +1664,8 @@ p, li { white-space: pre-wrap; }
     </message>
     <message>
         <location filename="../bitcoinstrings.cpp" line="9"/>
-        <source>Specify configuration file (default: PPCoin.conf)</source>
-        <translation>ציין קובץ הגדרות (ברירת מחדל: PPCoin.conf)</translation>
+        <source>Specify configuration file (default: Peershares.conf)</source>
+        <translation>ציין קובץ הגדרות (ברירת מחדל: Peershares.conf)</translation>
     </message>
     <message>
         <location filename="../bitcoinstrings.cpp" line="10"/>
@@ -1839,13 +1839,13 @@ p, li { white-space: pre-wrap; }
     </message>
     <message>
         <location filename="../bitcoinstrings.cpp" line="46"/>
-        <source>Rescan the block chain for missing wallet transactions</source>
+        <source>Rescan the block chain for missing portfolio transactions</source>
         <translation>סרוק מחדש את שרשרת הבלוקים למציאת פעולות חסרות בארנק</translation>
     </message>
     <message>
         <location filename="../bitcoinstrings.cpp" line="47"/>
         <source>
-SSL options: (see the PPCoin Wiki for SSL setup instructions)</source>
+SSL options: (see the Peershares Wiki for SSL setup instructions)</source>
         <translation>אפשרויות SSL: (ראה את הויקי של ביטקוין עבור הוראות להתקנת SSL)</translation>
     </message>
     <message>
@@ -1875,7 +1875,7 @@ SSL options: (see the PPCoin Wiki for SSL setup instructions)</source>
     </message>
     <message>
         <location filename="../bitcoinstrings.cpp" line="57"/>
-        <source>Cannot obtain a lock on data directory %s.  PPCoin is probably already running.</source>
+        <source>Cannot obtain a lock on data directory %s.  Peershares is probably already running.</source>
         <translation>אינו מסוגל לנעול את תיקיית הנתונים %s.  כנראה שביטקוין כבר רץ.</translation>
     </message>
     <message>
@@ -1895,23 +1895,23 @@ SSL options: (see the PPCoin Wiki for SSL setup instructions)</source>
     </message>
     <message>
         <location filename="../bitcoinstrings.cpp" line="65"/>
-        <source>Error loading wallet.dat: Wallet corrupted</source>
-        <translation>שגיאה בטעינת הקובץ wallet.dat: הארנק מושחת</translation>
+        <source>Error loading portfolio.dat: Portfolio corrupted</source>
+        <translation>שגיאה בטעינת הקובץ portfolio.dat: הארנק מושחת</translation>
     </message>
     <message>
         <location filename="../bitcoinstrings.cpp" line="66"/>
-        <source>Error loading wallet.dat: Wallet requires newer version of PPCoin</source>
-        <translation>שגיאה בטעינת הקובץ wallet.dat: הארנק דורש גרסה חדשה יותר של ביטקוין</translation>
+        <source>Error loading portfolio.dat: Portfolio requires newer version of Peershares</source>
+        <translation>שגיאה בטעינת הקובץ portfolio.dat: הארנק דורש גרסה חדשה יותר של ביטקוין</translation>
     </message>
     <message>
         <location filename="../bitcoinstrings.cpp" line="67"/>
-        <source>Wallet needed to be rewritten: restart PPCoin to complete</source>
+        <source>Portfolio needed to be rewritten: restart Peershares to complete</source>
         <translation>יש לכתוב מחדש את הארנק: אתחל את ביטקוין לסיום</translation>
     </message>
     <message>
         <location filename="../bitcoinstrings.cpp" line="68"/>
-        <source>Error loading wallet.dat</source>
-        <translation>שגיאה בטעינת הקובץ wallet.dat</translation>
+        <source>Error loading portfolio.dat</source>
+        <translation>שגיאה בטעינת הקובץ portfolio.dat</translation>
     </message>
     <message>
         <location filename="../bitcoinstrings.cpp" line="62"/>
@@ -1920,7 +1920,7 @@ SSL options: (see the PPCoin Wiki for SSL setup instructions)</source>
     </message>
     <message>
         <location filename="../bitcoinstrings.cpp" line="64"/>
-        <source>Loading wallet...</source>
+        <source>Loading portfolio...</source>
         <translation>טוען ארנק...</translation>
     </message>
     <message>
@@ -1960,12 +1960,12 @@ SSL options: (see the PPCoin Wiki for SSL setup instructions)</source>
     </message>
     <message>
         <location filename="../bitcoinstrings.cpp" line="78"/>
-        <source>Unable to bind to port %d on this computer.  PPCoin is probably already running.</source>
+        <source>Unable to bind to port %d on this computer.  Peershares is probably already running.</source>
         <translation>לא מסוגל להיקשר לפורט %d במחשב הזה.  כנראה שביטקוין כבר רץ.</translation>
     </message>
     <message>
         <location filename="../bitcoinstrings.cpp" line="81"/>
-        <source>Warning: Please check that your computer&apos;s date and time are correct.  If your clock is wrong PPCoin will not work properly.</source>
+        <source>Warning: Please check that your computer&apos;s date and time are correct.  If your clock is wrong Peershares will not work properly.</source>
         <translation>אזהרה: אנא בדוק שהתאריך והשעה של המחשב הזה נכונים.  אם השעון שלך שגוי ביטקוין לא יפעל כהלכה.</translation>
     </message>
     <message>
