@@ -1,5 +1,9 @@
-Peershares development process
+Nu Development Process
 ==============================
+
+//
+// todo: Update to appropriately describe Nu's development process
+//
 
 Development is divided into "phases".
 
@@ -15,7 +19,8 @@ When a developer works on a phase, he pushes his changes to a new branch on his 
 Jordan (or anyone he assigned) will merge the pull request or close it.
 
 If at any time we think we must drop commits from the phase branch a start with different history, we create a new phase branch with a new patch number (for example 0.2.1). All pending and new pull requests must be made to this new branch.
-We never force a push on Peershares' repository.
+
+We never force a push on Nu's repository.
 
 If changes occur on the master branch in the meantime, they can be merged into the phase branch. But we do not merge commits from another phase that were not merged into master.
 

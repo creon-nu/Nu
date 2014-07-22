@@ -41,7 +41,6 @@ private:
     QCheckBox *detach_database;
     QLineEdit *proxy_ip;
     QLineEdit *proxy_port;
-    BitcoinAmountField *fee_edit;
 
 signals:
 
@@ -212,24 +211,6 @@ MainOptionsPage::MainOptionsPage(QWidget *parent):
     proxy_hbox->addWidget(proxy_port);
     proxy_hbox->addStretch(1);
 
-    layout->addLayout(proxy_hbox);
-    QLabel *fee_help = new QLabel(tr("Mandatory network transaction fee per kB transferred. Most transactions are 1 kB and incur a 0.01 share fee. Note: transfer size may increase depending on the number of input transactions totaled to fund the output."));
-    fee_help->setWordWrap(true);
-    layout->addWidget(fee_help);
-
-    QHBoxLayout *fee_hbox = new QHBoxLayout();
-    fee_hbox->addSpacing(18);
-    QLabel *fee_label = new QLabel(tr("Additional network &fee"));
-    fee_hbox->addWidget(fee_label);
-    fee_edit = new BitcoinAmountField();
-    fee_edit->setDisabled(true);
-
-    fee_label->setBuddy(fee_edit);
-    fee_hbox->addWidget(fee_edit);
-    fee_hbox->addStretch(1);
-
-    layout->addLayout(fee_hbox);
-
     detach_database = new QCheckBox(tr("Detach databases at shutdown"));
     detach_database->setToolTip(tr("Detach block and address databases at shutdown. This means they can be moved to another data directory, but it slows down shutdown. The wallet is always detached."));
     layout->addWidget(detach_database);
@@ -260,7 +241,6 @@ void MainOptionsPage::setMapper(MonitoredDataMapper *mapper)
     mapper->addMapping(connect_socks4, OptionsModel::ConnectSOCKS4);
     mapper->addMapping(proxy_ip, OptionsModel::ProxyIP);
     mapper->addMapping(proxy_port, OptionsModel::ProxyPort);
-    mapper->addMapping(fee_edit, OptionsModel::Fee);
     mapper->addMapping(detach_database, OptionsModel::DetachDatabases);
 }
 
