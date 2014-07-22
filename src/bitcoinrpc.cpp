@@ -2904,6 +2904,66 @@ Value setvote(const Array& params, bool fHelp)
     return voteToJSON(pwalletMain->vote);
 }
 
+struct MotionResult
+{
+    int nBlocks;
+    uint64 nShareDaysDestroyed;
+
+    MotionResult() :
+        nBlocks(0),
+        nShareDaysDestroyed(0.0)
+    {
+    }
+};
+
+Value getmotions(const Array& params, bool fHelp)
+{
+    if (fHelp || params.size() != 2)
+        throw runtime_error(
+            "getmotions <block height> <block quantity>\n"
+            "Returns an object containing the motion vote results.");
+
+    Object obj;
+
+    int nHeight = params[0].get_int();
+    if (nHeight < 0 || nHeight > nBestHeight)
+        throw runtime_error("Invalid height\n");
+
+    CBlockIndex *pindex = pindexBest;
+
+    for (int i = nBestHeight; i > nHeight; i--)
+        pindex = pindex->pprev;
+
+    int nQuantity = params[1].get_int();
+    if (nQuantity <= 0)
+        throw runtime_error("Invalid quantity\n");
+
+    map<const uint160, MotionResult> mapMotion;
+
+    for (int i = 0; i < nQuantity && pindex; i++, pindex = pindex->pprev)
+    {
+        if (!pindex->IsProofOfStake())
+            continue;
+
+        const CVote& vote = pindex->vote;
+
+        MotionResult& result = mapMotion[vote.hashMotion];
+        result.nBlocks++;
+        result.nShareDaysDestroyed += vote.nCoinAgeDestroyed;
+    }
+
+    BOOST_FOREACH(const PAIRTYPE(uint160, MotionResult)& resultPair, mapMotion)
+    {
+        const uint160& hashMotion = resultPair.first;
+        const MotionResult& result = resultPair.second;
+        Object resultObject;
+        resultObject.push_back(Pair("blocks", result.nBlocks));
+        resultObject.push_back(Pair("sharedays", (boost::uint64_t)result.nShareDaysDestroyed));
+        obj.push_back(Pair(hashMotion.ToString(), resultObject));
+    }
+    return obj;
+}
+
 
 
 //
@@ -2978,6 +3038,7 @@ static const CRPCCommand vRPCCommands[] =
     { "getvote",                &getvote,                true },
     { "setvote",                &setvote,                true },
     { "setmotionvote",          &setmotionvote,          true },
+    { "getmotions",             &getmotions,             true },
 };
 
 CRPCTable::CRPCTable()
@@ -3721,6 +3782,8 @@ Array RPCConvertValues(const std::string &strMethod, const std::vector<std::stri
             throw runtime_error("type mismatch");
         params[0] = v.get_obj();
     }
+    if (strMethod == "getmotions"              && n > 0) ConvertTo<boost::int64_t>(params[0]);
+    if (strMethod == "getmotions"              && n > 1) ConvertTo<boost::int64_t>(params[1]);
     return params;
 }
 
