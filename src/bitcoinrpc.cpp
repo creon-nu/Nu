@@ -16,6 +16,7 @@
 #include "bitcoinrpc.h"
 #include "distribution.h"
 #include "scanbalance.h"
+#include "liquidityinfo.h"
 
 #undef printf
 #include <boost/asio.hpp>
@@ -2965,6 +2966,116 @@ Value getmotions(const Array& params, bool fHelp)
 }
 
 
+Value liquidityinfo(const Array& params, bool fHelp)
+{
+    if (fHelp || params.size() != 4)
+        throw runtime_error(
+            "liquidityinfo <currency> <buyamount> <sellamount> <grantaddress>\n"
+            "Broadcast liquidity information.\n"
+            "currency is the single letter of the currency (currently only 'B')\n"
+            "grantaddress is the custodian address that was granted. The private key of this address must be in the wallet."
+            );
+
+    if (params[0].get_str().size() != 1)
+        throw JSONRPCError(-3, "Invalid currency");
+
+    unsigned char cUnit = params[0].get_str()[0];
+
+    if (!ValidUnit(cUnit) || cUnit == 'S')
+        throw JSONRPCError(-3, "Invalid currency");
+
+    CBitcoinAddress address(params[3].get_str());
+
+    if (!address.IsValid())
+        throw JSONRPCError(-3, "Invalid address");
+
+    unsigned char cCustodianUnit = address.GetUnit();
+
+    if (!ValidUnit(cCustodianUnit) || cCustodianUnit == 'S')
+        throw JSONRPCError(-3, "Invalid custodian unit");
+
+    CWallet* wallet = GetWallet(cCustodianUnit);
+
+    CKey key;
+    {
+        LOCK(wallet->cs_wallet);
+
+        if (!wallet->GetKey(address, key))
+            throw JSONRPCError(-4, "Private key not available");
+    }
+
+    CLiquidityInfo info;
+    info.nVersion = PROTOCOL_VERSION;
+    info.cUnit = cUnit;
+    info.nTime = GetAdjustedTime();
+    info.nBuyAmount = roundint64(params[1].get_real() * COIN);
+    info.nSellAmount = roundint64(params[2].get_real() * COIN);
+
+    if (info.nBuyAmount < 0 || info.nSellAmount < 0)
+        throw JSONRPCError(-3, "Invalid amount");
+
+    info.cCustodianUnit = address.GetUnit();
+    info.vchCustodianPubKey = key.GetPubKey();
+
+    CDataStream sMsg(SER_NETWORK, PROTOCOL_VERSION);
+    sMsg << (CUnsignedLiquidityInfo)info;
+    info.vchMsg = vector<unsigned char>(sMsg.begin(), sMsg.end());
+
+    if (!key.Sign(Hash(info.vchMsg.begin(), info.vchMsg.end()), info.vchSig))
+        throw runtime_error(
+            "Unable to sign liquidity info, check private key?\n");
+    if(!info.ProcessLiquidityInfo())
+        throw runtime_error(
+            "Failed to process info.\n");
+    // Relay info
+    {
+        LOCK(cs_vNodes);
+        BOOST_FOREACH(CNode* pnode, vNodes)
+            info.RelayTo(pnode);
+    }
+
+    return "";
+}
+
+Value getliquidityinfo(const Array& params, bool fHelp)
+{
+    if (fHelp || params.size() != 1)
+        throw runtime_error(
+            "getliquidityinfo <currency>\n"
+            "currency is the single letter of the currency (currently only 'B')"
+            );
+
+    if (params[0].get_str().size() != 1)
+        throw JSONRPCError(-3, "Invalid currency");
+
+    unsigned char cUnit = params[0].get_str()[0];
+
+    if (!ValidUnit(cUnit) || cUnit == 'S')
+        throw JSONRPCError(-3, "Invalid currency");
+
+    int64 nBuyAmount = 0;
+    int64 nSellAmount = 0;
+    {
+        LOCK(cs_mapLiquidityInfo);
+
+        BOOST_FOREACH(const PAIRTYPE(const CBitcoinAddress, CLiquidityInfo)& item, mapLiquidityInfo)
+        {
+            const CLiquidityInfo& info = item.second;
+            if (info.cUnit == cUnit)
+            {
+                nBuyAmount += info.nBuyAmount;
+                nSellAmount += info.nSellAmount;
+            }
+        }
+    }
+
+    Object result;
+    result.push_back(Pair("buy", ValueFromAmount(nBuyAmount)));
+    result.push_back(Pair("sell", ValueFromAmount(nSellAmount)));
+    return result;
+}
+
+
 
 //
 // Call Table
@@ -3038,6 +3149,8 @@ static const CRPCCommand vRPCCommands[] =
     { "getvote",                &getvote,                true },
     { "setvote",                &setvote,                true },
     { "setmotionvote",          &setmotionvote,          true },
+    { "liquidityinfo",          &liquidityinfo,          false},
+    { "getliquidityinfo",       &getliquidityinfo,       false},
     { "getmotions",             &getmotions,             true },
 };
 
@@ -3782,6 +3895,8 @@ Array RPCConvertValues(const std::string &strMethod, const std::vector<std::stri
             throw runtime_error("type mismatch");
         params[0] = v.get_obj();
     }
+    if (strMethod == "liquidityinfo"           && n > 1) ConvertTo<double>(params[1]);
+    if (strMethod == "liquidityinfo"           && n > 2) ConvertTo<double>(params[2]);
     if (strMethod == "getmotions"              && n > 0) ConvertTo<boost::int64_t>(params[0]);
     if (strMethod == "getmotions"              && n > 1) ConvertTo<boost::int64_t>(params[1]);
     return params;
