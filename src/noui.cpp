@@ -14,7 +14,7 @@ int ThreadSafeMessageBox(const std::string& message, const std::string& caption,
     return 4;
 }
 
-bool ThreadSafeAskFee(int64 nFeeRequired, const std::string& strCaption)
+bool ThreadSafeAskFee(int64 nFeeRequired, const std::string& strCaption, unsigned char cUnit)
 {
     return true;
 }
