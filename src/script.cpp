@@ -1434,7 +1434,7 @@ int ScriptSigArgsExpected(txnouttype t, const std::vector<std::vector<unsigned c
     case TX_NONSTANDARD:
         return -1;
     case TX_NULL_DATA:
-		return 1;
+        return 1;
     case TX_PUBKEY:
         return 1;
     case TX_PUBKEYHASH:
