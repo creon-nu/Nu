@@ -181,6 +181,6 @@ uint64 GetPremium(uint64 nValue, uint64 nDuration, unsigned char cUnit, const st
 
 bool CheckVote(const CBlock& block, CBlockIndex *pindexprev);
 
-bool GenerateCurrencyCoinBases(const std::vector<CVote> vVote, std::set<CBitcoinAddress> setAlreadyElected, std::vector<CTransaction>& vCurrencyCoinBaseRet);
+bool GenerateCurrencyCoinBases(const std::vector<CVote> vVote, std::map<CBitcoinAddress, CBlockIndex*> mapAlreadyElected, std::vector<CTransaction>& vCurrencyCoinBaseRet);
 
 #endif

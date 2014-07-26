@@ -54,6 +54,16 @@ qint64 WalletModel::getParked() const
     return wallet->GetParked();
 }
 
+qint64 WalletModel::getMinTxFee() const
+{
+    return wallet->GetMinTxFee();
+}
+
+qint64 WalletModel::getMinTxOutAmount() const
+{
+    return wallet->GetMinTxOutAmount();
+}
+
 int WalletModel::getNumTransactions() const
 {
     int numTransactions = 0;
@@ -123,7 +133,7 @@ WalletModel::SendCoinsReturn WalletModel::sendCoins(const QList<SendCoinsRecipie
         }
         setAddress.insert(rcp.address);
 
-        if(rcp.amount < MIN_TXOUT_AMOUNT)
+        if(rcp.amount < getMinTxOutAmount())
         {
             return InvalidAmount;
         }
@@ -140,9 +150,9 @@ WalletModel::SendCoinsReturn WalletModel::sendCoins(const QList<SendCoinsRecipie
         return AmountExceedsBalance;
     }
 
-    if((total + nTransactionFee) > getBalance())
+    if((total + getMinTxFee()) > getBalance())
     {
-        return SendCoinsReturn(AmountWithFeeExceedsBalance, nTransactionFee);
+        return SendCoinsReturn(AmountWithFeeExceedsBalance, getMinTxFee());
     }
 
     {
@@ -170,7 +180,7 @@ WalletModel::SendCoinsReturn WalletModel::sendCoins(const QList<SendCoinsRecipie
             }
             return TransactionCreationFailed;
         }
-        if(!ThreadSafeAskFee(nFeeRequired, tr("Sending...").toStdString()))
+        if(!ThreadSafeAskFee(nFeeRequired, tr("Sending...").toStdString(), wtx.cUnit))
         {
             return Aborted;
         }

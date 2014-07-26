@@ -1,6 +1,7 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2012 The Bitcoin developers
 // Copyright (c) 2011-2013 The PPCoin developers
+// Copyright (c) 2013-2014 The Peershares developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -11,6 +12,7 @@
 #include "ui_interface.h"
 #include "kernel.h"
 #include "wallet.h"
+#include "liquidityinfo.h"
 #include <boost/algorithm/string/replace.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>
@@ -53,18 +55,18 @@ map<uint256, uint256> mapProofOfStake;
 map<uint256, CDataStream*> mapOrphanTransactions;
 map<uint256, map<uint256, CDataStream*> > mapOrphanTransactionsByPrev;
 
-set<CBitcoinAddress> setElectedCustodian;
+map<CBitcoinAddress, CBlockIndex*> mapElectedCustodian;
+CCriticalSection cs_mapElectedCustodian;
 
 // Constant stuff for coinbase transactions we create:
 CScript COINBASE_FLAGS;
 
-const string strMessageMagic = "PPCoin Signed Message:\n";
+const string strMessageMagic = "Peershares Signed Message:\n";
 
 double dHashesPerSec;
 int64 nHPSTimerStart;
 
 // Settings
-int64 nTransactionFee = MIN_TX_FEE;
 int64 nSplitShareOutputs = MIN_COINSTAKE_VALUE;
 
 
@@ -331,7 +333,7 @@ bool CTransaction::IsStandard() const
     
     unsigned int nDataOut = 0;
     txnouttype whichType;
-    BOOST_FOREACH(const CTxOut& txout, vout)
+    BOOST_FOREACH(const CTxOut& txout, vout) {
         if (!::IsStandard(txout.scriptPubKey, whichType)){
             return false;
 		}
@@ -342,7 +344,7 @@ bool CTransaction::IsStandard() const
 		if (nDataOut > 1) {
 			return false;
 		}
-            
+    }        
             
     return true;
 }
@@ -359,6 +361,7 @@ bool CTransaction::AreInputsSameUnit(const MapPrevTx& mapInputs) const
         if (txPrev.cUnit != cUnit)
             return false;
     }
+
 
     return true;
 }
@@ -526,7 +529,7 @@ bool CTransaction::CheckTransaction() const
         if (txout.IsEmpty() && (!IsCoinBase()) && (!IsCoinStake()) && (!IsCurrencyCoinBase()))
             return DoS(100, error("CTransaction::CheckTransaction() : txout empty for user transaction"));
         // ppcoin: enforce minimum output amount
-        if ((!txout.IsEmpty()) && !(IsCoinStake() && (txout.IsVote() || txout.IsParkRateResult())) && txout.nValue < MIN_TXOUT_AMOUNT)
+        if ((!txout.IsEmpty()) && !(IsCoinStake() && (txout.IsVote() || txout.IsParkRateResult())) && txout.nValue < GetMinTxOutAmount())
             return DoS(100, error("CTransaction::CheckTransaction() : txout.nValue below minimum"));
         if (txout.nValue > MAX_MONEY)
             return DoS(100, error("CTransaction::CheckTransaction() : txout.nValue too high"));
@@ -683,7 +686,7 @@ bool CTxMemPool::accept(CTxDB& txdb, CTransaction &tx, bool fCheckInputs,
         // Continuously rate-limit free transactions
         // This mitigates 'penny-flooding' -- sending thousands of free transactions just to
         // be annoying or make other's transactions take longer to confirm.
-        if (!tx.IsUnpark() && nFees < MIN_RELAY_TX_FEE)
+        if (!tx.IsUnpark() && nFees < tx.GetMinRelayFee())
         {
             static CCriticalSection cs;
             static double dFreeCount;
@@ -926,7 +929,7 @@ int64 GetProofOfWorkReward(unsigned int nBits)
     return IPO_SHARES / PROOF_OF_WORK_BLOCKS; //this will only be used to create initial shares
 }
 
-// ppcoin: miner's coin stake is rewarded based on coin age spent (coin-days)
+// ppcoin: minter's coin stake is rewarded based on coin age spent (coin-days)
 // nu: miner's coin stake reward is constant
 int64 GetProofOfStakeReward(int64 nCoinAge)
 {
@@ -1353,7 +1356,7 @@ bool CTransaction::ConnectInputs(CTxDB& txdb, MapPrevTx inputs,
             if (!GetCoinAge(txdb, nCoinAge))
                 return error("ConnectInputs() : %s unable to get coin age for coinstake", GetHash().ToString().substr(0,10).c_str());
             int64 nStakeReward = GetValueOut() - nValueIn;
-            if (nStakeReward > GetProofOfStakeReward(nCoinAge) - GetMinFee() + MIN_TX_FEE)
+            if (nStakeReward > GetProofOfStakeReward(nCoinAge) - GetMinFee() + GetUnitMinFee())
                 return DoS(100, error("ConnectInputs() : %s stake reward exceeded", GetHash().ToString().substr(0,10).c_str()));
         }
         else if (!fValidUnpark)
@@ -1446,10 +1449,20 @@ bool CBlock::DisconnectBlock(CTxDB& txdb, CBlockIndex* pindex)
             if (!ExtractAddress(tx.vout[0].scriptPubKey, address, tx.cUnit))
                 return error("Connect() : ExtractAddress on CurrencyCoinBase failed");
 
-            if (!setElectedCustodian.count(address))
-                return error("Connect() : custodian was not elected");
+            {
+                LOCK(cs_mapElectedCustodian);
 
-            setElectedCustodian.erase(address);
+                if (!mapElectedCustodian.count(address))
+                    return error("Connect() : custodian was not elected");
+
+                mapElectedCustodian.erase(address);
+            }
+
+            {
+                LOCK(cs_mapLiquidityInfo);
+
+                mapLiquidityInfo.erase(address);
+            }
         }
     }
 
@@ -1568,16 +1581,20 @@ bool CBlock::ConnectBlock(CTxDB& txdb, CBlockIndex* pindex)
             if (tx.vout.size() < 1)
                 return error("Connect() : not output in CurrencyCoinBase");
 
-            BOOST_FOREACH(const CTxOut& txo, tx.vout)
             {
-                CBitcoinAddress address;
-                if (!ExtractAddress(txo.scriptPubKey, address, tx.cUnit))
-                    return error("Connect() : ExtractAddress on CurrencyCoinBase failed");
+                LOCK(cs_mapElectedCustodian);
 
-                if (setElectedCustodian.count(address))
-                    return error("Connect() : custodian has already been elected");
+                BOOST_FOREACH(const CTxOut& txo, tx.vout)
+                {
+                    CBitcoinAddress address;
+                    if (!ExtractAddress(txo.scriptPubKey, address, tx.cUnit))
+                        return error("Connect() : ExtractAddress on CurrencyCoinBase failed");
 
-                setElectedCustodian.insert(address);
+                    if (mapElectedCustodian.count(address))
+                        return error("Connect() : custodian has already been elected");
+
+                    mapElectedCustodian[address] = pindex;
+                }
             }
         }
     }
@@ -1831,6 +1848,8 @@ bool CBlock::SetBestChain(CTxDB& txdb, CBlockIndex* pindexNew)
         boost::replace_all(strCmd, "%s", hashBestChain.GetHex());
         boost::thread t(runCommand, strCmd); // thread runs free
     }
+
+    RemoveExpiredLiquidityInfo(nBestHeight);
 
     return true;
 }
@@ -2134,12 +2153,12 @@ bool CBlock::AcceptBlock()
     if (nHeight <= PROOF_OF_WORK_BLOCKS)
     {
         if (IsProofOfStake())
-            return DoS(100, error("AcceptBlock() : PoS before switch"));
+            return DoS(100, error("AcceptBlock() : Proof-of-stake before switch"));
     }
     else
     {
         if (IsProofOfWork())
-            return DoS(100, error("AcceptBlock() : PoW after switch"));
+            return DoS(100, error("AcceptBlock() : Proof-of-work after switch"));
     }
 
     // Check proof-of-work or proof-of-stake
@@ -2175,8 +2194,12 @@ bool CBlock::AcceptBlock()
             return error("AcceptBlock() : unable to extract votes");
 
         vector<CTransaction> vExpectedTx;
-        if (!GenerateCurrencyCoinBases(vVote, setElectedCustodian, vExpectedTx))
-            return error("AcceptBlock() : unable to generate currency coin bases");
+        {
+            LOCK(cs_mapElectedCustodian);
+
+            if (!GenerateCurrencyCoinBases(vVote, mapElectedCustodian, vExpectedTx))
+                return error("AcceptBlock() : unable to generate currency coin bases");
+        }
 
         int matching = 0;
         BOOST_FOREACH(const CTransaction& tx, vtx)
@@ -2255,6 +2278,11 @@ bool ProcessBlock(CNode* pfrom, CBlock* pblock)
         if (!CheckProofOfStake(pblock->vtx[1], pblock->nBits, hashProofOfStake))
         {
             printf("WARNING: ProcessBlock(): check proof-of-stake failed for block %s\n", hash.ToString().c_str());
+
+            // peershares: ask for missing blocks
+            if (pfrom)
+                pfrom->PushGetBlocks(pindexBest, pblock->GetHash());
+
             return false; // do not error here as we expect this during initial block download
         }
         if (!mapProofOfStake.count(hash)) // add to mapProofOfStake
@@ -2410,7 +2438,7 @@ bool CheckDiskSpace(uint64 nAdditionalBytes)
         string strMessage = _("Warning: Disk space is low");
         strMiscWarning = strMessage;
         printf("*** %s\n", strMessage.c_str());
-        ThreadSafeMessageBox(strMessage, "PPCoin", wxOK | wxICON_EXCLAMATION | wxMODAL);
+        ThreadSafeMessageBox(strMessage, "Peershares", wxOK | wxICON_EXCLAMATION | wxMODAL);
         StartShutdown();
         return false;
     }
@@ -2539,12 +2567,12 @@ bool LoadBlockIndex(bool fAllowNew)
             block.nNonce++;
         }
      
-        printf("PPCoin Found Genesis Block:\n");
+        printf("Peershares Genesis Block Found:\n");
         printf("genesis hash=%s\n", block.GetHash().ToString().c_str());
         printf("merkle root=%s\n", block.hashMerkleRoot.ToString().c_str());
         block.print();
      
-        printf("PPCoin End Genesis Block\n");
+        printf("End Peershares Genesis Block\n");
 
         //// debug print
         printf("%s\n", block.GetHash().ToString().c_str());
@@ -2686,7 +2714,7 @@ void PrintBlockTree()
 map<uint256, CAlert> mapAlerts;
 CCriticalSection cs_mapAlerts;
 
-static string strMintMessage = _("Info: Minting suspended due to locked wallet."); 
+static string strMintMessage = _("Info: Minting suspended due to locked portfolio."); 
 static string strMintWarning;
 
 string GetWarnings(string strFor)
@@ -2716,14 +2744,14 @@ string GetWarnings(string strFor)
     if (Checkpoints::IsSyncCheckpointTooOld(60 * 60 * 24 * 10) && !fTestNet)
     {
         nPriority = 100;
-        strStatusBar = "WARNING: Checkpoint is too old. Wait for block chain to download, or notify developers of the issue.";
+        strStatusBar = "WARNING: Checkpoint is too old. Please wait for the block chain to download, or notify developers of the issue (https://github.com/Peershares/Peershares/issues).";
     }
 
     // ppcoin: if detected invalid checkpoint enter safe mode
     if (Checkpoints::hashInvalidCheckpoint != 0)
     {
         nPriority = 3000;
-        strStatusBar = strRPC = "WARNING: Invalid checkpoint found! Displayed transactions may not be correct! You may need to upgrade, or notify developers of the issue.";
+        strStatusBar = strRPC = "WARNING: Invalid checkpoint found! Displayed transactions may not be correct! You may need to upgrade, or notify developers of the issue (https://github.com/Peershares/Peershares/issues).";
     }
 
     // Alerts
@@ -2962,6 +2990,13 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv)
                 Checkpoints::checkpointMessage.RelayTo(pfrom);
         }
 
+        // nu: Relay liquidity info
+        {
+            LOCK(cs_mapLiquidityInfo);
+            BOOST_FOREACH(PAIRTYPE(const CBitcoinAddress, CLiquidityInfo)& item, mapLiquidityInfo)
+                item.second.RelayTo(pfrom);
+        }
+
         pfrom->fSuccessfullyConnected = true;
 
         printf("version message: version %d, blocks=%d\n", pfrom->nVersion, pfrom->nStartingHeight);
@@ -3083,7 +3118,7 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv)
                 printf("  got inventory: %s  %s\n", inv.ToString().c_str(), fAlreadyHave ? "have" : "new");
 
             if (!fAlreadyHave)
-                pfrom->AskFor(inv);
+                pfrom->AskFor(inv, IsInitialBlockDownload()); // peershares: immediate retry during initial download
             else if (inv.type == MSG_BLOCK && mapOrphanBlocks.count(inv.hash)) {
                 pfrom->PushGetBlocks(pindexBest, GetOrphanRoot(mapOrphanBlocks[inv.hash]));
             } else if (nInv == nLastBlock) {
@@ -3137,8 +3172,9 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv)
                         // ppcoin: send latest proof-of-work block to allow the
                         // download node to accept as orphan (proof-of-stake 
                         // block might be rejected by stake connection check)
+                        // peershares: send latest block
                         vector<CInv> vInv;
-                        vInv.push_back(CInv(MSG_BLOCK, GetLastBlockIndex(pindexBest, false)->GetBlockHash()));
+                        vInv.push_back(CInv(MSG_BLOCK, hashBestChain));
                         pfrom->PushMessage("inv", vInv);
                         pfrom->hashContinue = 0;
                     }
@@ -3405,6 +3441,23 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv)
             LOCK(cs_vNodes);
             BOOST_FOREACH(CNode* pnode, vNodes)
                 checkpoint.RelayTo(pnode);
+        }
+    }
+
+    else if (strCommand == "liquidity")
+    {
+        CLiquidityInfo info;
+        vRecv >> info;
+
+        if (info.ProcessLiquidityInfo())
+        {
+            // Relay
+            pfrom->setKnown.insert(info.GetHash());
+            {
+                LOCK(cs_vNodes);
+                BOOST_FOREACH(CNode* pnode, vNodes)
+                    info.RelayTo(pnode);
+            }
         }
     }
 
@@ -3838,12 +3891,12 @@ CBlock* CreateNewBlock(CReserveKey& reservekey, CWallet* pwallet, bool fProofOfS
     auto_ptr<CBlock> pblock(new CBlock());
     if (!pblock.get())
         return NULL;
-	
-	//allow only PoW blocks at first, later only PoS blocks
+    
+    //allow only PoW blocks at first, later only PoS blocks
     if (fProofOfStake && nBestHeight < PROOF_OF_WORK_BLOCKS)
-		return NULL;
+        return NULL;
     if (!fProofOfStake && nBestHeight >= PROOF_OF_WORK_BLOCKS)
-		return NULL;
+        return NULL;
 
 
     // Create coinbase tx
@@ -3896,10 +3949,14 @@ CBlock* CreateNewBlock(CReserveKey& reservekey, CWallet* pwallet, bool fProofOfS
         }
 
         vector<CTransaction> vCurrencyCoinBase;
-        if (!GenerateCurrencyCoinBases(vVote, setElectedCustodian, vCurrencyCoinBase))
         {
-            printf("CreateNewBlock(): unable to generate currency coin bases");
-            return NULL;
+            LOCK(cs_mapElectedCustodian);
+
+            if (!GenerateCurrencyCoinBases(vVote, mapElectedCustodian, vCurrencyCoinBase))
+            {
+                printf("CreateNewBlock(): unable to generate currency coin bases");
+                return NULL;
+            }
         }
 
         BOOST_FOREACH(const CTransaction& tx, vCurrencyCoinBase)
@@ -4154,10 +4211,10 @@ bool CheckWork(CBlock* pblock, CWallet& wallet, CReserveKey& reservekey)
     uint256 hashTarget = CBigNum().SetCompact(pblock->nBits).getuint256();
 
     if (hash > hashTarget && pblock->IsProofOfWork())
-        return error("BitcoinMiner : proof-of-work not meeting target");
+        return error("PeerMiner : proof-of-work not meeting target");
 
     //// debug print
-    printf("BitcoinMiner:\n");
+    printf("PeerMiner:\n");
     printf("new block found  \n  hash: %s  \ntarget: %s\n", hash.GetHex().c_str(), hashTarget.GetHex().c_str());
     pblock->print();
     printf("%s ", DateTimeStrFormat(GetTime()).c_str());
@@ -4167,7 +4224,7 @@ bool CheckWork(CBlock* pblock, CWallet& wallet, CReserveKey& reservekey)
     {
         LOCK(cs_main);
         if (pblock->hashPrevBlock != hashBestChain)
-            return error("BitcoinMiner : generated block is stale");
+            return error("PeerMiner : generated block is stale");
 
         // Remove key from key pool
         reservekey.KeepKey();
@@ -4180,7 +4237,7 @@ bool CheckWork(CBlock* pblock, CWallet& wallet, CReserveKey& reservekey)
 
         // Process this block the same as if we had received it from another node
         if (!ProcessBlock(NULL, pblock))
-            return error("BitcoinMiner : ProcessBlock, block not accepted");
+            return error("PeerMiner : ProcessBlock, block not accepted");
     }
 
     return true;
@@ -4203,7 +4260,7 @@ void SetMintWarning(const string& strNewWarning)
 
 void BitcoinMiner(CWallet *pwallet, bool fProofOfStake)
 {
-    printf("CPUMiner started for proof-of-%s\n", fProofOfStake? "stake" : "work");
+    printf("PeerMiner started for proof-of-%s\n", fProofOfStake? "stake" : "work");
     SetThreadPriority(THREAD_PRIORITY_LOWEST);
 
     // Each thread has its own key and counter
@@ -4253,7 +4310,7 @@ void BitcoinMiner(CWallet *pwallet, bool fProofOfStake)
                     continue;
                 }
                 SetMintWarning("");
-                printf("CPUMiner : proof-of-stake block found %s\n", pblock->GetHash().ToString().c_str()); 
+                printf("CPUMinter : proof-of-stake block found %s\n", pblock->GetHash().ToString().c_str()); 
                 SetThreadPriority(THREAD_PRIORITY_NORMAL);
                 CheckWork(pblock.get(), *pwallet, reservekey);
                 SetThreadPriority(THREAD_PRIORITY_LOWEST);
@@ -4262,7 +4319,7 @@ void BitcoinMiner(CWallet *pwallet, bool fProofOfStake)
             continue;
         }
 
-        printf("Running BitcoinMiner with %d transactions in block\n", pblock->vtx.size());
+        printf("Running PeerMiner with %d transactions in block\n", pblock->vtx.size());
 
 
         //
@@ -4386,15 +4443,15 @@ void static ThreadBitcoinMiner(void* parg)
     }
     catch (std::exception& e) {
         vnThreadsRunning[THREAD_MINER]--;
-        PrintException(&e, "ThreadBitcoinMiner()");
+        PrintException(&e, "ThreadPeerMiner()");
     } catch (...) {
         vnThreadsRunning[THREAD_MINER]--;
-        PrintException(NULL, "ThreadBitcoinMiner()");
+        PrintException(NULL, "ThreadPeerMiner()");
     }
     nHPSTimerStart = 0;
     if (vnThreadsRunning[THREAD_MINER] == 0)
         dHashesPerSec = 0;
-    printf("ThreadBitcoinMiner exiting, %d threads remaining\n", vnThreadsRunning[THREAD_MINER]);
+    printf("ThreadPeerMiner exiting, %d threads remaining\n", vnThreadsRunning[THREAD_MINER]);
 }
 
 
@@ -4416,11 +4473,11 @@ void GenerateBitcoins(bool fGenerate, CWallet* pwallet)
         if (fLimitProcessors && nProcessors > nLimitProcessors)
             nProcessors = nLimitProcessors;
         int nAddThreads = nProcessors - vnThreadsRunning[THREAD_MINER];
-        printf("Starting %d BitcoinMiner threads\n", nAddThreads);
+        printf("Starting %d PeerMiner threads\n", nAddThreads);
         for (int i = 0; i < nAddThreads; i++)
         {
             if (!CreateThread(ThreadBitcoinMiner, pwallet))
-                printf("Error: CreateThread(ThreadBitcoinMiner) failed\n");
+                printf("Error: CreateThread(ThreadPeerMiner) failed\n");
             Sleep(10);
         }
     }

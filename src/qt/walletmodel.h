@@ -63,6 +63,8 @@ public:
     int getNumTransactions() const;
     EncryptionStatus getEncryptionStatus() const;
     unsigned char getUnit() const;
+    qint64 getMinTxFee() const;
+    qint64 getMinTxOutAmount() const;
 
     // Check address for validity
     bool validateAddress(const QString &address);
@@ -79,7 +81,7 @@ public:
         QString hex; // is filled with the transaction hash if status is "OK"
     };
 
-    // Send coins to a list of recipients
+    // Send shares to a list of recipients
     SendCoinsReturn sendCoins(const QList<SendCoinsRecipient> &recipients);
 
     // nubit: Park coins

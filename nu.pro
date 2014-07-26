@@ -1,6 +1,6 @@
 TEMPLATE = app
 TARGET = nu
-VERSION = 0.1.0.0
+VERSION = 0.1.0
 INCLUDEPATH += src src/json src/qt
 DEFINES += QT_GUI BOOST_THREAD_USE_LIB BOOST_SPIRIT_THREADSAFE
 CONFIG += no_include_pwd
@@ -187,7 +187,8 @@ HEADERS += src/qt/bitcoingui.h \
     src/qt/votepage.h \
     src/qt/custodianvotedialog.h \
     src/qt/parkratevotedialog.h \
-    src/qt/motionvotedialog.h
+    src/qt/motionvotedialog.h \
+    src/liquidityinfo.h
 
 SOURCES += src/qt/bitcoin.cpp src/qt/bitcoingui.cpp \
     src/qt/transactiontablemodel.cpp \
@@ -254,7 +255,8 @@ SOURCES += src/qt/bitcoin.cpp src/qt/bitcoingui.cpp \
     src/qt/votepage.cpp \
     src/qt/custodianvotedialog.cpp \
     src/qt/parkratevotedialog.cpp \
-    src/qt/motionvotedialog.cpp
+    src/qt/motionvotedialog.cpp \
+    src/liquidityinfo.cpp
 
 RESOURCES += \
     src/qt/bitcoin.qrc

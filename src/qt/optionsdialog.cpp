@@ -41,7 +41,6 @@ private:
     QCheckBox *detach_database;
     QLineEdit *proxy_ip;
     QLineEdit *proxy_port;
-    BitcoinAmountField *fee_edit;
 
 signals:
 
@@ -187,7 +186,7 @@ MainOptionsPage::MainOptionsPage(QWidget *parent):
     layout->addWidget(map_port_upnp);
 
     connect_socks4 = new QCheckBox(tr("&Connect through SOCKS4 proxy:"));
-    connect_socks4->setToolTip(tr("Connect to the Bitcon network through a SOCKS4 proxy (e.g. when connecting through Tor)"));
+    connect_socks4->setToolTip(tr("Connect to the Peershares network through a SOCKS4 proxy (e.g. when connecting through Tor)"));
     layout->addWidget(connect_socks4);
 
     QHBoxLayout *proxy_hbox = new QHBoxLayout();
@@ -211,23 +210,7 @@ MainOptionsPage::MainOptionsPage(QWidget *parent):
     proxy_port_label->setBuddy(proxy_port);
     proxy_hbox->addWidget(proxy_port);
     proxy_hbox->addStretch(1);
-
     layout->addLayout(proxy_hbox);
-    QLabel *fee_help = new QLabel(tr("Optional transaction fee per kB that helps make sure your transactions are processed quickly. Most transactions are 1 kB. Fee 0.01 recommended."));
-    fee_help->setWordWrap(true);
-    layout->addWidget(fee_help);
-
-    QHBoxLayout *fee_hbox = new QHBoxLayout();
-    fee_hbox->addSpacing(18);
-    QLabel *fee_label = new QLabel(tr("Pay transaction &fee"));
-    fee_hbox->addWidget(fee_label);
-    fee_edit = new BitcoinAmountField();
-
-    fee_label->setBuddy(fee_edit);
-    fee_hbox->addWidget(fee_edit);
-    fee_hbox->addStretch(1);
-
-    layout->addLayout(fee_hbox);
 
     detach_database = new QCheckBox(tr("Detach databases at shutdown"));
     detach_database->setToolTip(tr("Detach block and address databases at shutdown. This means they can be moved to another data directory, but it slows down shutdown. The wallet is always detached."));
@@ -259,7 +242,6 @@ void MainOptionsPage::setMapper(MonitoredDataMapper *mapper)
     mapper->addMapping(connect_socks4, OptionsModel::ConnectSOCKS4);
     mapper->addMapping(proxy_ip, OptionsModel::ProxyIP);
     mapper->addMapping(proxy_port, OptionsModel::ProxyPort);
-    mapper->addMapping(fee_edit, OptionsModel::Fee);
     mapper->addMapping(detach_database, OptionsModel::DetachDatabases);
 }
 

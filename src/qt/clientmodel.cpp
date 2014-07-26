@@ -3,6 +3,7 @@
 #include "optionsmodel.h"
 #include "addresstablemodel.h"
 #include "transactiontablemodel.h"
+#include "liquidityinfo.h"
 
 #include "main.h"
 
@@ -57,6 +58,15 @@ void ClientModel::update()
     cachedNumConnections = newNumConnections;
     cachedNumBlocks = newNumBlocks;
     cachedStatusBar = newStatusBar;
+
+    {
+        LOCK(cs_mapLiquidityInfo);
+        if (nLastLiquidityUpdate != lastLiquidityUpdate)
+        {
+            emit liquidityChanged();
+            lastLiquidityUpdate = nLastLiquidityUpdate;
+        }
+    }
 }
 
 bool ClientModel::isTestNet() const
