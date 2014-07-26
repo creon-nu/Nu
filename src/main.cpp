@@ -12,6 +12,7 @@
 #include "ui_interface.h"
 #include "kernel.h"
 #include "wallet.h"
+#include "liquidityinfo.h"
 #include <boost/algorithm/string/replace.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>
@@ -54,7 +55,8 @@ map<uint256, uint256> mapProofOfStake;
 map<uint256, CDataStream*> mapOrphanTransactions;
 map<uint256, map<uint256, CDataStream*> > mapOrphanTransactionsByPrev;
 
-set<CBitcoinAddress> setElectedCustodian;
+map<CBitcoinAddress, CBlockIndex*> mapElectedCustodian;
+CCriticalSection cs_mapElectedCustodian;
 
 // Constant stuff for coinbase transactions we create:
 CScript COINBASE_FLAGS;
@@ -1447,10 +1449,20 @@ bool CBlock::DisconnectBlock(CTxDB& txdb, CBlockIndex* pindex)
             if (!ExtractAddress(tx.vout[0].scriptPubKey, address, tx.cUnit))
                 return error("Connect() : ExtractAddress on CurrencyCoinBase failed");
 
-            if (!setElectedCustodian.count(address))
-                return error("Connect() : custodian was not elected");
+            {
+                LOCK(cs_mapElectedCustodian);
 
-            setElectedCustodian.erase(address);
+                if (!mapElectedCustodian.count(address))
+                    return error("Connect() : custodian was not elected");
+
+                mapElectedCustodian.erase(address);
+            }
+
+            {
+                LOCK(cs_mapLiquidityInfo);
+
+                mapLiquidityInfo.erase(address);
+            }
         }
     }
 
@@ -1569,16 +1581,20 @@ bool CBlock::ConnectBlock(CTxDB& txdb, CBlockIndex* pindex)
             if (tx.vout.size() < 1)
                 return error("Connect() : not output in CurrencyCoinBase");
 
-            BOOST_FOREACH(const CTxOut& txo, tx.vout)
             {
-                CBitcoinAddress address;
-                if (!ExtractAddress(txo.scriptPubKey, address, tx.cUnit))
-                    return error("Connect() : ExtractAddress on CurrencyCoinBase failed");
+                LOCK(cs_mapElectedCustodian);
 
-                if (setElectedCustodian.count(address))
-                    return error("Connect() : custodian has already been elected");
+                BOOST_FOREACH(const CTxOut& txo, tx.vout)
+                {
+                    CBitcoinAddress address;
+                    if (!ExtractAddress(txo.scriptPubKey, address, tx.cUnit))
+                        return error("Connect() : ExtractAddress on CurrencyCoinBase failed");
 
-                setElectedCustodian.insert(address);
+                    if (mapElectedCustodian.count(address))
+                        return error("Connect() : custodian has already been elected");
+
+                    mapElectedCustodian[address] = pindex;
+                }
             }
         }
     }
@@ -1832,6 +1848,8 @@ bool CBlock::SetBestChain(CTxDB& txdb, CBlockIndex* pindexNew)
         boost::replace_all(strCmd, "%s", hashBestChain.GetHex());
         boost::thread t(runCommand, strCmd); // thread runs free
     }
+
+    RemoveExpiredLiquidityInfo(nBestHeight);
 
     return true;
 }
@@ -2176,8 +2194,12 @@ bool CBlock::AcceptBlock()
             return error("AcceptBlock() : unable to extract votes");
 
         vector<CTransaction> vExpectedTx;
-        if (!GenerateCurrencyCoinBases(vVote, setElectedCustodian, vExpectedTx))
-            return error("AcceptBlock() : unable to generate currency coin bases");
+        {
+            LOCK(cs_mapElectedCustodian);
+
+            if (!GenerateCurrencyCoinBases(vVote, mapElectedCustodian, vExpectedTx))
+                return error("AcceptBlock() : unable to generate currency coin bases");
+        }
 
         int matching = 0;
         BOOST_FOREACH(const CTransaction& tx, vtx)
@@ -2968,6 +2990,13 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv)
                 Checkpoints::checkpointMessage.RelayTo(pfrom);
         }
 
+        // nu: Relay liquidity info
+        {
+            LOCK(cs_mapLiquidityInfo);
+            BOOST_FOREACH(PAIRTYPE(const CBitcoinAddress, CLiquidityInfo)& item, mapLiquidityInfo)
+                item.second.RelayTo(pfrom);
+        }
+
         pfrom->fSuccessfullyConnected = true;
 
         printf("version message: version %d, blocks=%d\n", pfrom->nVersion, pfrom->nStartingHeight);
@@ -3412,6 +3441,23 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv)
             LOCK(cs_vNodes);
             BOOST_FOREACH(CNode* pnode, vNodes)
                 checkpoint.RelayTo(pnode);
+        }
+    }
+
+    else if (strCommand == "liquidity")
+    {
+        CLiquidityInfo info;
+        vRecv >> info;
+
+        if (info.ProcessLiquidityInfo())
+        {
+            // Relay
+            pfrom->setKnown.insert(info.GetHash());
+            {
+                LOCK(cs_vNodes);
+                BOOST_FOREACH(CNode* pnode, vNodes)
+                    info.RelayTo(pnode);
+            }
         }
     }
 
@@ -3903,10 +3949,14 @@ CBlock* CreateNewBlock(CReserveKey& reservekey, CWallet* pwallet, bool fProofOfS
         }
 
         vector<CTransaction> vCurrencyCoinBase;
-        if (!GenerateCurrencyCoinBases(vVote, setElectedCustodian, vCurrencyCoinBase))
         {
-            printf("CreateNewBlock(): unable to generate currency coin bases");
-            return NULL;
+            LOCK(cs_mapElectedCustodian);
+
+            if (!GenerateCurrencyCoinBases(vVote, mapElectedCustodian, vCurrencyCoinBase))
+            {
+                printf("CreateNewBlock(): unable to generate currency coin bases");
+                return NULL;
+            }
         }
 
         BOOST_FOREACH(const CTransaction& tx, vCurrencyCoinBase)

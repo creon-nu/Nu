@@ -210,6 +210,7 @@ MainOptionsPage::MainOptionsPage(QWidget *parent):
     proxy_port_label->setBuddy(proxy_port);
     proxy_hbox->addWidget(proxy_port);
     proxy_hbox->addStretch(1);
+    layout->addLayout(proxy_hbox);
 
     detach_database = new QCheckBox(tr("Detach databases at shutdown"));
     detach_database->setToolTip(tr("Detach block and address databases at shutdown. This means they can be moved to another data directory, but it slows down shutdown. The wallet is always detached."));

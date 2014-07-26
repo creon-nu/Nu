@@ -7,6 +7,7 @@ namespace Ui {
 class VotePage;
 }
 class WalletModel;
+class ClientModel;
 class CBlockIndex;
 
 class VotePage : public QWidget
@@ -18,10 +19,12 @@ public:
     ~VotePage();
 
     void setModel(WalletModel *model);
+    void setClientModel(ClientModel *clientModel);
 
 private:
     Ui::VotePage *ui;
     WalletModel *model;
+    ClientModel *clientModel;
 
     CBlockIndex* lastBestBlock;
     void fillCustodianTable();
@@ -32,6 +35,7 @@ private slots:
     void on_parkRateVote_clicked();
     void on_motionVote_clicked();
     void update();
+    void updateLiquidity();
 };
 
 #endif // VOTEPAGE_H
