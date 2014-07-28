@@ -2,6 +2,8 @@
 // Copyright (c) 2009-2012 The Bitcoin developers
 // Copyright (c) 2011-2013 The PPCoin developers
 // Copyright (c) 2013-2014 The Peershares developers
+// Copyright (c) 2014 The Nu developers
+
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 #include "db.h"
@@ -219,7 +221,6 @@ bool AppInit2(int argc, char* argv[])
 #endif
             "  -detachdb        \t  "   + _("Detach block and address databases. Increases shutdown time (default: 0)") + "\n" +
 #endif
-            "  -paytxfee=<amt>  \t  "   + _("Fee per KB to add to transactions you send") + "\n" +
 #ifdef QT_GUI
             "  -server          \t\t  " + _("Accept command line and JSON-RPC commands") + "\n" +
 #endif
@@ -593,17 +594,6 @@ bool AppInit2(int argc, char* argv[])
             if (addr.IsValid())
                 addrman.Add(addr, CNetAddr("127.0.0.1"));
         }
-    }
-
-    if (mapArgs.count("-paytxfee"))
-    {
-        if (!ParseMoney(mapArgs["-paytxfee"], nTransactionFee) || nTransactionFee < MIN_TX_FEE)
-        {
-            ThreadSafeMessageBox(_("Invalid amount for -paytxfee=<amount>"), _("Peershares"), wxOK | wxMODAL);
-            return false;
-        }
-        if (nTransactionFee > 0.25 * COIN)
-            ThreadSafeMessageBox(_("Warning: -paytxfee is set very high.  This is the transaction fee you will pay if you send a transaction."), _("Peershares"), wxOK | wxICON_EXCLAMATION | wxMODAL);
     }
 
     if (mapArgs.count("-reservebalance")) // Peershares: reserve balance amount

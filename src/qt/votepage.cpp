@@ -3,6 +3,7 @@
 #include "votepage.h"
 #include "ui_votepage.h"
 #include "walletmodel.h"
+#include "clientmodel.h"
 #include "custodianvotedialog.h"
 #include "parkratevotedialog.h"
 #include "motionvotedialog.h"
@@ -10,6 +11,7 @@
 #include "optionsmodel.h"
 #include "bitcoinunits.h"
 #include "guiutil.h"
+#include "liquidityinfo.h"
 
 VotePage::VotePage(QWidget *parent) :
     QWidget(parent),
@@ -32,6 +34,13 @@ VotePage::~VotePage()
 void VotePage::setModel(WalletModel *model)
 {
     this->model = model;
+}
+
+void VotePage::setClientModel(ClientModel *clientModel)
+{
+    this->clientModel = clientModel;
+
+    connect(clientModel, SIGNAL(liquidityChanged()), this, SLOT(updateLiquidity()));
 }
 
 void VotePage::on_custodianVote_clicked()
@@ -139,5 +148,69 @@ void VotePage::fillParkRateTable()
     }
     table->setVisible(false);
     table->resizeColumnsToContents();
+    table->setVisible(true);
+}
+
+struct LiquidityTotal
+{
+    qint64 buy;
+    qint64 sell;
+
+    LiquidityTotal() :
+        buy(0),
+        sell(0)
+    {
+    }
+};
+
+void VotePage::updateLiquidity()
+{
+    QMap<unsigned char, LiquidityTotal> totalMap;
+    {
+        LOCK(cs_mapLiquidityInfo);
+
+        BOOST_FOREACH(const PAIRTYPE(const CBitcoinAddress, CLiquidityInfo)& item, mapLiquidityInfo)
+        {
+            const CLiquidityInfo& info = item.second;
+            LiquidityTotal& total = totalMap[info.cUnit];
+            total.buy += info.nBuyAmount;
+            total.sell += info.nSellAmount;
+        }
+    }
+
+    QTableWidget* table = ui->liquidity;
+    table->setRowCount(totalMap.size());
+
+    QMap<unsigned char, LiquidityTotal>::const_iterator it = totalMap.constBegin();
+    int row = 0;
+    unsigned char oldBaseUnit = BitcoinUnits::baseUnit;
+    while (it != totalMap.constEnd())
+    {
+        unsigned char unit = it.key();
+        const LiquidityTotal& total = it.value();
+
+        QTableWidgetItem *currencyItem = new QTableWidgetItem();
+        currencyItem->setData(Qt::DisplayRole, BitcoinUnits::baseName(unit));
+        table->setItem(row, 0, currencyItem);
+
+        BitcoinUnits::baseUnit = unit;
+
+        QTableWidgetItem *buyItem = new QTableWidgetItem();
+        buyItem->setData(Qt::DisplayRole, BitcoinUnits::format(BitcoinUnits::BTC, total.buy));
+        buyItem->setData(Qt::TextAlignmentRole, QVariant(Qt::AlignRight | Qt::AlignVCenter));
+        table->setItem(row, 1, buyItem);
+
+        QTableWidgetItem *sellItem = new QTableWidgetItem();
+        sellItem->setData(Qt::DisplayRole, BitcoinUnits::format(BitcoinUnits::BTC, total.sell));
+        sellItem->setData(Qt::TextAlignmentRole, QVariant(Qt::AlignRight | Qt::AlignVCenter));
+        table->setItem(row, 2, sellItem);
+
+        it++;
+        row++;
+    }
+    BitcoinUnits::baseUnit = oldBaseUnit;
+
+    table->setVisible(false);
+    table->resizeColumnToContents(0);
     table->setVisible(true);
 }

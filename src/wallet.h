@@ -313,6 +313,16 @@ public:
     void RemoveParked(const COutPoint& outpoint);
 
     void SaveVote() const;
+
+    int64 GetMinTxFee() const
+    {
+        return MinTxFee(cUnit);
+    }
+
+    int64 GetMinTxOutAmount() const
+    {
+        return MinTxOutAmount(cUnit);
+    }
 };
 
 /** A key allocated from the key pool. */

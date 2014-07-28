@@ -49,9 +49,12 @@ private:
 
     int numBlocksAtStartup;
 
+    qint64 lastLiquidityUpdate;
+
 signals:
     void numConnectionsChanged(int count);
     void numBlocksChanged(int count);
+    void liquidityChanged();
 
     //! Asynchronous error notification
     void error(const QString &title, const QString &message, bool modal);
