@@ -221,6 +221,11 @@ static bool GetKernelStakeModifier(uint256 hashBlockFrom, uint64& nStakeModifier
     nStakeModifierHeight = pindexFrom->nHeight;
     nStakeModifierTime = pindexFrom->GetBlockTime();
     int64 nStakeModifierSelectionInterval = GetStakeModifierSelectionInterval();
+
+    // nu: initial blocks do not use modifiers in the future because there may not be enough blocks at network start
+    if (nStakeModifierHeight <= PROOF_OF_WORK_BLOCKS)
+        nStakeModifierSelectionInterval = 0;
+
     const CBlockIndex* pindex = pindexFrom;
     // loop to find the stake modifier later by a selection interval
     while (nStakeModifierTime < pindexFrom->GetBlockTime() + nStakeModifierSelectionInterval)
