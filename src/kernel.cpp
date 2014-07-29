@@ -16,6 +16,12 @@ unsigned int nProtocolV03TestSwitchTime     = 1405728000; // Tue, 19 Jul 2014 00
 // Protocol switch time for v0.4 kernel protocol
 unsigned int nProtocolV04SwitchTime     = 1406030400; // Tue, 22 Jul 2014 12:00:00 GMT
 unsigned int nProtocolV04TestSwitchTime     = 1406030400; // Tue, 22 Jul 2014 12:00:00 GMT
+// TxDB upgrade time for v0.4 protocol
+// Note: v0.4 upgrade does not require block chain re-download. However,
+//       user must upgrade before the protocol switch deadline, otherwise
+//       re-download of blockchain is required. The timestamp of upgrade
+//       is recorded in transaction database to alert user of the requirement.
+unsigned int nProtocolV04UpgradeTime    = 0;
 
 // Modifier interval: time to elapse before new modifier is computed
 // Set to 6-hour for production network and 20-minute for test network
