@@ -100,9 +100,22 @@ BOOST_AUTO_TEST_CASE(rate_calculation_from_votes)
 {
     vector<CVote> vVote;
     vector<CParkRateVote> results;
+    map<unsigned char, vector<const CParkRateVote*> > previousRates;
+
+    // Use very high previous rates to avoid rate limitation (tested elsewhere)
+    CParkRateVote previousRate;
+    previousRate.cUnit = 'B';
+    for (int i = 0; i < 256; i++)
+    {
+        CParkRate parkRate;
+        parkRate.nCompactDuration = i;
+        parkRate.nRate = std::numeric_limits<unsigned int>::max();
+        previousRate.vParkRate.push_back(parkRate);
+    }
+    previousRates['B'].push_back(&previousRate);
 
     // Result of empty vote is empty
-    BOOST_CHECK(CalculateParkRateResults(vVote, results));
+    BOOST_CHECK(CalculateParkRateResults(vVote, previousRates, results));
     BOOST_CHECK_EQUAL(0, results.size());
 
     CParkRateVote parkRateVote;
@@ -116,7 +129,7 @@ BOOST_AUTO_TEST_CASE(rate_calculation_from_votes)
     vVote.push_back(vote);
 
     // Single vote: same result as vote
-    BOOST_CHECK(CalculateParkRateResults(vVote, results));
+    BOOST_CHECK(CalculateParkRateResults(vVote, previousRates, results));
     BOOST_CHECK_EQUAL(  1, results.size());
     BOOST_CHECK_EQUAL(  1, results[0].vParkRate.size());
     BOOST_CHECK_EQUAL(  8, results[0].vParkRate[0].nCompactDuration);
@@ -130,7 +143,7 @@ BOOST_AUTO_TEST_CASE(rate_calculation_from_votes)
     vVote.push_back(vote);
 
     // Two votes of same weight, the median is the first one
-    BOOST_CHECK(CalculateParkRateResults(vVote, results));
+    BOOST_CHECK(CalculateParkRateResults(vVote, previousRates, results));
     BOOST_CHECK_EQUAL(  1, results.size());
     BOOST_CHECK_EQUAL(  1, results[0].vParkRate.size());
     BOOST_CHECK_EQUAL(  8, results[0].vParkRate[0].nCompactDuration);
@@ -140,7 +153,7 @@ BOOST_AUTO_TEST_CASE(rate_calculation_from_votes)
     vVote[1].nCoinAgeDestroyed = 1001;
 
     // Each coin age has a vote. So the median is the second vote rate.
-    BOOST_CHECK(CalculateParkRateResults(vVote, results));
+    BOOST_CHECK(CalculateParkRateResults(vVote, previousRates, results));
     BOOST_CHECK_EQUAL(  1, results.size());
     BOOST_CHECK_EQUAL(  1, results[0].vParkRate.size());
     BOOST_CHECK_EQUAL(  8, results[0].vParkRate[0].nCompactDuration);
@@ -155,7 +168,7 @@ BOOST_AUTO_TEST_CASE(rate_calculation_from_votes)
     vVote.push_back(vote);
 
     // The median is the middle rate
-    BOOST_CHECK(CalculateParkRateResults(vVote, results));
+    BOOST_CHECK(CalculateParkRateResults(vVote, previousRates, results));
     BOOST_CHECK_EQUAL(  1, results.size());
     BOOST_CHECK_EQUAL(  1, results[0].vParkRate.size());
     BOOST_CHECK_EQUAL(  8, results[0].vParkRate[0].nCompactDuration);
@@ -171,7 +184,7 @@ BOOST_AUTO_TEST_CASE(rate_calculation_from_votes)
 
     // It votes for 0 on duration 8, so the result is back to 100
     // On duration 9 everybody else vote for 0, so the median is 0, so there's no result
-    BOOST_CHECK(CalculateParkRateResults(vVote, results));
+    BOOST_CHECK(CalculateParkRateResults(vVote, previousRates, results));
     BOOST_CHECK_EQUAL(  1, results.size());
     BOOST_CHECK_EQUAL(  1, results[0].vParkRate.size());
     BOOST_CHECK_EQUAL(  8, results[0].vParkRate[0].nCompactDuration);
@@ -187,7 +200,7 @@ BOOST_AUTO_TEST_CASE(rate_calculation_from_votes)
     vote.nCoinAgeDestroyed = 2050;
     vVote.push_back(vote);
 
-    BOOST_CHECK(CalculateParkRateResults(vVote, results));
+    BOOST_CHECK(CalculateParkRateResults(vVote, previousRates, results));
     BOOST_CHECK_EQUAL(  1, results.size());
     // On duration 8:
     // Vote weights: 0: 100, 100: 1000, 160: 3, 200: 3051
@@ -214,7 +227,7 @@ BOOST_AUTO_TEST_CASE(rate_calculation_from_votes)
 
     // The result should not be changed
     vector<CParkRateVote> newResults;
-    BOOST_CHECK(CalculateParkRateResults(vVote, newResults));
+    BOOST_CHECK(CalculateParkRateResults(vVote, previousRates, newResults));
     BOOST_CHECK(results == newResults);
 
     // New vote with duplicate duration makes the result invalid
@@ -225,7 +238,7 @@ BOOST_AUTO_TEST_CASE(rate_calculation_from_votes)
     vote.vParkRateVote.push_back(parkRateVote);
     vVote.push_back(vote);
 
-    BOOST_CHECK(!CalculateParkRateResults(vVote, results));
+    BOOST_CHECK(!CalculateParkRateResults(vVote, previousRates, results));
     BOOST_CHECK_EQUAL(0, results.size());
 
     vVote.pop_back();
@@ -237,8 +250,67 @@ BOOST_AUTO_TEST_CASE(rate_calculation_from_votes)
     vote.vParkRateVote.push_back(parkRateVote);
     vVote.push_back(vote);
 
-    BOOST_CHECK(!CalculateParkRateResults(vVote, results));
+    BOOST_CHECK(!CalculateParkRateResults(vVote, previousRates, results));
     BOOST_CHECK_EQUAL(0, results.size());
+}
+
+BOOST_AUTO_TEST_CASE(rate_limitation)
+{
+    vector<CVote> vVote;
+    vector<CParkRateVote> results;
+    map<unsigned char, vector<const CParkRateVote*> > previousRates;
+
+    CVote vote;
+    CParkRateVote parkRateVote;
+
+    parkRateVote.cUnit = 'B';
+    parkRateVote.vParkRate.push_back(CParkRate(15, 1000)); // 1 month
+    parkRateVote.vParkRate.push_back(CParkRate(18, 1000)); // 6 months
+    parkRateVote.vParkRate.push_back(CParkRate(19, 1000)); // 1 year
+    vote.vParkRateVote.push_back(parkRateVote);
+    vote.nCoinAgeDestroyed = 1000;
+    vVote.push_back(vote);
+
+    // Without previous rates, the previous rates are all considered 0 so the rate increase is limited
+    BOOST_CHECK(CalculateParkRateResults(vVote, previousRates, results));
+    BOOST_CHECK_EQUAL(   1, results.size());
+    BOOST_CHECK_EQUAL(   3, results[0].vParkRate.size());
+    BOOST_CHECK_EQUAL(  15, results[0].vParkRate[0].nCompactDuration);
+    BOOST_CHECK_EQUAL(   6, results[0].vParkRate[0].nRate);
+    BOOST_CHECK_EQUAL(  18, results[0].vParkRate[1].nCompactDuration);
+    BOOST_CHECK_EQUAL(  49, results[0].vParkRate[1].nRate);
+    BOOST_CHECK_EQUAL(  19, results[0].vParkRate[2].nCompactDuration);
+    BOOST_CHECK_EQUAL(  99, results[0].vParkRate[2].nRate);
+
+    // With an empty previous rate (meaning the rates are all 0), the rate increase is limited
+    CParkRateVote previousRate;
+    previousRate.cUnit = 'B';
+    previousRates['B'].push_back(&previousRate);
+
+    BOOST_CHECK(CalculateParkRateResults(vVote, previousRates, results));
+    BOOST_CHECK_EQUAL(   1, results.size());
+    BOOST_CHECK_EQUAL(   3, results[0].vParkRate.size());
+    BOOST_CHECK_EQUAL(  15, results[0].vParkRate[0].nCompactDuration);
+    BOOST_CHECK_EQUAL(   6, results[0].vParkRate[0].nRate);
+    BOOST_CHECK_EQUAL(  18, results[0].vParkRate[1].nCompactDuration);
+    BOOST_CHECK_EQUAL(  49, results[0].vParkRate[1].nRate);
+    BOOST_CHECK_EQUAL(  19, results[0].vParkRate[2].nCompactDuration);
+    BOOST_CHECK_EQUAL(  99, results[0].vParkRate[2].nRate);
+
+    // With some previous rates
+    previousRate.vParkRate.push_back(CParkRate(10, 100));
+    previousRate.vParkRate.push_back(CParkRate(15, 3));
+    previousRate.vParkRate.push_back(CParkRate(19, 50));
+
+    BOOST_CHECK(CalculateParkRateResults(vVote, previousRates, results));
+    BOOST_CHECK_EQUAL(   1, results.size());
+    BOOST_CHECK_EQUAL(   3, results[0].vParkRate.size());
+    BOOST_CHECK_EQUAL(  15, results[0].vParkRate[0].nCompactDuration);
+    BOOST_CHECK_EQUAL(   9, results[0].vParkRate[0].nRate);
+    BOOST_CHECK_EQUAL(  18, results[0].vParkRate[1].nCompactDuration);
+    BOOST_CHECK_EQUAL(  49, results[0].vParkRate[1].nRate);
+    BOOST_CHECK_EQUAL(  19, results[0].vParkRate[2].nCompactDuration);
+    BOOST_CHECK_EQUAL( 149, results[0].vParkRate[2].nRate);
 
 }
 
