@@ -71,8 +71,8 @@ namespace GUIUtil
 
     QString blocksToTime(qint64 blocks);
 
-    double annualInterestRatePercentage(unsigned int rate, qint64 blocks);
-    unsigned int annualInterestRatePercentageToRate(double percentage, qint64 blocks);
+    double annualInterestRatePercentage(qint64 rate, qint64 blocks);
+    qint64 annualInterestRatePercentageToRate(double percentage, qint64 blocks);
 
 } // namespace GUIUtil
 

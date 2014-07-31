@@ -437,7 +437,7 @@ uint64 GetPremium(uint64 nValue, uint64 nDuration, unsigned char cUnit, const st
             const CParkRate& parkRate = vSortedParkRate[i];
 
             if (nDuration == parkRate.GetDuration())
-                return nValue * parkRate.nRate / COIN;
+                return nValue * parkRate.nRate / COIN_PARK_RATE;
 
             if (nDuration < parkRate.GetDuration())
             {
@@ -448,7 +448,7 @@ uint64 GetPremium(uint64 nValue, uint64 nDuration, unsigned char cUnit, const st
 
                 double ratio = (double)(parkRate.nRate - prevParkRate.nRate) / (parkRate.GetDuration() - prevParkRate.GetDuration());
                 double rate = prevParkRate.nRate + (nDuration - prevParkRate.GetDuration()) * ratio;
-                return nValue * rate / COIN;
+                return nValue * rate / COIN_PARK_RATE;
             }
         }
     }
