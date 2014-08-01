@@ -245,14 +245,14 @@ double durationInYears(qint64 blocks)
     return (double)blocks * STAKE_TARGET_SPACING / (365.25 * 24 * 3600);
 }
 
-double annualInterestRatePercentage(unsigned int rate, qint64 blocks)
+double annualInterestRatePercentage(qint64 rate, qint64 blocks)
 {
-    return (double)rate / COIN * 100 / durationInYears(blocks);
+    return (double)rate / COIN_PARK_RATE * 100 / durationInYears(blocks);
 }
 
-unsigned int annualInterestRatePercentageToRate(double percentage, qint64 blocks)
+qint64 annualInterestRatePercentageToRate(double percentage, qint64 blocks)
 {
-    return round(percentage * durationInYears(blocks) / 100 * COIN);
+    return round(percentage * durationInYears(blocks) / 100 * COIN_PARK_RATE);
 }
 
 } // namespace GUIUtil
