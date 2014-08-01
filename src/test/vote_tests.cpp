@@ -264,23 +264,27 @@ BOOST_AUTO_TEST_CASE(rate_limitation)
     CParkRateVote parkRateVote;
 
     parkRateVote.cUnit = 'B';
-    parkRateVote.vParkRate.push_back(CParkRate(15, 1000)); // 1 month
-    parkRateVote.vParkRate.push_back(CParkRate(18, 1000)); // 6 months
-    parkRateVote.vParkRate.push_back(CParkRate(19, 1000)); // 1 year
+    parkRateVote.vParkRate.push_back(CParkRate(15, 1000 * COIN_PARK_RATE / COIN)); // 1 month
+    parkRateVote.vParkRate.push_back(CParkRate(18, 1000 * COIN_PARK_RATE / COIN)); // 6 months
+    parkRateVote.vParkRate.push_back(CParkRate(19, 1000 * COIN_PARK_RATE / COIN)); // 1 year
     vote.vParkRateVote.push_back(parkRateVote);
     vote.nCoinAgeDestroyed = 1000;
     vVote.push_back(vote);
+
+    uint64 maxIncreaseDuration15 = pow(2, 15) / 365.25 / 24 / 60 / 60 * STAKE_TARGET_SPACING * COIN_PARK_RATE / 100;
+    uint64 maxIncreaseDuration18 = pow(2, 18) / 365.25 / 24 / 60 / 60 * STAKE_TARGET_SPACING * COIN_PARK_RATE / 100;
+    uint64 maxIncreaseDuration19 = pow(2, 19) / 365.25 / 24 / 60 / 60 * STAKE_TARGET_SPACING * COIN_PARK_RATE / 100;
 
     // Without previous rates, the previous rates are all considered 0 so the rate increase is limited
     BOOST_CHECK(CalculateParkRateResults(vVote, previousRates, results));
     BOOST_CHECK_EQUAL(   1, results.size());
     BOOST_CHECK_EQUAL(   3, results[0].vParkRate.size());
     BOOST_CHECK_EQUAL(  15, results[0].vParkRate[0].nCompactDuration);
-    BOOST_CHECK_EQUAL(   6, results[0].vParkRate[0].nRate);
+    BOOST_CHECK_EQUAL(maxIncreaseDuration15, results[0].vParkRate[0].nRate);
     BOOST_CHECK_EQUAL(  18, results[0].vParkRate[1].nCompactDuration);
-    BOOST_CHECK_EQUAL(  49, results[0].vParkRate[1].nRate);
+    BOOST_CHECK_EQUAL(maxIncreaseDuration18, results[0].vParkRate[1].nRate);
     BOOST_CHECK_EQUAL(  19, results[0].vParkRate[2].nCompactDuration);
-    BOOST_CHECK_EQUAL(  99, results[0].vParkRate[2].nRate);
+    BOOST_CHECK_EQUAL(maxIncreaseDuration19, results[0].vParkRate[2].nRate);
 
     // With an empty previous rate (meaning the rates are all 0), the rate increase is limited
     CParkRateVote previousRate;
@@ -291,26 +295,40 @@ BOOST_AUTO_TEST_CASE(rate_limitation)
     BOOST_CHECK_EQUAL(   1, results.size());
     BOOST_CHECK_EQUAL(   3, results[0].vParkRate.size());
     BOOST_CHECK_EQUAL(  15, results[0].vParkRate[0].nCompactDuration);
-    BOOST_CHECK_EQUAL(   6, results[0].vParkRate[0].nRate);
+    BOOST_CHECK_EQUAL(maxIncreaseDuration15, results[0].vParkRate[0].nRate);
     BOOST_CHECK_EQUAL(  18, results[0].vParkRate[1].nCompactDuration);
-    BOOST_CHECK_EQUAL(  49, results[0].vParkRate[1].nRate);
+    BOOST_CHECK_EQUAL(maxIncreaseDuration18, results[0].vParkRate[1].nRate);
     BOOST_CHECK_EQUAL(  19, results[0].vParkRate[2].nCompactDuration);
-    BOOST_CHECK_EQUAL(  99, results[0].vParkRate[2].nRate);
+    BOOST_CHECK_EQUAL(maxIncreaseDuration19, results[0].vParkRate[2].nRate);
 
     // With some previous rates
-    previousRate.vParkRate.push_back(CParkRate(10, 100));
-    previousRate.vParkRate.push_back(CParkRate(15, 3));
-    previousRate.vParkRate.push_back(CParkRate(19, 50));
+    previousRate.vParkRate.push_back(CParkRate(10, 100 * COIN_PARK_RATE / COIN));
+    previousRate.vParkRate.push_back(CParkRate(15, 3 * COIN_PARK_RATE / COIN));
+    previousRate.vParkRate.push_back(CParkRate(19, 950 * COIN_PARK_RATE / COIN));
 
     BOOST_CHECK(CalculateParkRateResults(vVote, previousRates, results));
     BOOST_CHECK_EQUAL(   1, results.size());
     BOOST_CHECK_EQUAL(   3, results[0].vParkRate.size());
     BOOST_CHECK_EQUAL(  15, results[0].vParkRate[0].nCompactDuration);
-    BOOST_CHECK_EQUAL(   9, results[0].vParkRate[0].nRate);
+    BOOST_CHECK_EQUAL(3 * COIN_PARK_RATE / COIN + maxIncreaseDuration15, results[0].vParkRate[0].nRate);
     BOOST_CHECK_EQUAL(  18, results[0].vParkRate[1].nCompactDuration);
-    BOOST_CHECK_EQUAL(  49, results[0].vParkRate[1].nRate);
+    BOOST_CHECK_EQUAL(maxIncreaseDuration18, results[0].vParkRate[1].nRate);
     BOOST_CHECK_EQUAL(  19, results[0].vParkRate[2].nCompactDuration);
-    BOOST_CHECK_EQUAL( 149, results[0].vParkRate[2].nRate);
+    BOOST_CHECK_EQUAL(1000 * COIN_PARK_RATE / COIN, results[0].vParkRate[2].nRate);
+
+    // With multiple previous rates
+    previousRate.vParkRate.push_back(CParkRate(15, 2 * COIN_PARK_RATE / COIN));
+    previousRate.vParkRate.push_back(CParkRate(19, 150 * COIN_PARK_RATE / COIN));
+
+    BOOST_CHECK(CalculateParkRateResults(vVote, previousRates, results));
+    BOOST_CHECK_EQUAL(   1, results.size());
+    BOOST_CHECK_EQUAL(   3, results[0].vParkRate.size());
+    BOOST_CHECK_EQUAL(  15, results[0].vParkRate[0].nCompactDuration);
+    BOOST_CHECK_EQUAL(2 * COIN_PARK_RATE / COIN + maxIncreaseDuration15, results[0].vParkRate[0].nRate);
+    BOOST_CHECK_EQUAL(  18, results[0].vParkRate[1].nCompactDuration);
+    BOOST_CHECK_EQUAL(maxIncreaseDuration18, results[0].vParkRate[1].nRate);
+    BOOST_CHECK_EQUAL(  19, results[0].vParkRate[2].nCompactDuration);
+    BOOST_CHECK_EQUAL(150 * COIN_PARK_RATE / COIN + maxIncreaseDuration19, results[0].vParkRate[2].nRate);
 
 }
 
