@@ -242,7 +242,7 @@ bool CalculateParkRateResults(const std::vector<CVote>& vVote, const std::map<un
     {
         uint64 previousMin = minPreviousRates[parkRate.nCompactDuration];
         uint64 duration = parkRate.GetDuration();
-        uint64 maxIncrease = (uint64)100 * duration * STAKE_TARGET_SPACING / 31557600;
+        uint64 maxIncrease = (uint64)100 * COIN_PARK_RATE / COIN * duration * STAKE_TARGET_SPACING / 31557600;
 
         if (parkRate.nRate > (int64)previousMin + maxIncrease)
             parkRate.nRate = previousMin + maxIncrease;
