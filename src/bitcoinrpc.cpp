@@ -124,6 +124,11 @@ Value ValueFromAmount(int64 amount)
     return (double)amount / (double)COIN;
 }
 
+Value ValueFromParkRate(int64 amount)
+{
+    return (double)amount / (double)COIN_PARK_RATE;
+}
+
 std::string
 HexBits(unsigned int nBits)
 {
@@ -187,7 +192,7 @@ Object parkRateVoteToJSON(const CParkRateVote& parkRateVote)
     {
         Object rate;
         rate.push_back(Pair("blocks", (boost::int64_t)parkRate.GetDuration()));
-        rate.push_back(Pair("rate", ValueFromAmount(parkRate.nRate)));
+        rate.push_back(Pair("rate", ValueFromParkRate(parkRate.nRate)));
         rates.push_back(rate);
     }
     object.push_back(Pair("rates", rates));
@@ -577,7 +582,7 @@ Value getparkrates(const Array& params, bool fHelp)
         BOOST_FOREACH(const CParkRate& parkRate, parkRateVote.vParkRate)
         {
             string label = boost::lexical_cast<std::string>(parkRate.GetDuration()) + " blocks";
-            obj.push_back(Pair(label, ValueFromAmount(parkRate.nRate)));
+            obj.push_back(Pair(label, ValueFromParkRate(parkRate.nRate)));
         }
     }
     return obj;
@@ -2797,9 +2802,9 @@ CVote SampleVote()
 
     CParkRateVote parkRateVote;
     parkRateVote.cUnit = 'B';
-    parkRateVote.vParkRate.push_back(CParkRate(13, 3));
-    parkRateVote.vParkRate.push_back(CParkRate(14, 6));
-    parkRateVote.vParkRate.push_back(CParkRate(15, 13));
+    parkRateVote.vParkRate.push_back(CParkRate(13, 3 * COIN_PARK_RATE / COIN));
+    parkRateVote.vParkRate.push_back(CParkRate(14, 6 * COIN_PARK_RATE / COIN));
+    parkRateVote.vParkRate.push_back(CParkRate(15, 13 * COIN_PARK_RATE / COIN));
     sample.vParkRateVote.push_back(parkRateVote);
 
     sample.hashMotion.SetHex("8151325dcdbae9e0ff95f9f9658432dbedfdb209");
@@ -2882,7 +2887,14 @@ Value setvote(const Array& params, bool fHelp)
                                    parkRate.nCompactDuration = compactDuration;
                                 }
                                 else if (parkRateAttribute.name_ == "rate")
-                                    parkRate.nRate = AmountFromValue(parkRateAttribute.value_);
+                                {
+                                    double dAmount = parkRateAttribute.value_.get_real();
+                                    if (dAmount < 0.0 || dAmount > MAX_MONEY)
+                                        throw runtime_error("Invalid park rate amount\n");
+                                    parkRate.nRate = roundint64(dAmount * COIN_PARK_RATE);
+                                    if (!MoneyRange(parkRate.nRate))
+                                        throw runtime_error("Invalid park rate amount\n");
+                                }
                                 else
                                     throw runtime_error("Invalid park rate object\n");
                             }
