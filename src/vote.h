@@ -53,7 +53,7 @@ class CParkRate
 {
 public:
     unsigned char nCompactDuration;
-    unsigned int nRate;
+    uint64 nRate;
 
     CParkRate() :
         nCompactDuration(0),
@@ -61,7 +61,7 @@ public:
     {
     }
 
-    CParkRate(unsigned char nCompactDuration, unsigned int nRate) :
+    CParkRate(unsigned char nCompactDuration, uint64 nRate) :
         nCompactDuration(nCompactDuration),
         nRate(nRate)
     {

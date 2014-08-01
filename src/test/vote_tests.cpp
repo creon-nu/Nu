@@ -511,13 +511,13 @@ BOOST_AUTO_TEST_CASE(premium_calculation)
     vector<CParkRateVote> vParkRateResult;
     CParkRateVote parkRateResult;
     parkRateResult.cUnit = 'B';
-    parkRateResult.vParkRate.push_back(CParkRate( 2,  5));
-    parkRateResult.vParkRate.push_back(CParkRate( 5, 50));
-    parkRateResult.vParkRate.push_back(CParkRate( 3, 10));
-    parkRateResult.vParkRate.push_back(CParkRate(10,  1 * COIN));
-    parkRateResult.vParkRate.push_back(CParkRate(12,  2 * COIN));
-    parkRateResult.vParkRate.push_back(CParkRate(13,  5 * COIN));
-    parkRateResult.vParkRate.push_back(CParkRate(15, 50 * COIN));
+    parkRateResult.vParkRate.push_back(CParkRate( 2,  5 * COIN_PARK_RATE / COIN));
+    parkRateResult.vParkRate.push_back(CParkRate( 5, 50 * COIN_PARK_RATE / COIN));
+    parkRateResult.vParkRate.push_back(CParkRate( 3, 10 * COIN_PARK_RATE / COIN));
+    parkRateResult.vParkRate.push_back(CParkRate(10,  1 * COIN_PARK_RATE));
+    parkRateResult.vParkRate.push_back(CParkRate(12,  2 * COIN_PARK_RATE));
+    parkRateResult.vParkRate.push_back(CParkRate(13,  5 * COIN_PARK_RATE));
+    parkRateResult.vParkRate.push_back(CParkRate(15, 50 * COIN_PARK_RATE));
     vParkRateResult.push_back(parkRateResult);
 
     // Below minimum rate

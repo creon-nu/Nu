@@ -19,7 +19,7 @@ public:
     void setModel(WalletModel *model);
 
     double getAnnualRatePercentage(int row);
-    unsigned int getRate(int row);
+    qint64 getRate(int row);
     qint64 getDuration(int row);
     int getCompactDuration(int row);
 
