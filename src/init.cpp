@@ -388,7 +388,6 @@ bool AppInit2(int argc, char* argv[])
     InitMessage(_("Loading wallets..."));
     printf("Loading portfolio...\n");
     nStart = GetTimeMillis();
-    bool fFirstRun;
 
     BOOST_FOREACH(unsigned char unit, sAvailableUnits)
     {
