@@ -157,7 +157,7 @@ static uint64 AddRateWeight(const uint64& totalWeight, const RateWeight& rateWei
     return totalWeight + rateWeight.second;
 }
 
-bool CalculateParkRateResults(const std::vector<CVote>& vVote, std::vector<CParkRateVote>& results)
+bool CalculateParkRateResults(const std::vector<CVote>& vVote, const std::map<unsigned char, std::vector<const CParkRateVote*> >& mapPreviousRates, std::vector<CParkRateVote>& results)
 {
     results.clear();
 
@@ -219,6 +219,35 @@ bool CalculateParkRateResults(const std::vector<CVote>& vVote, std::vector<CPark
         }
     }
 
+    map<unsigned char, unsigned int> minPreviousRates;
+
+    if (mapPreviousRates.count('B'))
+    {
+        const std::vector<const CParkRateVote*>& previousUnitRates = mapPreviousRates.find('B')->second;
+        BOOST_FOREACH(const CParkRateVote* parkRateVote, previousUnitRates)
+        {
+            BOOST_FOREACH(const CParkRate& parkRate, parkRateVote->vParkRate)
+            {
+                map<unsigned char, unsigned int>::iterator it = minPreviousRates.find(parkRate.nCompactDuration);
+                if (it == minPreviousRates.end())
+                    minPreviousRates[parkRate.nCompactDuration] = parkRate.nRate;
+                else
+                    if (parkRate.nRate < it->second)
+                        it->second = parkRate.nRate;
+            }
+        }
+    }
+
+    BOOST_FOREACH(CParkRate& parkRate, result)
+    {
+        uint64 previousMin = minPreviousRates[parkRate.nCompactDuration];
+        uint64 duration = parkRate.GetDuration();
+        uint64 maxIncrease = (uint64)100 * COIN_PARK_RATE / COIN * duration * STAKE_TARGET_SPACING / 31557600;
+
+        if (parkRate.nRate > (int64)previousMin + maxIncrease)
+            parkRate.nRate = previousMin + maxIncrease;
+    }
+
     CParkRateVote parkRateVote;
     parkRateVote.cUnit = 'B';
     parkRateVote.vParkRate = result;
@@ -233,15 +262,30 @@ bool CalculateParkRateResults(const CVote &vote, CBlockIndex *pindexprev, std::v
     vVote.reserve(PARK_RATE_VOTES);
     vVote.push_back(vote);
 
+    map<unsigned char, vector<const CParkRateVote*> > mapPreviousRates;
+    BOOST_FOREACH(unsigned char cUnit, sAvailableUnits)
+    {
+        if (cUnit != 'S')
+            mapPreviousRates[cUnit].reserve(PARK_RATE_PREVIOUS_VOTES);
+    }
+
     CBlockIndex *pindex = pindexprev;
     for (int i=0; i<PARK_RATE_VOTES-1 && pindex; i++)
     {
         if (pindex->IsProofOfStake())
             vVote.push_back(pindex->vote);
+
+        BOOST_FOREACH(const CParkRateVote& previousRate, pindex->vParkRateResult)
+        {
+            vector<const CParkRateVote*>& unitPreviousRates = mapPreviousRates[previousRate.cUnit];
+            if (unitPreviousRates.size() < PARK_RATE_PREVIOUS_VOTES)
+                mapPreviousRates[previousRate.cUnit].push_back(&previousRate);
+        }
+
         pindex = pindex->pprev;
     }
 
-    return CalculateParkRateResults(vVote, vParkRateResult);
+    return CalculateParkRateResults(vVote, mapPreviousRates, vParkRateResult);
 }
 
 bool CVote::IsValid() const
@@ -437,7 +481,7 @@ uint64 GetPremium(uint64 nValue, uint64 nDuration, unsigned char cUnit, const st
             const CParkRate& parkRate = vSortedParkRate[i];
 
             if (nDuration == parkRate.GetDuration())
-                return nValue * parkRate.nRate / COIN;
+                return nValue * parkRate.nRate / COIN_PARK_RATE;
 
             if (nDuration < parkRate.GetDuration())
             {
@@ -446,9 +490,11 @@ uint64 GetPremium(uint64 nValue, uint64 nDuration, unsigned char cUnit, const st
 
                 const CParkRate& prevParkRate = vSortedParkRate[i-1];
 
-                double ratio = (double)(parkRate.nRate - prevParkRate.nRate) / (parkRate.GetDuration() - prevParkRate.GetDuration());
-                double rate = prevParkRate.nRate + (nDuration - prevParkRate.GetDuration()) * ratio;
-                return nValue * rate / COIN;
+                uint64 rate =
+                    prevParkRate.nRate +
+                    (nDuration - prevParkRate.GetDuration()) *
+                    (parkRate.nRate - prevParkRate.nRate) / (parkRate.GetDuration() - prevParkRate.GetDuration());
+                return nValue * rate / COIN_PARK_RATE;
             }
         }
     }

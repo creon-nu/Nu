@@ -53,7 +53,7 @@ class CParkRate
 {
 public:
     unsigned char nCompactDuration;
-    unsigned int nRate;
+    uint64 nRate;
 
     CParkRate() :
         nCompactDuration(0),
@@ -61,7 +61,7 @@ public:
     {
     }
 
-    CParkRate(unsigned char nCompactDuration, unsigned int nRate) :
+    CParkRate(unsigned char nCompactDuration, uint64 nRate) :
         nCompactDuration(nCompactDuration),
         nRate(nRate)
     {
@@ -175,7 +175,7 @@ bool IsParkRateResult(const CScript& scriptPubKey);
 bool ExtractParkRateResult(const CScript& scriptPubKey, CParkRateVote& parkRateResultRet);
 bool ExtractParkRateResults(const CBlock& block, std::vector<CParkRateVote>& vParkRateResultRet);
 
-bool CalculateParkRateResults(const std::vector<CVote>& vVote, std::vector<CParkRateVote>& results);
+bool CalculateParkRateResults(const std::vector<CVote>& vVote, const std::map<unsigned char, std::vector<const CParkRateVote*> >& mapPreviousVotes, std::vector<CParkRateVote>& results);
 bool CalculateParkRateResults(const CVote &vote, CBlockIndex *pindexprev, std::vector<CParkRateVote>& vParkRateResult);
 uint64 GetPremium(uint64 nValue, uint64 nDuration, unsigned char cUnit, const std::vector<CParkRateVote>& vParkRateResult);
 

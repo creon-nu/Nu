@@ -101,7 +101,7 @@ double ParkRateVoteDialog::getAnnualRatePercentage(int row)
         return 0;
 }
 
-unsigned int ParkRateVoteDialog::getRate(int row)
+qint64 ParkRateVoteDialog::getRate(int row)
 {
     return GUIUtil::annualInterestRatePercentageToRate(getAnnualRatePercentage(row), getDuration(row));
 }
@@ -124,7 +124,7 @@ void ParkRateVoteDialog::on_table_cellChanged(int row, int column)
     if (column == 1)
     {
         // Round to nearest possible annual interest rate
-        unsigned int rate = getRate(row);
+        qint64 rate = getRate(row);
         double interestRatePercentage = GUIUtil::annualInterestRatePercentage(rate, getDuration(row));
         QTableWidgetItem *rateItem = ui->table->item(row, column);
         rateItem->setData(Qt::DisplayRole, interestRatePercentage);

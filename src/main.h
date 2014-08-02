@@ -49,13 +49,15 @@ static const int COINSTAKE_MATURITY = 5000; // Same average time as Peercoin (50
 static const int LOCKTIME_THRESHOLD = 500000000; // Tue Nov  5 00:53:20 1985 UTC
 static const int STAKE_TARGET_SPACING = 60 * 1; // 60 second block spacing for Nubit
 static const int STAKE_MIN_AGE = 60 * 60 * 24 * 7; // changed to 7 days so only one vote in 10000 block voting period can be made
-static const int STAKE_MAX_AGE = 60 * 60 * 24 * 7; // changed to same as minimum to incentivize minting as soon as possible
+static const int STAKE_MAX_AGE = STAKE_MIN_AGE + 1; // changed to same as minimum to incentivize minting as soon as possible
 static const int64 IPO_SHARES = 1000000000 * COIN; // Total number of shares to create using proof of work (intented for IPO)
 static const int64 PROOF_OF_WORK_BLOCKS = 400; // Block height of the last proof of work block
-static const int64 PARK_RATE_VOTES = 1000; // Number of blocks used in park rate median vote calculation
+static const int64 PARK_RATE_VOTES = 2000; // Number of blocks used in park rate median vote calculation
+static const int64 PARK_RATE_PREVIOUS_VOTES = 1440; // Number of blocks used in the park rate increase limitation
 static const unsigned int CUSTODIAN_VOTES = 10000;
-static const int64 PROOF_OF_STAKE_REWARD = 20 * COIN; // Constant reward of Proof of Stake blocks
+static const int64 PROOF_OF_STAKE_REWARD = 40 * COIN; // Constant reward of Proof of Stake blocks
 static const int64 MIN_COINSTAKE_VALUE = 10000 * COIN; // Minimum value allowed as input in a CoinStake
+static const int64 COIN_PARK_RATE = 100000 * COIN; // Park rate internal encoding precision. The minimum possible rate is (1.0 / COIN_PARK_RATE) coins per parked coin
 
 
 #ifdef USE_UPNP
@@ -1050,18 +1052,6 @@ public:
 
     void UpdateTime(const CBlockIndex* pindexPrev);
 
-    // ppcoin: entropy bit for stake modifier if chosen by modifier
-    unsigned int GetStakeEntropyBit() const
-    {
-        uint160 hashSig = Hash160(vchBlockSig);
-        if (fDebug && GetBoolArg("-printstakemodifier"))
-            printf("GetStakeEntropyBit: hashSig=%s", hashSig.ToString().c_str());
-        hashSig >>= 159; // take the first bit of the hash
-        if (fDebug && GetBoolArg("-printstakemodifier"))
-            printf(" entropybit=%d\n", hashSig.Get64());
-        return hashSig.Get64();
-    }
-
     // ppcoin: two types of block: proof-of-work or proof-of-stake
     bool IsProofOfStake() const
     {
@@ -1233,6 +1223,7 @@ public:
     bool GetCoinStakeAge(uint64& nCoinAge) const;
     bool SignBlock(const CKeyStore& keystore);
     bool CheckBlockSignature() const;
+    unsigned int GetStakeEntropyBit() const; // ppcoin: entropy bit for stake modifier if chosen by modifier
 
 private:
     bool SetBestChainInner(CTxDB& txdb, CBlockIndex *pindexNew);
