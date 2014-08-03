@@ -2550,15 +2550,15 @@ bool LoadBlockIndex(bool fAllowNew)
         //   vMerkleTree: 4a5e1e
 
         // Genesis block
-        const char* pszTimestamp = "11-JUN-2014 Chicago Fed's Evans: Overshooting Inflation Target Not Catastrophic";
-        unsigned int nTimeGenesis=1405114097;
-        unsigned int nNonceGenesis=1161934;
+        const char* pszTimestamp = "2014-08-01: Why Argentina's default feels like American bullying: Don Pittis";
+        unsigned int nTimeGenesis=1407023435;
+        unsigned int nNonceGenesis=1542387;
 
         if (fTestNet)
         {
-            pszTimestamp="11-JUN-2014 LeBron: I'm going back to the Cavs";
-            nTimeGenesis=1405114097;
-            nNonceGenesis=114980;
+            pszTimestamp="August 02, 2014 Value Walk - Tesla Motors To Deliver Over 100,000 Cars A Year By 2015";
+            nTimeGenesis=1407023435;
+            nNonceGenesis=412602;
         }
 
         CTransaction txNew;
@@ -2602,9 +2602,9 @@ bool LoadBlockIndex(bool fAllowNew)
         printf("%s\n", hashGenesisBlock.ToString().c_str());
         printf("%s\n", block.hashMerkleRoot.ToString().c_str());
         if (!fTestNet)
-            assert(block.hashMerkleRoot == uint256("0x714d9ae631488388183f9e0140c09f988b8522dbb1d20801acb45bef9ec47cbd"));
+            assert(block.hashMerkleRoot == uint256("0x3e6c2608685f1d66d8fe9cb798400ec16aec1574b7ad9a7a92a65c7fcea2d32a"));
         else
-            assert(block.hashMerkleRoot == uint256("0x81f501aefd049baae56cd41952ecd4b4aa4563898553b37e4da9a6350058dd4e"));
+            assert(block.hashMerkleRoot == uint256("0xd044ad667adb2ec5073dc2f033f8ed9458f92515eb13310fb1fccfb4242cf31d"));
 
         block.print();
         assert(block.GetHash() == hashGenesisBlock);
