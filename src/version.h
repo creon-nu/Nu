@@ -18,7 +18,7 @@
 
 // nu version
 #define CLIENT_VERSION_MAJOR       0
-#define CLIENT_VERSION_MINOR       1
+#define CLIENT_VERSION_MINOR       2
 #define CLIENT_VERSION_REVISION    0
 
 static const int CLIENT_VERSION =
