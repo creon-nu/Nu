@@ -33,7 +33,7 @@ set<pair<COutPoint, unsigned int> > setStakeSeen;
 uint256 hashGenesisBlock = hashGenesisBlockOfficial;
 static CBigNum bnProofOfWorkLimit(~uint256(0) >> 20);
 static CBigNum bnInitialHashTarget(~uint256(0) >> 24);
-static CBigNum bnInitialProofOfStakeHashTarget(~uint256(0) >> 30);
+static CBigNum bnInitialProofOfStakeHashTarget(~uint256(0) >> 20);
 unsigned int nStakeMinAge = STAKE_MIN_AGE;
 int nCoinbaseMaturity = COINBASE_MATURITY;
 int nCoinstakeMaturity = COINSTAKE_MATURITY;
@@ -1972,7 +1972,7 @@ bool CBlock::AddToBlockIndex(unsigned int nFile, unsigned int nBlockPos)
     // ppcoin: compute stake modifier
     uint64 nStakeModifier = 0;
     bool fGeneratedStakeModifier = false;
-    if (!ComputeNextStakeModifier(pindexNew->pprev, nStakeModifier, fGeneratedStakeModifier))
+    if (!ComputeNextStakeModifier(pindexNew, nStakeModifier, fGeneratedStakeModifier))
         return error("AddToBlockIndex() : ComputeNextStakeModifier() failed");
     pindexNew->SetStakeModifier(nStakeModifier, fGeneratedStakeModifier);
     pindexNew->nStakeModifierChecksum = GetStakeModifierChecksum(pindexNew);
@@ -2422,6 +2422,29 @@ bool CBlock::CheckBlockSignature() const
     return false;
 }
 
+// ppcoin: entropy bit for stake modifier if chosen by modifier
+unsigned int CBlock::GetStakeEntropyBit() const
+{
+    unsigned int nEntropyBit = 0;
+    if (IsProtocolV04(nTime))
+    {
+        nEntropyBit = ((GetHash().Get64()) & 1llu);// last bit of block hash
+        if (fDebug && GetBoolArg("-printstakemodifier"))
+            printf("GetStakeEntropyBit(v0.4+): nTime=%u hashBlock=%s entropybit=%d\n", nTime, GetHash().ToString().c_str(), nEntropyBit);
+    }
+    else
+    {
+        // old protocol for entropy bit pre v0.4
+        uint160 hashSig = Hash160(vchBlockSig);
+        if (fDebug && GetBoolArg("-printstakemodifier"))
+            printf("GetStakeEntropyBit(v0.3): nTime=%u hashSig=%s", nTime, hashSig.ToString().c_str());
+        hashSig >>= 159; // take the first bit of the hash
+        nEntropyBit = hashSig.Get64();
+        if (fDebug && GetBoolArg("-printstakemodifier"))
+            printf(" entropybit=%d\n", nEntropyBit);
+    }
+    return nEntropyBit;
+}
 
 
 
@@ -2527,15 +2550,15 @@ bool LoadBlockIndex(bool fAllowNew)
         //   vMerkleTree: 4a5e1e
 
         // Genesis block
-        const char* pszTimestamp = "11-JUN-2014 Chicago Fed's Evans: Overshooting Inflation Target Not Catastrophic";
-        unsigned int nTimeGenesis=1405114097;
-        unsigned int nNonceGenesis=1161934;
+        const char* pszTimestamp = "2014-08-01: Why Argentina's default feels like American bullying: Don Pittis";
+        unsigned int nTimeGenesis=1407023435;
+        unsigned int nNonceGenesis=1542387;
 
         if (fTestNet)
         {
-            pszTimestamp="11-JUN-2014 LeBron: I'm going back to the Cavs";
-            nTimeGenesis=1405114097;
-            nNonceGenesis=114980;
+            pszTimestamp="August 02, 2014 Value Walk - Tesla Motors To Deliver Over 100,000 Cars A Year By 2015";
+            nTimeGenesis=1407023435;
+            nNonceGenesis=412602;
         }
 
         CTransaction txNew;
@@ -2579,9 +2602,9 @@ bool LoadBlockIndex(bool fAllowNew)
         printf("%s\n", hashGenesisBlock.ToString().c_str());
         printf("%s\n", block.hashMerkleRoot.ToString().c_str());
         if (!fTestNet)
-            assert(block.hashMerkleRoot == uint256("0x714d9ae631488388183f9e0140c09f988b8522dbb1d20801acb45bef9ec47cbd"));
+            assert(block.hashMerkleRoot == uint256("0x3e6c2608685f1d66d8fe9cb798400ec16aec1574b7ad9a7a92a65c7fcea2d32a"));
         else
-            assert(block.hashMerkleRoot == uint256("0x81f501aefd049baae56cd41952ecd4b4aa4563898553b37e4da9a6350058dd4e"));
+            assert(block.hashMerkleRoot == uint256("0xd044ad667adb2ec5073dc2f033f8ed9458f92515eb13310fb1fccfb4242cf31d"));
 
         block.print();
         assert(block.GetHash() == hashGenesisBlock);
@@ -2598,6 +2621,15 @@ bool LoadBlockIndex(bool fAllowNew)
         // ppcoin: initialize synchronized checkpoint
         if (!Checkpoints::WriteSyncCheckpoint(hashGenesisBlock))
             return error("LoadBlockIndex() : failed to init sync checkpoint");
+
+        // ppcoin: upgrade time set to zero if txdb initialized
+        {
+            CTxDB txdb;
+            if (!txdb.WriteV04UpgradeTime(0))
+                return error("LoadBlockIndex() : failed to init upgrade info");
+            printf(" Upgrade Info: v0.4+ txdb initialization\n");
+            txdb.Close();
+        }
     }
 
     // ppcoin: if checkpoint master key changed must reset sync-checkpoint
@@ -2614,6 +2646,26 @@ bool LoadBlockIndex(bool fAllowNew)
                 return error("LoadBlockIndex() : failed to commit new checkpoint master key to db");
             if ((!fTestNet) && !Checkpoints::ResetSyncCheckpoint())
                 return error("LoadBlockIndex() : failed to reset sync-checkpoint");
+        }
+        txdb.Close();
+    }
+
+    // ppcoin: upgrade time set to zero if txdb initialized
+    {
+        CTxDB txdb;
+        if (txdb.ReadV04UpgradeTime(nProtocolV04UpgradeTime))
+        {
+            if (nProtocolV04UpgradeTime)
+                printf(" Upgrade Info: txdb upgrade to v0.4 detected at timestamp %d\n", nProtocolV04UpgradeTime);
+            else
+                printf(" Upgrade Info: v0.4+ no txdb upgrade detected.\n");
+        }
+        else
+        {
+            nProtocolV04UpgradeTime = GetTime();
+            printf(" Upgrade Info: upgrading txdb from v0.3 at timestamp %u\n", nProtocolV04UpgradeTime);
+            if (!txdb.WriteV04UpgradeTime(nProtocolV04UpgradeTime))
+                return error("LoadBlockIndex() : failed to write upgrade info");
         }
         txdb.Close();
     }
@@ -2752,6 +2804,14 @@ string GetWarnings(string strFor)
     {
         nPriority = 3000;
         strStatusBar = strRPC = "WARNING: Invalid checkpoint found! Displayed transactions may not be correct! You may need to upgrade, or notify developers of the issue (https://github.com/Peershares/Peershares/issues).";
+    }
+
+    // ppcoin: if detected unmet upgrade requirement enter safe mode
+    // Note: v0.4 upgrade requires blockchain redownload if past protocol switch
+    if (IsProtocolV04(nProtocolV04UpgradeTime + 60*60*24)) // 1 day margin
+    {
+        nPriority = 5000;
+        strStatusBar = strRPC = "WARNING: Blockchain redownload required approaching or past v0.4 upgrade deadline.";
     }
 
     // Alerts
