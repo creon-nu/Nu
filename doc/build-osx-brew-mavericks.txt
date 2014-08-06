@@ -1,3 +1,4 @@
+Copyright (c) 2014 Nu Developers
 Copyright (c) 2012-2013 PPCoin Developers
 Copyright (c) 2009-2012 Bitcoin Developers
 Distributed under the MIT/X11 software license, see the accompanying file
@@ -9,7 +10,7 @@ Thomas Bernard.
 
 
 Mac OS X Mavericks build instructions
-How to build peersharesd and Peershares-Qt on 10.9
+How to build nud and Nu on 10.9.x
 
 
 Prerequisites
@@ -72,18 +73,18 @@ sudo cp -r boost_1_55_0/boost/ /usr/include/boost/
 
 9.  Clone the github tree to get the source code
 
-git clone https://github.com/Peershares/Peershares.git
+// todo: Add public link when it is available
 
 
-Building peersharesd
+Building nud
 
 1.  Run the makefile
 
-cd Peershares/src/
+cd nubit/src/
 make -f makefile.osx RELEASE=true 64BIT=true
 
 
-Building Peershares-Qt.app
+Building Nu.app
 
 You cannot use Qt 4.8.6 if you want to deploy to other systems
 http://qt-project.org/forums/viewthread/41925
@@ -95,31 +96,34 @@ http://download.qt-project.org/archive/qt/4.8/4.8.5/qt-mac-opensource-4.8.5.dmg
 
 3.  Use Qt Creator to build the project
 
-Double-click Peershares/peershares-qt.pro to open Qt-Creator
+Double-click nubit/nu.pro to open Qt-Creator
 Click the Configure Project button
 Click on the monitor icon on the left bar above Debug and change it to Release
-On the top menu, click Build and Build Project "peershares-qt"
+On the top menu, click Build and Build Project "nu"
 
 
-Deploying Peershares-Qt.app
+Deploying Nu.app
 
 Deploying your app is needed to run it on non-development systems
 
-1.  Sym-link some shit
+1.  Sym-link the required libraries
 
 sudo ln -s /opt/local/lib /opt/local/lib/lib
 sudo ln -s /opt/local/lib/db48/libdb_cxx-4.8.dylib /opt/local/lib/libdb_cxx-4.8.dylib
 
-2.  Copy Peershares-Qt.app and run macdeployqt to bundle required libraries
+2.  Copy Nu.app and run macdeployqt to bundle required libraries
 
 mkdir deploy
-cp -r build-peershares-qt-Desktop-Release/Peershares-Qt.app/ deploy/Peershares-Qt.app/
-sudo macdeployqt deploy/Peershares-Qt.app/
+cp -r build-peershares-qt-Desktop-Release/Nu.app/ deploy/Nu.app/
+sudo macdeployqt deploy/Nu.app/
 
 3.  Fix a dependency path
 
-install_name_tool -change "/opt/local/lib/db48/libdb_cxx-4.8.dylib" "@executable_path/../Frameworks/libdb_cxx-4.8.dylib" deploy/Peershares-Qt.app/Contents/MacOS/Peershares-Qt
+install_name_tool -change "/opt/local/lib/db48/libdb_cxx-4.8.dylib" "@executable_path/../Frameworks/libdb_cxx-4.8.dylib" deploy/Peershares-Qt.app/Contents/MacOS/Nu
 
-4.  Compress Peershares-Qt.app into a zip
+// deprecated, but still useful if you're going to send it around to a small audience.
+// todo: update contrib/macdeploy/macdeployqtplus to work with Nu
+
+4.  Compress Nu.app into a zip
 
 Right-click on Peershares-Qt.app and click Compress
