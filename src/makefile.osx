@@ -2,10 +2,11 @@
 # Copyright (c) 2009-2010 Satoshi Nakamoto
 # Copyright (c) 2011-2012 The PPCoin developers
 # Copyright (c) 2013-2014 The Peershares developers
+# Copyright (c) 2014 Nu developers
 # Distributed under the MIT/X11 software license, see the accompanying
 # file license.txt or http://www.opensource.org/licenses/mit-license.php.
 
-# Mac OS X makefile for peershares
+# Mac OS X makefile for Nu
 # Originally by Laszlo Hanyecz (solar@heliacal.net)
 
 CXX=llvm-g++
