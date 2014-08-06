@@ -45,7 +45,7 @@ const std::string CLIENT_NAME("Siglee");
 #define BUILD_DESC_FROM_COMMIT(maj,min,rev,build,commit) \
     "v" STRINGIFY(maj) "." STRINGIFY(min) "." STRINGIFY(rev) "-g" commit
 
-#define BUILD_DESC_FROM_UNKNOWN(maj,min,rev,build) \
+#define BUILD_DESC_FROM_UNKNOWN(maj,min,rev) \
     "v" STRINGIFY(maj) "." STRINGIFY(min) "." STRINGIFY(rev) "-unk"
 
 #ifndef BUILD_DESC
