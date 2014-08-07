@@ -60,13 +60,13 @@ DEFS=-DMAC_OSX -DMSG_NOSIGNAL=0 -DBOOST_SPIRIT_THREADSAFE
 
 ifdef RELEASE
 CFLAGS = -mmacosx-version-min=10.6 -O3
-ifdef i386
 # Compile for maximum compatibility and smallest size.
 # This requires that dependencies are compiled
 # the same way.
-CFLAGS += -arch i386
-else
+ifdef 64BIT
 CFLAGS += -arch x86_64
+else
+CFLAGS += -arch i386
 endif
 else
 CFLAGS = -g

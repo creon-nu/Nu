@@ -83,6 +83,12 @@ Building nud
 cd nubit/src/
 make -f makefile.osx RELEASE=true 64BIT=true
 
+// To build with static linked libraries, use this command:
+
+ln -s /usr/local/lib /usr/local/lib/db48
+cd nubit/src
+make -f makefile.osx RELEASE=true 64BIT=true STATIC=true DEPSDIR=/usr/local
+
 
 Building Nu.app
 
@@ -126,4 +132,4 @@ install_name_tool -change "/opt/local/lib/db48/libdb_cxx-4.8.dylib" "@executable
 
 4.  Compress Nu.app into a zip
 
-Right-click on Peershares-Qt.app and click Compress
+Right-click on Nu.app and click Compress
