@@ -12,6 +12,7 @@
 #include "bitcoinrpc.h"
 #include "script.h"
 #include "vote.h"
+#include <boost/algorithm/string/replace.hpp>
 
 using namespace std;
 
@@ -330,6 +331,14 @@ void CWallet::MarkDirty()
     }
 }
 
+static void
+runCommand(std::string strCommand)
+{
+    int nErr = ::system(strCommand.c_str());
+    if (nErr)
+        printf("runCommand error: system(%s) returned %d\n", strCommand.c_str(), nErr);
+}
+
 bool CWallet::AddToWallet(const CWalletTx& wtxIn)
 {
     uint256 hash = wtxIn.GetHash();
@@ -412,6 +421,16 @@ bool CWallet::AddToWallet(const CWalletTx& wtxIn)
 
         // since AddToWallet is called directly for self-originating transactions, check for consumption of own coins
         WalletUpdateSpent(wtx);
+
+        // notify an external script when a wallet transaction comes in or is updated
+        std::string strCmd = GetArg("-walletnotify", "");
+
+        if (!strCmd.empty())
+        {
+            boost::replace_all(strCmd, "%s", wtxIn.GetHash().GetHex());
+            boost::thread t(runCommand, strCmd); // thread runs free
+        }
+
     }
 
     // Refresh UI
