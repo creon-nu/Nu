@@ -1502,8 +1502,7 @@ void LeaveCritical()
 #endif /* DEBUG_LOCKORDER */
 
 
-static void
-runCommand(std::string strCommand)
+void runCommand(std::string strCommand)
 {
     int nErr = ::system(strCommand.c_str());
     if (nErr)
