@@ -1,3 +1,5 @@
+#include <QMap>
+
 #include "transactionrecord.h"
 
 #include "wallet.h"
@@ -39,6 +41,7 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
     int64 nNet = nCredit - nDebit;
     uint256 hash = wtx.GetHash();
     std::map<std::string, std::string> mapValue = wtx.mapValue;
+    const bool combineOutputs = (wtx.cUnit == 'S');
 
     if (showTransaction(wtx))
     {
@@ -51,6 +54,7 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
             //
             // Credit
             //
+            QMap<CScript, TransactionRecord*> outputParts;
             BOOST_FOREACH(const CTxOut& txout, wtx.vout)
             {
                 if(wallet->IsMine(txout))
@@ -80,7 +84,21 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
                         sub.address = mapValue["from"];
                     }
 
+                    if (combineOutputs)
+                    {
+                        QMap<CScript, TransactionRecord*>::const_iterator it = outputParts.find(txout.scriptPubKey);
+                        if (it != outputParts.end())
+                        {
+                            TransactionRecord& previous = *it.value();
+                            previous.credit += sub.credit;
+                            continue;
+                        }
+                    }
+
                     parts.append(sub);
+
+                    if (combineOutputs)
+                        outputParts[txout.scriptPubKey] = &parts.back();
                 }
             }
         }
@@ -135,6 +153,7 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
                 // Debit
                 //
                 int64 nTxFee = nDebit - wtx.GetValueOut();
+                QMap<CScript, TransactionRecord*> outputParts;
 
                 for (int nOut = 0; nOut < wtx.vout.size(); nOut++)
                 {
@@ -172,7 +191,21 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
                     }
                     sub.debit = -nValue;
 
+                    if (combineOutputs)
+                    {
+                        QMap<CScript, TransactionRecord*>::const_iterator it = outputParts.find(txout.scriptPubKey);
+                        if (it != outputParts.end())
+                        {
+                            TransactionRecord& previous = *it.value();
+                            previous.debit += sub.debit;
+                            continue;
+                        }
+                    }
+
                     parts.append(sub);
+
+                    if (combineOutputs)
+                        outputParts[txout.scriptPubKey] = &parts.back();
                 }
             }
             else
