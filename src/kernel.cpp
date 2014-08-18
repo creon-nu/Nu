@@ -23,6 +23,8 @@ unsigned int nProtocolV04TestSwitchTime     = 1406030400; // Tue, 22 Jul 2014 12
 //       is recorded in transaction database to alert user of the requirement.
 unsigned int nProtocolV04UpgradeTime    = 0;
 
+unsigned int nWeightFixSwitchTime = 1408579200; // 2014-08-21 00:00:00 UTC
+
 // Modifier interval: time to elapse before new modifier is computed
 // Set to 6-hour for production network and 20-minute for test network
 unsigned int nModifierInterval = MODIFIER_INTERVAL;
@@ -353,7 +355,11 @@ bool CheckStakeKernelHash(unsigned int nBits, const CBlock& blockFrom, unsigned 
     // to secure the network when proof-of-stake difficulty is low
     // peershares: v0.1 protocol default kernel hash weight starts from 0 at the 3-day min age
     int64 nTimeWeight = min((int64)nTimeTx - txPrev.nTime, (int64)STAKE_MAX_AGE) - (IsProtocolV03(nTimeTx)? nStakeMinAge : 0);
-    CBigNum bnCoinDayWeight = CBigNum(nValueIn) * nTimeWeight / COIN / (24 * 60 * 60);
+    CBigNum bnCoinDayWeight;
+    if (nTimeTx >= nWeightFixSwitchTime)
+        bnCoinDayWeight = CBigNum(nValueIn) * nTimeWeight / MIN_COINSTAKE_VALUE;
+    else
+        bnCoinDayWeight = CBigNum(nValueIn) * nTimeWeight / COIN / (24 * 60 * 60);
     // Calculate hash
     CDataStream ss(SER_GETHASH, 0);
     uint64 nStakeModifier = 0;
