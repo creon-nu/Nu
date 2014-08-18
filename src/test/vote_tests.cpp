@@ -13,14 +13,16 @@ BOOST_AUTO_TEST_CASE(reload_vote_from_script_tests)
     CVote vote;
 
     CCustodianVote custodianVote;
-    custodianVote.cUnit = 'B';
-    custodianVote.hashAddress = uint160(123465);
+    CBitcoinAddress custodianAddress;
+    custodianAddress.SetHash160(123465, 'B');
+    custodianVote.SetAddress(custodianAddress);
     custodianVote.nAmount = 100 * COIN;
     vote.vCustodianVote.push_back(custodianVote);
 
     CCustodianVote custodianVote2;
-    custodianVote2.cUnit = 'B';
-    custodianVote2.hashAddress = uint160(555555555);
+    CBitcoinAddress custodianAddress2;
+    custodianAddress2.SetScriptHash160(555555555, 'B');
+    custodianVote2.SetAddress(custodianAddress2);
     custodianVote2.nAmount = 5.5 * COIN;
     vote.vCustodianVote.push_back(custodianVote2);
 
@@ -45,8 +47,11 @@ BOOST_AUTO_TEST_CASE(reload_vote_from_script_tests)
     {
         CHECK_VOTE_EQUAL(vCustodianVote[i].cUnit);
         CHECK_VOTE_EQUAL(vCustodianVote[i].hashAddress);
+        CHECK_VOTE_EQUAL(vCustodianVote[i].GetAddress().ToString());
         CHECK_VOTE_EQUAL(vCustodianVote[i].nAmount);
     }
+    BOOST_CHECK_EQUAL(custodianAddress.ToString(), vote.vCustodianVote[0].GetAddress().ToString());
+    BOOST_CHECK_EQUAL(custodianAddress2.ToString(), vote.vCustodianVote[1].GetAddress().ToString());
 
     CHECK_VOTE_EQUAL(vParkRateVote.size());
     for (int i=0; i<vote.vParkRateVote.size(); i++)
@@ -570,6 +575,29 @@ BOOST_AUTO_TEST_CASE(premium_calculation)
     BOOST_CHECK_EQUAL(21, GetPremium(1   * COIN, 15, 'B', vParkRateResult));
     BOOST_CHECK_EQUAL(38, GetPremium(1   * COIN, 25, 'B', vParkRateResult));
     BOOST_CHECK_EQUAL((uint64)(3.39453125 * COIN), GetPremium(1 * COIN, 6000, 'B', vParkRateResult));
+}
+
+BOOST_AUTO_TEST_CASE(vote_v1_unserialization)
+{
+    // Serialized with vote v1 code:
+    /* {
+    CVote vote;
+    CCustodianVote custodianVote;
+    custodianVote.cUnit = 'B';
+    custodianVote.hashAddress = uint160(123465);
+    custodianVote.nAmount = 100 * COIN;
+    vote.vCustodianVote.push_back(custodianVote);
+    printf("%s\n", vote.ToScript().ToString().c_str());
+    printf("%s\n", HexStr(vote.ToScript()).c_str());
+    } */
+    vector<unsigned char> voteV1String = ParseHex("6a513701000000014249e201000000000000000000000000000000000040420f0000000000000000000000000000000000000000000000000000");
+
+    CScript voteV1Script(voteV1String.begin(), voteV1String.end());
+
+    CVote vote;
+    BOOST_CHECK(ExtractVote(voteV1Script, vote));
+
+    BOOST_CHECK_EQUAL(CBitcoinAddress(uint160(123465), 'B').ToString(), vote.vCustodianVote[0].GetAddress().ToString());
 }
 
 BOOST_AUTO_TEST_SUITE_END()
