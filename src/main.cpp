@@ -1996,8 +1996,7 @@ bool CBlock::AddToBlockIndex(unsigned int nFile, unsigned int nBlockPos)
                     return error("Unable to extract address from currency coinbase");
 
                 CCustodianVote electedCustodian;
-                electedCustodian.cUnit = tx.cUnit;
-                electedCustodian.hashAddress = address.GetHash160();
+                electedCustodian.SetAddress(address);
                 electedCustodian.nAmount = txo.nValue;
                 pindexNew->vElectedCustodian.push_back(electedCustodian);
             }

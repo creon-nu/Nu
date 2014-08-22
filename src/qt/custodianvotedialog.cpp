@@ -117,8 +117,7 @@ void CustodianVoteDialog::accept()
         }
 
         CCustodianVote vote;
-        vote.cUnit = unit;
-        vote.hashAddress = address.GetHash160();
+        vote.SetAddress(address);
         vote.nAmount = amount;
 
         vVote.push_back(vote);

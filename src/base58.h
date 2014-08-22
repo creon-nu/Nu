@@ -288,7 +288,7 @@ public:
                 else
                     return fPubKey ? 25 : 26;
             default:
-                throw std::runtime_error((boost::format("No address version defined for unit %c") % cUnit).str());
+                throw std::runtime_error((boost::format("No address version defined for unit '%c'") % cUnit).str());
         }
     }
 
