@@ -1,4 +1,5 @@
 // Copyright (c) 2012 The Bitcoin developers
+// Copyright (c) 2014 Nu developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 #include <string>
@@ -44,7 +45,7 @@ const std::string CLIENT_NAME("Siglee");
 #define BUILD_DESC_FROM_COMMIT(maj,min,rev,build,commit) \
     "v" STRINGIFY(maj) "." STRINGIFY(min) "." STRINGIFY(rev) "-g" commit
 
-#define BUILD_DESC_FROM_UNKNOWN(maj,min,rev,build) \
+#define BUILD_DESC_FROM_UNKNOWN(maj,min,rev) \
     "v" STRINGIFY(maj) "." STRINGIFY(min) "." STRINGIFY(rev) "-unk"
 
 #ifndef BUILD_DESC

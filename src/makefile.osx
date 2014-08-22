@@ -2,10 +2,11 @@
 # Copyright (c) 2009-2010 Satoshi Nakamoto
 # Copyright (c) 2011-2012 The PPCoin developers
 # Copyright (c) 2013-2014 The Peershares developers
+# Copyright (c) 2014 Nu developers
 # Distributed under the MIT/X11 software license, see the accompanying
 # file license.txt or http://www.opensource.org/licenses/mit-license.php.
 
-# Mac OS X makefile for peershares
+# Mac OS X makefile for Nu
 # Originally by Laszlo Hanyecz (solar@heliacal.net)
 
 CXX=llvm-g++
@@ -28,7 +29,7 @@ LIBS= -dead_strip
 TESTDEFS = -DTEST_DATA_DIR=$(abspath test/data)
 
 ifdef STATIC
-# Build STATIC if you are redistributing the bitcoind binary
+# Build STATIC if you are redistributing the nud binary
 TESTLIBS += \
  $(DEPSDIR)/lib/libboost_unit_test_framework-mt.a
 LIBS += \
@@ -58,7 +59,7 @@ endif
 DEFS=-DMAC_OSX -DMSG_NOSIGNAL=0 -DBOOST_SPIRIT_THREADSAFE
 
 ifdef RELEASE
-CFLAGS = -mmacosx-version-min=10.5 -O3
+CFLAGS = -mmacosx-version-min=10.6 -O3
 # Compile for maximum compatibility and smallest size.
 # This requires that dependencies are compiled
 # the same way.
@@ -141,11 +142,11 @@ obj-test/%.o: test/%.cpp
 	      -e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
 	  rm -f $(@:%.o=%.d)
 
-test_peershares: $(TESTOBJS) $(filter-out obj/init.o,$(OBJS:obj/%=obj/%))
+test_nu: $(TESTOBJS) $(filter-out obj/init.o,$(OBJS:obj/%=obj/%))
 	$(CXX) $(CFLAGS) -o $@ $(LIBPATHS) $^ $(LIBS) $(TESTLIBS)
 
 clean:
-	-rm -f nud test_ppcoin
+	-rm -f nud test_nu
 	-rm -f obj/*.o
 	-rm -f obj-test/*.o
 	-rm -f obj/*.P

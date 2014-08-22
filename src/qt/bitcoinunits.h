@@ -27,7 +27,7 @@ public:
     //! Get list of units, for dropdown box
     static QList<Unit> availableUnits();
     //! nubit: The name of the base unit
-    static QString baseName(unsigned char baseUnit = baseUnit);
+    static QString baseName(unsigned char baseName = baseUnit);
     //! Is unit ID valid?
     static bool valid(int unit);
     //! Short name
