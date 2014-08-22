@@ -23,7 +23,7 @@ unsigned int nProtocolV04TestSwitchTime     = 1406030400; // Tue, 22 Jul 2014 12
 //       is recorded in transaction database to alert user of the requirement.
 unsigned int nProtocolV04UpgradeTime    = 0;
 
-unsigned int nWeightFixSwitchTime = 1408579200; // 2014-08-21 00:00:00 UTC
+unsigned int nWeightFixSwitchTime = 1408924800; // 2014-08-25 00:00:00 UTC
 
 // Modifier interval: time to elapse before new modifier is computed
 // Set to 6-hour for production network and 20-minute for test network
