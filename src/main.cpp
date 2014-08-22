@@ -1726,14 +1726,6 @@ bool Reorganize(CTxDB& txdb, CBlockIndex* pindexNew)
 }
 
 
-static void
-runCommand(std::string strCommand)
-{
-    int nErr = ::system(strCommand.c_str());
-    if (nErr)
-        printf("runCommand error: system(%s) returned %d\n", strCommand.c_str(), nErr);
-}
-
 // Called from inside SetBestChain: attaches a block to the new best chain being built
 bool CBlock::SetBestChainInner(CTxDB& txdb, CBlockIndex *pindexNew)
 {
@@ -2004,8 +1996,7 @@ bool CBlock::AddToBlockIndex(unsigned int nFile, unsigned int nBlockPos)
                     return error("Unable to extract address from currency coinbase");
 
                 CCustodianVote electedCustodian;
-                electedCustodian.cUnit = tx.cUnit;
-                electedCustodian.hashAddress = address.GetHash160();
+                electedCustodian.SetAddress(address);
                 electedCustodian.nAmount = txo.nValue;
                 pindexNew->vElectedCustodian.push_back(electedCustodian);
             }

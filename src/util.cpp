@@ -1500,3 +1500,11 @@ void LeaveCritical()
 }
 
 #endif /* DEBUG_LOCKORDER */
+
+
+void runCommand(std::string strCommand)
+{
+    int nErr = ::system(strCommand.c_str());
+    if (nErr)
+        printf("runCommand error: system(%s) returned %d\n", strCommand.c_str(), nErr);
+}

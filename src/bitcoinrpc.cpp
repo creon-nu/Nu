@@ -208,7 +208,7 @@ Object voteToJSON(const CVote& vote)
     BOOST_FOREACH(const CCustodianVote& custodianVote, vote.vCustodianVote)
     {
         Object object;
-        object.push_back(Pair("address", CBitcoinAddress(custodianVote.hashAddress, custodianVote.cUnit).ToString()));
+        object.push_back(Pair("address", custodianVote.GetAddress().ToString()));
         object.push_back(Pair("amount", (double)custodianVote.nAmount / COIN));
         custodianVotes.push_back(object);
     }
@@ -2789,14 +2789,16 @@ CVote SampleVote()
     CVote sample;
 
     CCustodianVote custodianVote;
-    custodianVote.cUnit = 'B';
-    custodianVote.hashAddress = uint160(123);
+    CBitcoinAddress custodianAddress;
+    custodianAddress.SetHash160(123, 'B');
+    custodianVote.SetAddress(custodianAddress);
     custodianVote.nAmount = 100 * COIN;
     sample.vCustodianVote.push_back(custodianVote);
 
     CCustodianVote custodianVote2;
-    custodianVote2.cUnit = 'B';
-    custodianVote2.hashAddress = uint160(555555555);
+    CBitcoinAddress custodianAddress2;
+    custodianAddress2.SetScriptHash160(555555555, 'B');
+    custodianVote2.SetAddress(custodianAddress2);
     custodianVote2.nAmount = 5.5 * COIN;
     sample.vCustodianVote.push_back(custodianVote2);
 
@@ -2841,11 +2843,9 @@ Value setvote(const Array& params, bool fHelp)
                         if (!address.IsValid())
                             throw runtime_error("Invalid address\n");
 
-                        custodianVote.cUnit = address.GetUnit();
+                        custodianVote.SetAddress(address);
                         if (custodianVote.cUnit == 'S' || !ValidUnit(custodianVote.cUnit))
                             throw runtime_error("Invalid custodian unit\n");
-
-                        custodianVote.hashAddress = address.GetHash160();
                     }
                     else if (custodianVoteAttribute.name_ == "amount")
                         custodianVote.nAmount = AmountFromValue(custodianVoteAttribute.value_);

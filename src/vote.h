@@ -11,11 +11,13 @@ class CCustodianVote
 {
 public:
     unsigned char cUnit;
+    bool fScript;
     uint160 hashAddress;
     uint64 nAmount;
 
     CCustodianVote() :
         cUnit('?'),
+        fScript(false),
         hashAddress(0),
         nAmount(0)
     {
@@ -24,13 +26,27 @@ public:
     IMPLEMENT_SERIALIZE
     (
         READWRITE(cUnit);
+        if (nVersion >= 20200) // version 0.2.2
+            READWRITE(fScript);
         READWRITE(hashAddress);
         READWRITE(nAmount);
     )
 
+    void SetAddress(const CBitcoinAddress& address)
+    {
+        cUnit = address.GetUnit();
+        fScript = address.IsScript(cUnit);
+        hashAddress = address.GetHash160();
+    }
+
     CBitcoinAddress GetAddress() const
     {
-        return CBitcoinAddress(hashAddress, cUnit);
+        CBitcoinAddress address;
+        if (fScript)
+            address.SetScriptHash160(hashAddress, cUnit);
+        else
+            address.SetHash160(hashAddress, cUnit);
+        return address;
     }
 
     bool operator< (const CCustodianVote& other) const
@@ -42,6 +58,10 @@ public:
         if (nAmount < other.nAmount)
             return true;
         if (nAmount > other.nAmount)
+            return false;
+        if (fScript < other.fScript)
+            return true;
+        if (fScript > other.fScript)
             return false;
         if (hashAddress < other.hashAddress)
             return true;
@@ -137,7 +157,7 @@ public:
     uint160 hashMotion;
 
     CVote() :
-        nVersion(1),
+        nVersion(CLIENT_VERSION),
         hashMotion()
     {
     }
