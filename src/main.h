@@ -109,6 +109,9 @@ extern std::set<CWallet*> setpwalletRegistered;
 extern std::map<uint256, CBlock*> mapOrphanBlocks;
 extern std::map<CBitcoinAddress, CBlockIndex*> mapElectedCustodian;
 extern CCriticalSection cs_mapElectedCustodian;
+#ifdef TESTING
+extern uint256 hashSingleStakeBlock;
+#endif
 
 // Settings
 extern int64 nSplitShareOutputs;
@@ -147,7 +150,11 @@ bool IsInitialBlockDownload();
 std::string GetWarnings(std::string strFor);
 uint256 WantedByOrphan(const CBlock* pblockOrphan);
 const CBlockIndex* GetLastBlockIndex(const CBlockIndex* pindex, bool fProofOfStake);
+#ifdef TESTING
+void BitcoinMiner(CWallet *pwallet, bool fProofOfStake, bool fGenerateSingleBlock = false, CBlockIndex* parent = NULL);
+#else
 void BitcoinMiner(CWallet *pwallet, bool fProofOfStake);
+#endif
 
 
 inline int GetMaturity(bool fProofOfStake)

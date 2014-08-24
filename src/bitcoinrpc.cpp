@@ -561,6 +561,9 @@ Value getinfo(const Array& params, bool fHelp)
     if (pwalletMain->IsCrypted())
         obj.push_back(Pair("unlocked_until", (boost::int64_t)nWalletUnlockTime / 1000));
     obj.push_back(Pair("errors",        GetWarnings("statusbar")));
+#ifdef TESTING
+    obj.push_back(Pair("time",          DateTimeStrFormat(GetAdjustedTime())));
+#endif
     return obj;
 }
 
@@ -3089,6 +3092,203 @@ Value getliquidityinfo(const Array& params, bool fHelp)
 
 
 
+#ifdef TESTING
+
+Value generatestake(const Array& params, bool fHelp)
+{
+    if (fHelp || params.size() > 1)
+        throw runtime_error(
+            "generatestake [<parent block hash>]\n"
+            "generate a single proof of stake block on top of <parent block hash> (default: highest block hash)"
+            );
+
+    if (GetBoolArg("-stakegen", true))
+        throw JSONRPCError(-3, "Stake generation enabled. Won't start another generation.");
+
+    CBlockIndex *parent;
+    if (params.size() > 1)
+    {
+        uint256 parentHash;
+        parentHash.SetHex(params[1].get_str());
+        if (!mapBlockIndex.count(parentHash))
+            throw JSONRPCError(-3, "Parent hash not in main chain");
+        parent = mapBlockIndex[parentHash];
+    }
+    else
+    {
+        parent = pindexBest;
+    }
+
+    CWallet *pwallet = GetWallet('S');
+    BitcoinMiner(pwallet, true, true, parent);
+    return hashSingleStakeBlock.ToString();
+}
+
+
+Value shutdown(const Array& params, bool fHelp)
+{
+    if (fHelp || params.size() != 0)
+        throw runtime_error(
+            "shutdown\n"
+            "close the program"
+            );
+
+    fRequestShutdown = true;
+
+    return "";
+}
+
+
+Value timetravel(const Array& params, bool fHelp)
+{
+    if (fHelp || params.size() != 1)
+        throw runtime_error(
+            "timetravel <seconds>\n"
+            "change relative time"
+            );
+
+    nTimeShift += params[0].get_int();
+
+    return "";
+}
+
+
+unsigned int GetNextTargetRequired(const CBlockIndex* pindexLast, bool fProofOfStake);
+
+Value duplicateblock(const Array& params, bool fHelp)
+{
+    if (fHelp || params.size() < 1 || params.size() > 2)
+        throw runtime_error(
+            "duplicateblock <original hash> [<parent hash>]\n"
+            "propagate a new block with the same stake as block <original hash> on top of <parent hash> (default: same parent)"
+            );
+
+    uint256 originalHash;
+    originalHash.SetHex(params[0].get_str());
+    if (!mapBlockIndex.count(originalHash))
+        throw JSONRPCError(-3, "Original hash not in main chain");
+    CBlockIndex *original = mapBlockIndex[originalHash];
+
+    CBlockIndex *parent;
+    if (params.size() > 1)
+    {
+        uint256 parentHash;
+        parentHash.SetHex(params[1].get_str());
+        if (!mapBlockIndex.count(parentHash))
+            throw JSONRPCError(-3, "Parent hash not in main chain");
+        parent = mapBlockIndex[parentHash];
+    }
+    else
+    {
+        parent = original->pprev;
+    }
+
+    CWallet *pwallet = GetWallet('S');
+    CDefaultKey reservekey(pwallet);
+    bool fProofOfStake = true;
+    unsigned int nExtraNonce = 0;
+
+    auto_ptr<CBlock> pblock(new CBlock());
+    if (!pblock.get())
+        throw JSONRPCError(-3, "Unable to allocate block");
+
+    // Create coinbase tx
+    CTransaction txNew;
+    txNew.vin.resize(1);
+    txNew.vin[0].prevout.SetNull();
+    txNew.vout.resize(1);
+    txNew.vout[0].scriptPubKey << reservekey.GetReservedKey() << OP_CHECKSIG;
+    txNew.cUnit = pwallet->Unit();
+
+    // Add our coinbase tx as first transaction
+    pblock->vtx.push_back(txNew);
+
+    // ppcoin: if coinstake available add coinstake tx
+    CBlockIndex* pindexPrev = parent;
+    IncrementExtraNonce(pblock.get(), pindexPrev, nExtraNonce);
+
+    CBlock originalBlock;
+    originalBlock.ReadFromDisk(original, true);
+    CTransaction txCoinStake(originalBlock.vtx[1]);
+
+    pblock->vtx[0].vout[0].SetEmpty();
+    pblock->vtx[0].nTime = txCoinStake.nTime;
+    pblock->vtx.push_back(txCoinStake);
+
+    pblock->nBits = GetNextTargetRequired(pindexPrev, pblock->IsProofOfStake());
+
+    // nubit: Add expansion transactions
+    if (pblock->IsProofOfStake())
+    {
+        vector<CVote> vVote;
+        if (!ExtractVotes(*pblock, pindexPrev, CUSTODIAN_VOTES, vVote))
+            throw JSONRPCError(-3, "unable to extract votes");
+
+        vector<CTransaction> vCurrencyCoinBase;
+        {
+            LOCK(cs_mapElectedCustodian);
+
+            if (!GenerateCurrencyCoinBases(vVote, mapElectedCustodian, vCurrencyCoinBase))
+                throw JSONRPCError(-3, "unable to generate currency coin bases");
+        }
+
+        BOOST_FOREACH(const CTransaction& tx, vCurrencyCoinBase)
+            pblock->vtx.push_back(tx);
+    }
+
+    // Fill in header
+    pblock->hashPrevBlock  = pindexPrev->GetBlockHash();
+    pblock->hashMerkleRoot = pblock->BuildMerkleTree();
+    if (pblock->IsProofOfStake())
+        pblock->nTime      = pblock->vtx[1].nTime; //same as coinstake timestamp
+    pblock->nTime          = max(pindexPrev->GetMedianTimePast()+1, pblock->GetMaxTransactionTime());
+    pblock->nTime          = max(pblock->GetBlockTime(), pindexPrev->GetBlockTime() - nMaxClockDrift);
+    if (pblock->IsProofOfWork())
+        pblock->UpdateTime(pindexPrev);
+    pblock->nNonce         = 0;
+
+    if (fProofOfStake)
+    {
+        // ppcoin: if proof-of-stake block found then process block
+        if (pblock->IsProofOfStake())
+        {
+            if (!pblock->SignBlock(*pwallet))
+            {
+                // We ignore errors to be able to test duplicate blocks with invalid signature
+            }
+
+            // Found a solution
+            {
+                LOCK(cs_main);
+
+                // Remove key from key pool
+                reservekey.KeepKey();
+
+                // Track how many getdata requests this block gets
+                {
+                    LOCK(pwallet->cs_wallet);
+                    pwallet->mapRequestCount[pblock->GetHash()] = 0;
+                }
+
+                // Process this block the same as if we had received it from another node
+                // But do not check for errors as this is expected to fail
+                ProcessBlock(NULL, pblock.get());
+            }
+        }
+        else
+            throw JSONRPCError(-3, "generated block is not a Proof of Stake");
+    }
+
+    string result(pblock->GetHash().ToString());
+
+    pblock.release();
+
+    return result;
+}
+
+#endif
+
+
 //
 // Call Table
 //
@@ -3164,6 +3364,12 @@ static const CRPCCommand vRPCCommands[] =
     { "liquidityinfo",          &liquidityinfo,          false},
     { "getliquidityinfo",       &getliquidityinfo,       false},
     { "getmotions",             &getmotions,             true },
+#ifdef TESTING
+    { "generatestake",          &generatestake,          true },
+    { "duplicateblock",         &duplicateblock,         true },
+    { "shutdown",               &shutdown,               true },
+    { "timetravel",             &timetravel,             true },
+#endif
 };
 
 CRPCTable::CRPCTable()
@@ -3911,6 +4117,9 @@ Array RPCConvertValues(const std::string &strMethod, const std::vector<std::stri
     if (strMethod == "liquidityinfo"           && n > 2) ConvertTo<double>(params[2]);
     if (strMethod == "getmotions"              && n > 0) ConvertTo<boost::int64_t>(params[0]);
     if (strMethod == "getmotions"              && n > 1) ConvertTo<boost::int64_t>(params[1]);
+#ifdef TESTING
+    if (strMethod == "timetravel"              && n > 0) ConvertTo<boost::int64_t>(params[0]);
+#endif
     return params;
 }
 

@@ -1666,6 +1666,10 @@ void StartNode(void* parg)
     GenerateBitcoins(GetBoolArg("-gen", false), GetWallet('S'));
 
     // ppcoin: mint proof-of-stake blocks in the background
+#ifdef TESTING
+    if (!GetBoolArg("-stakegen", true))
+        return;
+#endif
     if (!CreateThread(ThreadStakeMinter, GetWallet('S')))
         printf("Error: CreateThread(ThreadStakeMinter) failed\n");
 }

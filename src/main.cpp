@@ -66,6 +66,10 @@ const string strMessageMagic = "Peershares Signed Message:\n";
 double dHashesPerSec;
 int64 nHPSTimerStart;
 
+#ifdef TESTING
+uint256 hashSingleStakeBlock;
+#endif
+
 // Settings
 int64 nSplitShareOutputs = MIN_COINSTAKE_VALUE;
 
@@ -975,7 +979,11 @@ unsigned int static GetInitialTarget(bool fProofOfStake)
         return bnInitialHashTarget.GetCompact();
 }
 
+#ifdef TESTING
+unsigned int GetNextTargetRequired(const CBlockIndex* pindexLast, bool fProofOfStake)
+#else
 unsigned int static GetNextTargetRequired(const CBlockIndex* pindexLast, bool fProofOfStake)
+#endif
 {
     if (pindexLast == NULL)
         return bnProofOfWorkLimit.GetCompact(); // genesis block
@@ -2510,8 +2518,13 @@ bool LoadBlockIndex(bool fAllowNew)
         nCoinbaseMaturity = 60;
         nCoinstakeMaturity = 60;
         bnInitialHashTarget = CBigNum(~uint256(0) >> 20);
+#ifdef TESTING
+        bnInitialProofOfStakeHashTarget = CBigNum(~uint256(0) >> 20);
+        nModifierInterval = 3;
+#else
         bnInitialProofOfStakeHashTarget = CBigNum(~uint256(0) >> 28);
         nModifierInterval = 60 * 20; // test net modifier interval is 20 minutes
+#endif
     }
 
     printf("%s Network: genesis=0x%s nBitsLimit=0x%08x nBitsInitial=0x%08x nStakeMinAge=%d nCoinbaseMaturity=%d nCoinstakeMaturity=%d nModifierInterval=%d\n",
@@ -4301,7 +4314,11 @@ void SetMintWarning(const string& strNewWarning)
     }
 }
 
+#ifdef TESTING
+void BitcoinMiner(CWallet *pwallet, bool fProofOfStake, bool fGenerateSingleBlock, CBlockIndex *parent)
+#else
 void BitcoinMiner(CWallet *pwallet, bool fProofOfStake)
+#endif
 {
     printf("PeerMiner started for proof-of-%s\n", fProofOfStake? "stake" : "work");
     SetThreadPriority(THREAD_PRIORITY_LOWEST);
@@ -4334,7 +4351,15 @@ void BitcoinMiner(CWallet *pwallet, bool fProofOfStake)
         // Create new block
         //
         unsigned int nTransactionsUpdatedLast = nTransactionsUpdated;
+#ifdef TESTING
+        CBlockIndex* pindexPrev;
+        if (parent)
+            pindexPrev = parent;
+        else
+            pindexPrev = pindexBest;
+#else
         CBlockIndex* pindexPrev = pindexBest;
+#endif
 
         auto_ptr<CBlock> pblock(CreateNewBlock(reservekey, pwallet, fProofOfStake));
         if (!pblock.get())
@@ -4354,9 +4379,20 @@ void BitcoinMiner(CWallet *pwallet, bool fProofOfStake)
                 }
                 SetMintWarning("");
                 printf("CPUMinter : proof-of-stake block found %s\n", pblock->GetHash().ToString().c_str()); 
+#ifdef TESTING
+                SetThreadPriority(THREAD_PRIORITY_NORMAL);
+                bool fSuccess = CheckWork(pblock.get(), *pwallet, reservekey);
+                SetThreadPriority(THREAD_PRIORITY_LOWEST);
+                if (fSuccess && fGenerateSingleBlock)
+                {
+                    hashSingleStakeBlock = pblock->GetHash();
+                    return;
+                }
+#else
                 SetThreadPriority(THREAD_PRIORITY_NORMAL);
                 CheckWork(pblock.get(), *pwallet, reservekey);
                 SetThreadPriority(THREAD_PRIORITY_LOWEST);
+#endif
             }
             Sleep(500);
             continue;
