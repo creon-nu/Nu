@@ -96,7 +96,9 @@ When(/^node "(.*?)" sends "(.*?)" shares to "(.*?)" through transaction "(.*?)"$
 end
 
 Then(/^transaction "(.*?)" on node "(.*?)" should have (\d+) confirmations?$/) do |arg1, arg2, arg3|
-  expect(@nodes[arg2].rpc("gettransaction", @tx[arg1])["confirmations"]).to eq(arg3.to_i)
+  wait_for do
+    expect(@nodes[arg2].rpc("gettransaction", @tx[arg1])["confirmations"]).to eq(arg3.to_i)
+  end
 end
 
 Then(/^all nodes should have (\d+) transactions? in memory pool$/) do |arg1|
