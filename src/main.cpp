@@ -2802,14 +2802,6 @@ string GetWarnings(string strFor)
         strStatusBar = strRPC = "WARNING: Blockchain redownload required approaching or past v0.4 upgrade deadline.";
     }
 
-    // ppcoin: if detected unmet upgrade requirement enter safe mode
-    // Note: v0.4 upgrade requires blockchain redownload if past protocol switch
-    if (IsProtocolV04(nProtocolV04UpgradeTime + 60*60*24)) // 1 day margin
-    {
-        nPriority = 5000;
-        strStatusBar = strRPC = "WARNING: Blockchain redownload required approaching or past v0.4 upgrade deadline.";
-    }
-
     // Alerts
     {
         LOCK(cs_mapAlerts);
