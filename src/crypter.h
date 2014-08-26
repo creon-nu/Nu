@@ -77,6 +77,7 @@ public:
     void CleanKey()
     {
         OPENSSL_cleanse(chKey, sizeof(chKey));
+        OPENSSL_cleanse(chIV, sizeof(chIV));
         munlock(chKey, sizeof(chKey));
         munlock(chIV, sizeof(chIV));
         fKeySet = false;
