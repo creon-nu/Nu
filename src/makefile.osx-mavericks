@@ -10,14 +10,16 @@
 CXX=llvm-g++
 BREWDIR=/usr/local
 
-INCLUDEPATHS= -I"$(CURDIR)" \
-              -I"$(CURDIR)/obj" \
-              -I"$(BREWDIR)/opt/berkeley-db4/include" \
-              -I"$(BREWDIR)/opt/boost/include" \
+INCLUDEPATHS= \
+ -I"$(CURDIR)" \
+ -I"$(CURDIR)/obj" \
+ -I"$(BREWDIR)/opt/berkeley-db4/include" \
+ -I"$(BREWDIR)/opt/boost/include"
 
-LIBPATHS= -L"$(DEPSDIR)/lib" \
-          -L"$(BREWDIR)/opt/berkeley-db4/lib" \
-          -L"$(BREWDIR)/opt/boost/lib" 
+LIBPATHS= \
+ -L"$(DEPSDIR)/lib" \
+ -L"$(BREWDIR)/opt/berkeley-db4/lib" \
+ -L"$(BREWDIR)/opt/boost/lib" 
 
 USE_UPNP:=1
 
@@ -97,11 +99,11 @@ OBJS= \
     obj/kernel.o
 
 ifdef USE_UPNP
-  DEFS += -DUSE_UPNP=$(USE_UPNP)
+	DEFS += -DUSE_UPNP=$(USE_UPNP)
 ifdef STATIC
-  LIBS += $(BREWDIR)/lib/libminiupnpc.a
+	LIBS += $(BREWDIR)/lib/libminiupnpc.a
 else
-  LIBS += -lminiupnpc
+	LIBS += -lminiupnpc
 endif
 endif
 
@@ -112,12 +114,12 @@ all: ppcoind
 -include obj-test/*.P
 
 obj/build.h: FORCE
-  /bin/sh ../share/genbuild.sh obj/build.h
+	/bin/sh ../share/genbuild.sh obj/build.h
 version.cpp: obj/build.h
 DEFS += -DHAVE_BUILD_INFO
 
 obj/%.o: %.cpp
-  $(CXX) -c $(CFLAGS) -MMD -o $@ $<
+	$(CXX) -c $(CFLAGS) -MMD -o $@ $<
 # $(CXX) -c $(CFLAGS) -o $@ $<
 # @cp $(@:%.o=%.d) $(@:%.o=%.P); \
 #   sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
@@ -125,26 +127,26 @@ obj/%.o: %.cpp
 #   rm -f $(@:%.o=%.d)
 
 ppcoind: $(OBJS:obj/%=obj/%)
-  $(CXX) $(CFLAGS) -o $@ $(LIBPATHS) $^ $(LIBS)
+	$(CXX) $(CFLAGS) -o $@ $(LIBPATHS) $^ $(LIBS)
 
 TESTOBJS := $(patsubst test/%.cpp,obj-test/%.o,$(wildcard test/*.cpp))
 
 obj-test/%.o: test/%.cpp
-  $(CXX) -c $(TESTDEFS) $(CFLAGS) -MMD -o $@ $<
-  @cp $(@:%.o=%.d) $(@:%.o=%.P); \
-    sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
-        -e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
-    rm -f $(@:%.o=%.d)
+	$(CXX) -c $(TESTDEFS) $(CFLAGS) -MMD -o $@ $<
+	@cp $(@:%.o=%.d) $(@:%.o=%.P); \
+	  sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
+	      -e '/^$$/ d' -e 's/$$/ :/' < $(@:%.o=%.d) >> $(@:%.o=%.P); \
+	  rm -f $(@:%.o=%.d)
 
 test_ppcoin: $(TESTOBJS) $(filter-out obj/init.o,$(OBJS:obj/%=obj/%))
-  $(CXX) $(CFLAGS) -o $@ $(LIBPATHS) $^ $(LIBS) $(TESTLIBS)
+	$(CXX) $(CFLAGS) -o $@ $(LIBPATHS) $^ $(LIBS) $(TESTLIBS)
 
 clean:
-  -rm -f ppcoind test_ppcoin
-  -rm -f obj/*.o
-  -rm -f obj-test/*.o
-  -rm -f obj/*.P
-  -rm -f obj-test/*.P
-  -rm -f src/build.h
+	-rm -f ppcoind test_ppcoin
+	-rm -f obj/*.o
+	-rm -f obj-test/*.o
+	-rm -f obj/*.P
+	-rm -f obj-test/*.P
+	-rm -f src/build.h
 
 FORCE:
