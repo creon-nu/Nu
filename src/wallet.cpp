@@ -1247,7 +1247,7 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, int64> >& vecSend, CW
                     //  rediscover unknown transactions that were written with keys of ours to recover
                     //  post-backup change.
 
-                    if (!GetBoolArg("-avatar", true)) // ppcoin: not avatar mode; peershares: avatar mode enabled by default to avoid change being sent to hidden address
+                    if (!GetBoolArg("-avatar", true)) // ppcoin: not avatar mode; nu: avatar mode enabled by default to avoid change being sent to hidden address
                     {
                         // Reserve a new key pair from key pool
                         vector<unsigned char> vchPubKey = reservekey.GetReservedKey();

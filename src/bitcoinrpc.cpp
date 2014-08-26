@@ -348,10 +348,10 @@ Value stop(const Array& params, bool fHelp)
     if (fHelp || params.size() != 0)
         throw runtime_error(
             "stop\n"
-            "Stop Peershares server.");
+            "Stop Nu server.");
     // Shutdown will take long enough that the response should get back
     StartShutdown();
-    return "Peershares server stopping";
+    return "Nu server stopping";
 }
 
 
@@ -502,7 +502,7 @@ Value gethashespersec(const Array& params, bool fHelp)
 
 
 // ppcoin: get network Gh/s estimate
-// peershares note: this is only useful during the initial proof-of-work 'IPO' phase of the network
+// nu note: this is only useful during the initial proof-of-work 'IPO' phase of the network
 Value getnetworkghps(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 0)
@@ -617,7 +617,7 @@ Value getnewaddress(const Array& params, bool fHelp)
     if (fHelp || params.size() > 1)
         throw runtime_error(
             "getnewaddress [account]\n"
-            "Returns a new Peershares address for receiving payments.  "
+            "Returns a new Nu address for receiving payments.  "
             "If [account] is specified (recommended), it is added to the address book "
             "so payments received with the address will be credited to [account].");
 
@@ -684,7 +684,7 @@ Value getaccountaddress(const Array& params, bool fHelp)
     if (fHelp || params.size() != 1)
         throw runtime_error(
             "getaccountaddress <account>\n"
-            "Returns the current Peershares address for receiving payments to this account.");
+            "Returns the current Nu address for receiving payments to this account.");
 
     // Parse the account first so we don't generate a key if there's an error
     string strAccount = AccountFromValue(params[0]);
@@ -702,7 +702,7 @@ Value setaccount(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() < 1 || params.size() > 2)
         throw runtime_error(
-            "setaccount <peersharesaddress> <account>\n"
+            "setaccount <nuaddress> <account>\n"
             "Sets the account associated with the given address.");
 
     CBitcoinAddress address(params[0].get_str());
@@ -732,7 +732,7 @@ Value getaccount(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 1)
         throw runtime_error(
-            "getaccount <peersharesaddress>\n"
+            "getaccount <nuaddress>\n"
             "Returns the account associated with the given address.");
 
     CBitcoinAddress address(params[0].get_str());
@@ -794,12 +794,12 @@ Value sendtoaddress(const Array& params, bool fHelp)
 {
     if (pwalletMain->IsCrypted() && (fHelp || params.size() < 2 || params.size() > 4))
         throw runtime_error(
-            "sendtoaddress <peersharesaddress> <amount> [comment] [comment-to]\n"
+            "sendtoaddress <nuaddress> <amount> [comment] [comment-to]\n"
             "<amount> is a real and is rounded to the nearest 0.000001\n"
             "requires portfolio passphrase to be set with walletpassphrase first");
     if (!pwalletMain->IsCrypted() && (fHelp || params.size() < 2 || params.size() > 4))
         throw runtime_error(
-            "sendtoaddress <peersharesaddress> <amount> [comment] [comment-to]\n"
+            "sendtoaddress <nuaddress> <amount> [comment] [comment-to]\n"
             "<amount> is a real and is rounded to the nearest 0.000001");
 
     CBitcoinAddress address(params[0].get_str());
@@ -832,7 +832,7 @@ Value signmessage(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 2)
         throw runtime_error(
-            "signmessage <peersharesaddress> <message>\n"
+            "signmessage <nuaddress> <message>\n"
             "Sign a message with the private key of an address");
 
     if (pwalletMain->IsLocked())
@@ -864,7 +864,7 @@ Value verifymessage(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 3)
         throw runtime_error(
-            "verifymessage <peersharesaddress> <signature> <message>\n"
+            "verifymessage <nuaddress> <signature> <message>\n"
             "Verify a signed message");
 
     string strAddress  = params[0].get_str();
@@ -897,8 +897,8 @@ Value getreceivedbyaddress(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() < 1 || params.size() > 2)
         throw runtime_error(
-            "getreceivedbyaddress <peersharesaddress> [minconf=1]\n"
-            "Returns the total amount received by <peersharesaddress> in transactions with at least [minconf] confirmations.");
+            "getreceivedbyaddress <nuaddress> [minconf=1]\n"
+            "Returns the total amount received by <nuaddress> in transactions with at least [minconf] confirmations.");
 
     // Bitcoin address
     CBitcoinAddress address = CBitcoinAddress(params[0].get_str());
@@ -1119,12 +1119,12 @@ Value sendfrom(const Array& params, bool fHelp)
 {
     if (pwalletMain->IsCrypted() && (fHelp || params.size() < 3 || params.size() > 6))
         throw runtime_error(
-            "sendfrom <fromaccount> <topeersharesaddress> <amount> [minconf=1] [comment] [comment-to]\n"
+            "sendfrom <fromaccount> <tonuaddress> <amount> [minconf=1] [comment] [comment-to]\n"
             "<amount> is a real and is rounded to the nearest 0.000001\n"
             "requires portfolio passphrase to be set with walletpassphrase first");
     if (!pwalletMain->IsCrypted() && (fHelp || params.size() < 3 || params.size() > 6))
         throw runtime_error(
-            "sendfrom <fromaccount> <topeersharesaddress> <amount> [minconf=1] [comment] [comment-to]\n"
+            "sendfrom <fromaccount> <tonuaddress> <amount> [minconf=1] [comment] [comment-to]\n"
             "<amount> is a real and is rounded to the nearest 0.000001");
 
     string strAccount = AccountFromValue(params[0]);
@@ -1341,7 +1341,7 @@ Value distribute(const Array& params, bool fHelp)
         BOOST_FOREACH(const Distribution &distribution, distributor.GetDistributions())
         {
             Object obj;
-            obj.push_back(Pair("peershares_address", distribution.GetPeershareAddress().ToString()));
+            obj.push_back(Pair("nu_address", distribution.GetPeershareAddress().ToString()));
             obj.push_back(Pair("balance", (double)distribution.GetBalance() / COIN));
             obj.push_back(Pair("peercoin_address", distribution.GetPeercoinAddress().ToString()));
             obj.push_back(Pair("dividends", distribution.GetDividendAmount()));
@@ -2159,7 +2159,7 @@ Value encryptwallet(const Array& params, bool fHelp)
     // slack space in .dat files; that is bad if the old data is
     // unencrypted private keys.  So:
     StartShutdown();
-    return "Portfolio encrypted; Peershares server stopping. Please restart server to run with encrypted portfolio";
+    return "Portfolio encrypted; Nu server stopping. Please restart server to run with encrypted portfolio";
 }
 
 
@@ -2167,8 +2167,8 @@ Value validateaddress(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 1)
         throw runtime_error(
-            "validateaddress <peersharesaddress>\n"
-            "Return information about <peersharesaddress>.");
+            "validateaddress <nuaddress>\n"
+            "Return information about <nuaddress>.");
 
     CBitcoinAddress address(params[0].get_str());
     bool isValid = pwalletMain->IsAddressValid(address);
@@ -2230,10 +2230,10 @@ Value getwork(const Array& params, bool fHelp)
             "If [data] is specified, tries to solve the block and returns true if it was successful.");
 
     if (vNodes.empty())
-        throw JSONRPCError(-9, "Peershares is not connected!");
+        throw JSONRPCError(-9, "Nu is not connected!");
 
     if (IsInitialBlockDownload())
-        throw JSONRPCError(-10, "Peershares is downloading blocks...");
+        throw JSONRPCError(-10, "Nu is downloading blocks...");
 
     typedef map<uint256, pair<CBlock*, CScript> > mapNewBlock_t;
     static mapNewBlock_t mapNewBlock;
@@ -2363,10 +2363,10 @@ Value getblocktemplate(const Array& params, bool fHelp)
 
     {
         if (vNodes.empty())
-            throw JSONRPCError(-9, "Peershares is not connected!");
+            throw JSONRPCError(-9, "Nu is not connected!");
 
         if (IsInitialBlockDownload())
-            throw JSONRPCError(-10, "Peershares is downloading blocks...");
+            throw JSONRPCError(-10, "Nu is downloading blocks...");
 
         // Update block
         static unsigned int nTransactionsUpdatedLast;
@@ -3197,7 +3197,7 @@ string HTTPPost(const string& strMsg, const map<string,string>& mapRequestHeader
 {
     ostringstream s;
     s << "POST / HTTP/1.1\r\n"
-      << "User-Agent: peershares-json-rpc/" << FormatFullVersion() << "\r\n"
+      << "User-Agent: nu-json-rpc/" << FormatFullVersion() << "\r\n"
       << "Host: 127.0.0.1\r\n"
       << "Content-Type: application/json\r\n"
       << "Content-Length: " << strMsg.size() << "\r\n"
@@ -3228,7 +3228,7 @@ static string HTTPReply(int nStatus, const string& strMsg)
     if (nStatus == 401)
         return strprintf("HTTP/1.0 401 Authorization Required\r\n"
             "Date: %s\r\n"
-            "Server: peershares-json-rpc/%s\r\n"
+            "Server: nu-json-rpc/%s\r\n"
             "WWW-Authenticate: Basic realm=\"jsonrpc\"\r\n"
             "Content-Type: text/html\r\n"
             "Content-Length: 296\r\n"
@@ -3255,7 +3255,7 @@ static string HTTPReply(int nStatus, const string& strMsg)
             "Connection: close\r\n"
             "Content-Length: %d\r\n"
             "Content-Type: application/json\r\n"
-            "Server: peershares-json-rpc/%s\r\n"
+            "Server: nu-json-rpc/%s\r\n"
             "\r\n"
             "%s",
         nStatus,

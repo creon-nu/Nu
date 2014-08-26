@@ -78,10 +78,10 @@ void Shutdown(void* parg)
         UnregisterAndDeleteAllWallets();
         CreateThread(ExitTimeout, NULL);
         Sleep(50);
-        printf("Peershares exiting\n\n");
+        printf("Nu exiting\n\n");
         fExit = true;
 #ifndef QT_GUI
-        // ensure non UI client get's exited here, but let Peershares-Qt reach return 0; in bitcoin.cpp
+        // ensure non UI client get's exited here, but let Nu-Qt reach return 0; in bitcoin.cpp
         exit(0);
 #endif
     }
@@ -166,7 +166,7 @@ bool AppInit2(int argc, char* argv[])
     //
     // Parameters
     //
-    // If Qt is used, parameters/peershares.conf are parsed in qt/bitcoin.cpp's main()
+    // If Qt is used, parameters/nu.conf are parsed in qt/bitcoin.cpp's main()
 #if !defined(QT_GUI)
     ParseParameters(argc, argv);
     if (!boost::filesystem::is_directory(GetDataDir(false)))
@@ -181,7 +181,7 @@ bool AppInit2(int argc, char* argv[])
     if (mapArgs.count("-?") || mapArgs.count("--help"))
     {
         string strUsage = string() +
-          _("Peershares version") + " " + FormatFullVersion() + "\n\n" +
+          _("Nu version") + " " + FormatFullVersion() + "\n\n" +
           _("Usage:") + "\t\t\t\t\t\t\t\t\t\t\n" +
             "  nud [options]                   \t  " + "\n" +
             "  nud [options] <command> [params]\t  " + _("Send command to -server or nud") + "\n" +
@@ -248,7 +248,7 @@ bool AppInit2(int argc, char* argv[])
             "  -checklevel=<n>  \t\t  " + _("How thorough the block verification is (0-6, default: 1)") + "\n";
 
         strUsage += string() +
-            _("\nSSL options: (see the Peershares Wiki for SSL setup instructions)") + "\n" +
+            _("\nSSL options: (see the Nu Wiki for SSL setup instructions)") + "\n" +
             "  -rpcssl                                \t  " + _("Use OpenSSL (https) for JSON-RPC connections") + "\n" +
             "  -rpcsslcertificatechainfile=<file.cert>\t  " + _("Server certificate file (default: server.cert)") + "\n" +
             "  -rpcsslprivatekeyfile=<file.pem>       \t  " + _("Server private key (default: server.pem)") + "\n" +
@@ -298,7 +298,7 @@ bool AppInit2(int argc, char* argv[])
 
 #ifndef QT_GUI
     for (int i = 1; i < argc; i++)
-        if (!IsSwitchChar(argv[i][0]) && !(strlen(argv[i]) >= 11 && strncasecmp(argv[i], "Peershares:", 11) == 0))
+        if (!IsSwitchChar(argv[i][0]) && !(strlen(argv[i]) >= 11 && strncasecmp(argv[i], "Nu:", 11) == 0))
             fCommandLine = true;
 
     if (fCommandLine)
@@ -333,7 +333,7 @@ bool AppInit2(int argc, char* argv[])
     if (!fDebug)
         ShrinkDebugFile();
     printf("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
-    printf("Peershares version %s (%s)\n", FormatFullVersion().c_str(), CLIENT_DATE.c_str());
+    printf("Nu version %s (%s)\n", FormatFullVersion().c_str(), CLIENT_DATE.c_str());
     printf("Default data directory %s\n", GetDefaultDataDir().string().c_str());
 
     if (GetBoolArg("-loadblockindextest"))
@@ -344,14 +344,14 @@ bool AppInit2(int argc, char* argv[])
         return false;
     }
 
-    // Make sure only a single Peershares process is using the data directory.
+    // Make sure only a single Nu process is using the data directory.
     boost::filesystem::path pathLockFile = GetDataDir() / ".lock";
     FILE* file = fopen(pathLockFile.string().c_str(), "a"); // empty lock file; created if it doesn't exist.
     if (file) fclose(file);
     static boost::interprocess::file_lock lock(pathLockFile.string().c_str());
     if (!lock.try_lock())
     {
-        ThreadSafeMessageBox(strprintf(_("Cannot obtain a lock on data directory %s.  Peershares is probably already running."), GetDataDir().string().c_str()), _("Peershares"), wxOK|wxMODAL);
+        ThreadSafeMessageBox(strprintf(_("Cannot obtain a lock on data directory %s.  Nu is probably already running."), GetDataDir().string().c_str()), _("Nu"), wxOK|wxMODAL);
         return false;
     }
 
@@ -377,7 +377,7 @@ bool AppInit2(int argc, char* argv[])
         strErrors << _("Error loading blkindex.dat") << "\n";
 
     // as LoadBlockIndex can take several minutes, it's possible the user
-    // requested to kill Peershares-Qt during the last operation. If so, exit.
+    // requested to kill Nu-Qt during the last operation. If so, exit.
     // As the program has not fully started yet, Shutdown() is possibly overkill.
     if (fRequestShutdown)
     {
@@ -485,7 +485,7 @@ bool AppInit2(int argc, char* argv[])
 
     if (!strErrors.str().empty())
     {
-        ThreadSafeMessageBox(strErrors.str(), _("Peershares"), wxOK | wxICON_ERROR | wxMODAL);
+        ThreadSafeMessageBox(strErrors.str(), _("Nu"), wxOK | wxICON_ERROR | wxMODAL);
         return false;
     }
 
@@ -495,9 +495,9 @@ bool AppInit2(int argc, char* argv[])
         wallet->ReacceptWalletTransactions();
     }
 
-    // Note: Peershares-Qt stores several settings in the wallet, so we want
+    // Note: Nu-Qt stores several settings in the wallet, so we want
     // to load the wallet BEFORE parsing command-line arguments, so
-    // the command-line/peershares.conf settings override GUI setting.
+    // the command-line/nu.conf settings override GUI setting.
 
     //
     // Parameters
@@ -544,7 +544,7 @@ bool AppInit2(int argc, char* argv[])
         addrProxy = CService(mapArgs["-proxy"], 9050);
         if (!addrProxy.IsValid())
         {
-            ThreadSafeMessageBox(_("Invalid -proxy address"), _("Peershares"), wxOK | wxMODAL);
+            ThreadSafeMessageBox(_("Invalid -proxy address"), _("Nu"), wxOK | wxMODAL);
             return false;
         }
     }
@@ -580,7 +580,7 @@ bool AppInit2(int argc, char* argv[])
         std::string strError;
         if (!BindListenPort(strError))
         {
-            ThreadSafeMessageBox(strError, _("Peershares"), wxOK | wxMODAL);
+            ThreadSafeMessageBox(strError, _("Nu"), wxOK | wxMODAL);
             return false;
         }
     }
@@ -596,20 +596,20 @@ bool AppInit2(int argc, char* argv[])
         }
     }
 
-    if (mapArgs.count("-reservebalance")) // Peershares: reserve balance amount
+    if (mapArgs.count("-reservebalance")) // Nu: reserve balance amount
     {
         int64 nReserveBalance = 0;
         if (!ParseMoney(mapArgs["-reservebalance"], nReserveBalance))
         {
-            ThreadSafeMessageBox(_("Invalid amount for -reservebalance=<amount>"), _("Peershares"), wxOK | wxMODAL);
+            ThreadSafeMessageBox(_("Invalid amount for -reservebalance=<amount>"), _("Nu"), wxOK | wxMODAL);
             return false;
         }
     }
 
-    if (mapArgs.count("-checkpointkey")) // Peershares: checkpoint master priv key
+    if (mapArgs.count("-checkpointkey")) // Nu: checkpoint master priv key
     {
         if (!Checkpoints::SetCheckpointPrivKey(GetArg("-checkpointkey", "")))
-            ThreadSafeMessageBox(_("Unable to sign checkpoint, wrong checkpointkey?\n"), _("Peershares"), wxOK | wxMODAL);
+            ThreadSafeMessageBox(_("Unable to sign checkpoint, wrong checkpointkey?\n"), _("Nu"), wxOK | wxMODAL);
     }
 
     //
@@ -621,7 +621,7 @@ bool AppInit2(int argc, char* argv[])
     RandAddSeedPerfmon();
 
     if (!CreateThread(StartNode, NULL))
-        ThreadSafeMessageBox(_("Error: CreateThread(StartNode) failed"), _("Peershares"), wxOK | wxMODAL);
+        ThreadSafeMessageBox(_("Error: CreateThread(StartNode) failed"), _("Nu"), wxOK | wxMODAL);
 
     if (fServer)
     {
