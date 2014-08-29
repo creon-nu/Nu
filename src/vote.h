@@ -36,16 +36,18 @@ public:
     {
         cUnit = address.GetUnit();
         fScript = address.IsScript(cUnit);
-        hashAddress = address.GetHash160();
+        CKeyID keyID;
+        address.GetKeyID(keyID);
+        hashAddress = keyID;
     }
 
     CBitcoinAddress GetAddress() const
     {
         CBitcoinAddress address;
         if (fScript)
-            address.SetScriptHash160(hashAddress, cUnit);
+            address.Set(CScriptID(hashAddress), cUnit);
         else
-            address.SetHash160(hashAddress, cUnit);
+            address.Set(CKeyID(hashAddress), cUnit);
         return address;
     }
 

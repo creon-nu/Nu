@@ -2,6 +2,8 @@
 #define WALLETMODEL_H
 
 #include <QObject>
+#include <vector>
+#include <map>
 
 #include "allocators.h" /* for SecureString */
 
@@ -14,6 +16,12 @@ class TransactionTableModel;
 class ParkTableModel;
 class CWallet;
 class CVote;
+class CKeyID;
+class CPubKey;
+class COutput;
+class COutPoint;
+class uint256;
+class CCoinControl;
 
 class SendCoinsRecipient
 {
@@ -72,7 +80,7 @@ public:
     // Return status record for SendCoins, contains error id + information
     struct SendCoinsReturn
     {
-        SendCoinsReturn(StatusCode status,
+        SendCoinsReturn(StatusCode status=Aborted,
                          qint64 fee=0,
                          QString hex=QString()):
             status(status), fee(fee), hex(hex) {}
@@ -81,8 +89,8 @@ public:
         QString hex; // is filled with the transaction hash if status is "OK"
     };
 
-    // Send shares to a list of recipients
-    SendCoinsReturn sendCoins(const QList<SendCoinsRecipient> &recipients);
+    // Send coins to a list of recipients
+    SendCoinsReturn sendCoins(const QList<SendCoinsRecipient> &recipients, const CCoinControl *coinControl=NULL);
 
     // nubit: Park coins
     QString park(qint64 amount, qint64 blocks, QString unparkAddress);
@@ -129,6 +137,16 @@ public:
     {
         return wallet;
     }
+
+    bool getKey(const CKeyID &address, CKey& keyOut) const;
+    bool getPubKey(const CKeyID &address, CPubKey& vchPubKeyOut) const;
+    void getOutputs(const std::vector<COutPoint>& vOutpoints, std::vector<COutput>& vOutputs);
+    void listCoins(std::map<QString, std::vector<COutput> >& mapCoins) const;
+
+    bool isLockedCoin(uint256 hash, unsigned int n) const;
+    void lockCoin(COutPoint& output);
+    void unlockCoin(COutPoint& output);
+    void listLockedCoins(std::vector<COutPoint>& vOutpts); 
 
 private:
     CWallet *wallet;

@@ -11,7 +11,7 @@ class TransactionView;
 class OverviewPage;
 class AddressBookPage;
 class SendCoinsDialog;
-class MessagePage;
+class SignVerifyMessageDialog;
 class ParkPage;
 class VotePage;
 class Notificator;
@@ -69,7 +69,7 @@ private:
     AddressBookPage *addressBookPage;
     AddressBookPage *receiveCoinsPage;
     SendCoinsDialog *sendCoinsPage;
-    MessagePage *messagePage;
+    SignVerifyMessageDialog *messagePage;
     ParkPage *parkPage;
     VotePage *votePage;
 
@@ -146,7 +146,6 @@ public slots:
     void handleURI(QString strURI);
 
     void gotoMessagePage();
-    void gotoMessagePage(QString);
 
 private slots:
     /** Switch to overview (home) page */

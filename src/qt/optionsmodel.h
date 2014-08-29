@@ -26,6 +26,7 @@ public:
         DisplayUnit, // BitcoinUnits::Unit
         DisplayAddresses, // bool
         DetachDatabases, // bool
+        CoinControlFeatures, // bool
         OptionIDRowCount,
     };
 
@@ -43,16 +44,19 @@ public:
     bool getMinimizeOnClose();
     int getDisplayUnit();
     bool getDisplayAddresses();
+    bool getCoinControlFeatures();
+
 private:
     int nDisplayUnit;
     bool bDisplayAddresses;
     bool fMinimizeToTray;
     bool fMinimizeOnClose;
+    bool fCoinControlFeatures;
+
 signals:
     void displayUnitChanged(int unit);
-
-public slots:
-
+    void transactionFeeChanged(qint64);
+    void coinControlFeaturesChanged(bool);
 };
 
 #endif // OPTIONSMODEL_H

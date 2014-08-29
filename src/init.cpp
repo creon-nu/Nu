@@ -435,18 +435,18 @@ bool AppInit2(int argc, char* argv[])
             pwalletMain->SetMaxVersion(nMaxVersion);
         }
 
-        if (fFirstRun)
-        {
-            // Create new keyUser and set as default key
-            RandAddSeedPerfmon();
+    if (fFirstRun)
+    {
+        // Create new keyUser and set as default key
+        RandAddSeedPerfmon();
 
-            std::vector<unsigned char> newDefaultKey;
-            if (!pwalletMain->GetKeyFromPool(newDefaultKey, false))
-                strErrors << _("Cannot initialize keypool") << "\n";
-            pwalletMain->SetDefaultKey(newDefaultKey);
-            if (!pwalletMain->SetAddressBookName(CBitcoinAddress(pwalletMain->vchDefaultKey, unit), ""))
-                strErrors << _("Cannot write default address") << "\n";
-        }
+        CPubKey newDefaultKey;
+        if (!pwalletMain->GetKeyFromPool(newDefaultKey, false))
+            strErrors << _("Cannot initialize keypool") << "\n";
+        pwalletMain->SetDefaultKey(newDefaultKey);
+        if (!pwalletMain->SetAddressBookName(pwalletMain->vchDefaultKey.GetID(), ""))
+            strErrors << _("Cannot write default address") << "\n";
+    }
 
         printf("%s", strErrors.str().c_str());
         printf(" wallet      %15"PRI64d"ms\n", GetTimeMillis() - nStart);

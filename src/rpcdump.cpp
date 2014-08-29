@@ -7,6 +7,7 @@
 #include "init.h" // for pwalletMain
 #include "bitcoinrpc.h"
 #include "ui_interface.h"
+#include "base58.h"
 
 #include <boost/lexical_cast.hpp>
 #include <boost/thread.hpp>
@@ -68,8 +69,7 @@ Value importprivkey(const Array& params, bool fHelp)
     bool fCompressed;
     CSecret secret = vchSecret.GetSecret(fCompressed);
     key.SetSecret(secret, fCompressed);
-    CBitcoinAddress vchAddress = pwalletMain->GetAddress(key.GetPubKey());
-
+    CKeyID vchAddress = key.GetPubKey().GetID();
     {
         LOCK2(cs_main, pwalletMain->cs_wallet);
 
@@ -103,9 +103,12 @@ Value dumpprivkey(const Array& params, bool fHelp)
         throw JSONRPCError(-13, "Error: Please enter the wallet passphrase with walletpassphrase first.");
     if (fWalletUnlockMintOnly) // ppcoin: no dumpprivkey in mint-only mode
         throw JSONRPCError(-102, "Wallet is unlocked for minting only.");
+    CKeyID keyID;
+    if (!address.GetKeyID(keyID))
+        throw JSONRPCError(-3, "Address does not refer to a key");
     CSecret vchSecret;
     bool fCompressed;
-    if (!pwalletMain->GetSecret(address, vchSecret, fCompressed))
+    if (!pwalletMain->GetSecret(keyID, vchSecret, fCompressed))
         throw JSONRPCError(-4,"Private key for address " + strAddress + " is not known");
     return CBitcoinSecret(vchSecret, fCompressed).ToString();
 }

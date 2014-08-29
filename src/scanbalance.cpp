@@ -36,8 +36,9 @@ static void ScanTransactionInputs(CTxDB& txdb, const CTransaction& tx, BalanceMa
         }
 
         CTxOut prevOut = ti.vout[txi.prevout.n];
-        CBitcoinAddress addr;
-        ExtractAddress(prevOut.scriptPubKey, addr, 'S');
+        CTxDestination dest;
+        ExtractDestination(prevOut.scriptPubKey, dest);
+        CBitcoinAddress addr(dest, 'S');
         if (prevOut.nValue > 0)
         {
             if (mapBalance.count(addr) == 0) {
@@ -60,8 +61,9 @@ static void ScanTransactionOutputs(const CTransaction& tx, BalanceMap& mapBalanc
     {
         if (txo.nValue > 0 && !txo.scriptPubKey.empty())
         {
-            CBitcoinAddress addr;
-            ExtractAddress(txo.scriptPubKey, addr, 'S');
+            CTxDestination dest;
+            ExtractDestination(txo.scriptPubKey, dest);
+            CBitcoinAddress addr(dest, 'S');
             mapBalance[addr] += txo.nValue;
         }
     }

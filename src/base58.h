@@ -22,6 +22,7 @@
 #include "bignum.h"
 #include "key.h"
 #include <boost/format.hpp>
+#include "script.h"
 
 static const char* pszBase58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
 
@@ -261,6 +262,19 @@ public:
  * Script-hash-addresses have version 117 (or 196 testnet).
  * The data vector contains RIPEMD160(SHA256(cscript)), where cscript is the serialized redemption script.
  */
+class CBitcoinAddress;
+class CBitcoinAddressVisitor : public boost::static_visitor<bool>
+{
+private:
+    CBitcoinAddress *addr;
+    unsigned char cUnit;
+public:
+    CBitcoinAddressVisitor(CBitcoinAddress *addrIn, unsigned char cUnit) : addr(addrIn), cUnit(cUnit) { }
+    bool operator()(const CKeyID &id) const;
+    bool operator()(const CScriptID &id) const;
+    bool operator()(const CNoDestination &no) const;
+};
+
 class CBitcoinAddress : public CBase58Data
 {
 public:
@@ -311,21 +325,19 @@ public:
         }
     }
 
-    bool SetHash160(const uint160& hash160, unsigned char cUnit)
-    {
-        SetData(ExpectedVersion(cUnit, true), &hash160, 20);
+    bool Set(const CKeyID &id, unsigned char cUnit) {
+        SetData(ExpectedVersion(cUnit, true), &id, 20);
         return true;
     }
 
-    void SetPubKey(const std::vector<unsigned char>& vchPubKey, unsigned char cUnit)
-    {
-        SetHash160(Hash160(vchPubKey), cUnit);
+    bool Set(const CScriptID &id, unsigned char cUnit) {
+        SetData(ExpectedVersion(cUnit, false), &id, 20);
+        return true;
     }
 
-    bool SetScriptHash160(const uint160& hash160, unsigned char cUnit)
+    bool Set(const CTxDestination &dest, unsigned char cUnit)
     {
-        SetData(ExpectedVersion(cUnit, false), &hash160, 20);
-        return true;
+        return boost::apply_visitor(CBitcoinAddressVisitor(this, cUnit), dest);
     }
 
     bool IsValid(unsigned char cUnit) const
@@ -345,25 +357,13 @@ public:
         return IsValid(cUnit);
     }
 
-    bool IsScript(unsigned char cUnit) const
-    {
-        if (!IsValid(cUnit))
-            return false;
-        return nVersion == ExpectedVersion(cUnit, false);
-    }
-
     CBitcoinAddress()
     {
     }
 
-    CBitcoinAddress(uint160 hash160In, unsigned char cUnit)
+    CBitcoinAddress(const CTxDestination &dest, unsigned char cUnit)
     {
-        SetHash160(hash160In, cUnit);
-    }
-
-    CBitcoinAddress(const std::vector<unsigned char>& vchPubKey, unsigned char cUnit)
-    {
-        SetPubKey(vchPubKey, cUnit);
+        Set(dest, cUnit);
     }
 
     CBitcoinAddress(const std::string& strAddress)
@@ -376,13 +376,73 @@ public:
         SetString(pszAddress);
     }
 
-    uint160 GetHash160() const
-    {
-        assert(vchData.size() == 20);
-        uint160 hash160;
-        memcpy(&hash160, &vchData[0], 20);
-        return hash160;
+    CTxDestination Get() const {
+        unsigned char cUnit = GetUnit();
+
+        if (cUnit == '?')
+            return CNoDestination();
+
+        if (!IsValid(cUnit))
+            return CNoDestination();
+
+        bool fPubKey = !IsScript(cUnit);
+        if (fPubKey)
+        {
+            uint160 id;
+            memcpy(&id, &vchData[0], 20);
+            return CKeyID(id);
+        }
+        else
+        {
+            uint160 id;
+            memcpy(&id, &vchData[0], 20);
+            return CScriptID(id);
+        }
     }
+
+    bool GetKeyID(CKeyID &keyID) const {
+        unsigned char cUnit = GetUnit();
+        if (!IsValid(cUnit))
+            return false;
+        if (!IsScript(cUnit))
+        {
+            uint160 id;
+            memcpy(&id, &vchData[0], 20);
+            keyID = CKeyID(id);
+            return true;
+        }
+        return false;
+    }
+
+    bool IsScript(unsigned char cUnit) const {
+        return nVersion == ExpectedVersion(cUnit, false);
+    }
+
+    bool IsScript() const {
+        unsigned char cUnit = GetUnit();
+
+        if (cUnit == '?')
+            return false;
+
+        return IsScript(cUnit);
+    }
+};
+
+bool inline CBitcoinAddressVisitor::operator()(const CKeyID &id) const         { return addr->Set(id, cUnit); }
+bool inline CBitcoinAddressVisitor::operator()(const CScriptID &id) const      { return addr->Set(id, cUnit); }
+bool inline CBitcoinAddressVisitor::operator()(const CNoDestination &id) const { return false; }
+
+class CPeercoinAddress;
+class CPeercoinAddressVisitor : public boost::static_visitor<bool>
+{
+private:
+    CPeercoinAddress *addr;
+    unsigned char cUnit;
+public:
+    CPeercoinAddressVisitor(CPeercoinAddress *addrIn) : addr(addrIn) { }
+    bool operator()(const CKeyID &id) const;
+    bool operator()(const CScriptID &id) const;
+    bool operator()(const CNoDestination &no) const;
 };
 
 class CPeercoinAddress : public CBitcoinAddress
@@ -396,16 +456,19 @@ public:
         SCRIPT_ADDRESS_TEST = 196,
     };
 
-    bool SetHash160(const uint160& hash160)
-    {
-        SetData(fTestNet ? PUBKEY_ADDRESS_TEST : PUBKEY_ADDRESS, &hash160, 20);
+    bool Set(const CKeyID &id) {
+        SetData(fTestNet ? PUBKEY_ADDRESS_TEST : PUBKEY_ADDRESS, &id, 20);
         return true;
     }
 
-    bool SetScriptHash160(const uint160& hash160)
-    {
-        SetData(fTestNet ? SCRIPT_ADDRESS_TEST : SCRIPT_ADDRESS, &hash160, 20);
+    bool Set(const CScriptID &id) {
+        SetData(fTestNet ? SCRIPT_ADDRESS_TEST : SCRIPT_ADDRESS, &id, 20);
         return true;
+    }
+
+    bool Set(const CTxDestination &dest)
+    {
+        return boost::apply_visitor(CPeercoinAddressVisitor(this), dest);
     }
 
     bool IsValid() const
@@ -437,30 +500,82 @@ public:
         }
         return fExpectTestNet == fTestNet && vchData.size() == nExpectedSize;
     }
-    bool IsScript() const
+
+    CPeercoinAddress()
     {
+    }
+
+    CPeercoinAddress(const CBitcoinAddress &addr)
+    {
+        Set(addr.Get());
+    }
+
+    CPeercoinAddress(const CTxDestination &dest)
+    {
+        Set(dest);
+    }
+
+    CPeercoinAddress(const std::string& strAddress)
+    {
+        SetString(strAddress);
+    }
+
+    CPeercoinAddress(const char* pszAddress)
+    {
+        SetString(pszAddress);
+    }
+
+    CTxDestination Get() const {
+        if (!IsValid())
+            return CNoDestination();
+        switch (nVersion) {
+        case PUBKEY_ADDRESS:
+        case PUBKEY_ADDRESS_TEST: {
+            uint160 id;
+            memcpy(&id, &vchData[0], 20);
+            return CKeyID(id);
+        }
+        case SCRIPT_ADDRESS:
+        case SCRIPT_ADDRESS_TEST: {
+            uint160 id;
+            memcpy(&id, &vchData[0], 20);
+            return CScriptID(id);
+        }
+        }
+        return CNoDestination();
+    }
+
+    bool GetKeyID(CKeyID &keyID) const {
         if (!IsValid())
             return false;
-        if (fTestNet)
-            return nVersion == SCRIPT_ADDRESS_TEST;
-        return nVersion == SCRIPT_ADDRESS;
+        switch (nVersion) {
+        case PUBKEY_ADDRESS:
+        case PUBKEY_ADDRESS_TEST: {
+            uint160 id;
+            memcpy(&id, &vchData[0], 20);
+            keyID = CKeyID(id);
+            return true;
+        }
+        default: return false;
+        }
     }
 
-    CPeercoinAddress(uint160 hash160In)
-    {
-        SetHash160(hash160In);
-    }
-
-    CPeercoinAddress(const CBitcoinAddress &address)
-    {
-        if (address.IsScript('S'))
-            SetScriptHash160(address.GetHash160());
-        else if (address.IsValid('S'))
-            SetHash160(address.GetHash160());
-        else
-            throw std::runtime_error("Peercoin address can only be built from S unit addresses");
+    bool IsScript() const {
+        if (!IsValid())
+            return false;
+        switch (nVersion) {
+        case SCRIPT_ADDRESS:
+        case SCRIPT_ADDRESS_TEST: {
+            return true;
+        }
+        default: return false;
+        }
     }
 };
+
+bool inline CPeercoinAddressVisitor::operator()(const CKeyID &id) const         { return addr->Set(id); }
+bool inline CPeercoinAddressVisitor::operator()(const CScriptID &id) const      { return addr->Set(id); }
+bool inline CPeercoinAddressVisitor::operator()(const CNoDestination &id) const { return false; }
 
 /** A base58-encoded secret key */
 class CBitcoinSecret : public CBase58Data
@@ -532,6 +647,15 @@ public:
             vchData.push_back(1);
     }
 
+    CSecret GetSecret(bool &fCompressedOut)
+    {
+        CSecret vchSecret;
+        vchSecret.resize(32);
+        memcpy(&vchSecret[0], &vchData[0], 32);
+        fCompressedOut = vchData.size() == 33;
+        return vchSecret;
+    }
+
     bool IsValid() const
     {
         bool fExpectTestNet = false;
@@ -550,10 +674,23 @@ public:
         return fExpectTestNet == fTestNet && (vchData.size() == 32 || (vchData.size() == 33 && vchData[32] == 1));
     }
 
+    bool SetString(const char* pszSecret)
+    {
+        return CBase58Data::SetString(pszSecret) && IsValid();
+    }
+
+    bool SetString(const std::string& strSecret)
+    {
+        return SetString(strSecret.c_str());
+    }
+
     CPeercoinSecret(const CSecret& vchSecret, bool fCompressed)
     {
         SetSecret(vchSecret, fCompressed);
     }
-};
 
+    CPeercoinSecret()
+    {
+    }
+};
 #endif
