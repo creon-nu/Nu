@@ -119,6 +119,7 @@ class CoinContainer
       'Binds' => ["#{File.expand_path('../../..', __FILE__)}:/code"],
       'PortBindings' => {
         "15001/tcp" => ['127.0.0.1'],
+        "15002/tcp" => ['127.0.0.1'],
         "7895/tcp" => ['127.0.0.1'],
       },
       'Links' => links.map { |link_name, alias_name| "#{link_name}:#{alias_name}" },
@@ -132,8 +133,11 @@ class CoinContainer
     if ports.nil?
       raise "Unable to get port. Usualy this means the daemon process failed to start."
     end
-    port = ports["15001/tcp"].first["HostPort"].to_i
-    @rpc_port = port
+    @rpc_ports = {
+      'S' => ports["15001/tcp"].first["HostPort"].to_i,
+      'B' => ports["15002/tcp"].first["HostPort"].to_i,
+    }
+    @rpc_port = @rpc_ports['S']
     @port= ports["7895/tcp"].first["HostPort"].to_i
   end
 
@@ -148,11 +152,16 @@ class CoinContainer
   end
 
   def rpc(method, *params)
+    unit_rpc('S', method, *params)
+  end
+
+  def unit_rpc(unit, method, *params)
     data = {
       method: method,
       params: params,
       id: 'jsonrpc',
     }
+    rpc_port = @rpc_ports.fetch(unit)
     url = "http://localhost:#{rpc_port}/"
     auth = {
       username: "bob",
