@@ -1522,8 +1522,8 @@ bool CBlock::ConnectBlock(CTxDB& txdb, CBlockIndex* pindex)
 
     map<uint256, CTxIndex> mapQueuedChanges;
     int64 nFees = 0;
-    int64 nValueIn = 0;
-    int64 nValueOut = 0;
+    map<unsigned char, int64> mapValueIn;
+    map<unsigned char, int64> mapValueOut;
     unsigned int nSigOps = 0;
     BOOST_FOREACH(CTransaction& tx, vtx)
     {
@@ -1536,7 +1536,7 @@ bool CBlock::ConnectBlock(CTxDB& txdb, CBlockIndex* pindex)
 
         MapPrevTx mapInputs;
         if (tx.IsCoinBase() || tx.IsCurrencyCoinBase())
-            nValueOut += tx.GetValueOut();
+            mapValueOut[tx.cUnit] += tx.GetValueOut();
         else
         {
             bool fInvalid;
@@ -1555,8 +1555,8 @@ bool CBlock::ConnectBlock(CTxDB& txdb, CBlockIndex* pindex)
 
             int64 nTxValueIn = tx.GetValueIn(mapInputs);
             int64 nTxValueOut = tx.GetValueOut();
-            nValueIn += nTxValueIn;
-            nValueOut += nTxValueOut;
+            mapValueIn[tx.cUnit] += nTxValueIn;
+            mapValueOut[tx.cUnit] += nTxValueOut;
             if (!tx.IsCoinStake())
                 nFees += nTxValueIn - nTxValueOut;
 
@@ -1568,8 +1568,9 @@ bool CBlock::ConnectBlock(CTxDB& txdb, CBlockIndex* pindex)
     }
 
     // ppcoin: track money supply and mint amount info
-    pindex->nMint = nValueOut - nValueIn + nFees;
-    pindex->nMoneySupply = (pindex->pprev? pindex->pprev->nMoneySupply : 0) + nValueOut - nValueIn;
+    pindex->nMint = mapValueOut['S'] - mapValueIn['S'] + nFees;
+    BOOST_FOREACH(unsigned char cUnit, sAvailableUnits)
+        pindex->mapMoneySupply[cUnit] = (pindex->pprev? pindex->pprev->mapMoneySupply[cUnit] : 0) + mapValueOut[cUnit] - mapValueIn[cUnit];
     if (!txdb.WriteBlockIndex(CDiskBlockIndex(pindex)))
         return error("Connect() : WriteBlockIndex for pindex failed");
 
@@ -1831,7 +1832,7 @@ bool CBlock::SetBestChain(CTxDB& txdb, CBlockIndex* pindexNew)
     bnBestChainTrust = pindexNew->bnChainTrust;
     nTimeBestReceived = GetTime();
     nTransactionsUpdated++;
-    printf("SetBestChain: new best=%s  height=%d  trust=%s  moneysupply=%s\n", hashBestChain.ToString().substr(0,20).c_str(), nBestHeight, bnBestChainTrust.ToString().c_str(), FormatMoney(pindexBest->nMoneySupply).c_str());
+    printf("SetBestChain: new best=%s  height=%d  trust=%s  moneysupply(S)=%s moneysupply(B)=%s\n", hashBestChain.ToString().substr(0,20).c_str(), nBestHeight, bnBestChainTrust.ToString().c_str(), FormatMoney(pindexBest->GetMoneySupply('S')).c_str(), FormatMoney(pindexBest->GetMoneySupply('B')).c_str());
 
     std::string strCmd = GetArg("-blocknotify", "");
 

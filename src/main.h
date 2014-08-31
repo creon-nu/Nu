@@ -1252,7 +1252,7 @@ public:
     CBigNum bnChainTrust; // ppcoin: trust score of block chain
     int nHeight;
     int64 nMint;
-    int64 nMoneySupply;
+    std::map<unsigned char, int64> mapMoneySupply;
 
     unsigned int nFlags;  // ppcoin: block index flags
     enum  
@@ -1296,7 +1296,7 @@ public:
         nHeight = 0;
         bnChainTrust = 0;
         nMint = 0;
-        nMoneySupply = 0;
+        mapMoneySupply.clear();
         nFlags = 0;
         nStakeModifier = 0;
         nStakeModifierChecksum = 0;
@@ -1325,7 +1325,7 @@ public:
         nHeight = 0;
         bnChainTrust = 0;
         nMint = 0;
-        nMoneySupply = 0;
+        mapMoneySupply.clear();
         nFlags = 0;
         nStakeModifier = 0;
         nStakeModifierChecksum = 0;
@@ -1483,11 +1483,22 @@ public:
         return ::GetPremium(nValue, nDuration, cUnit, vParkRateResult);
     }
 
+    int64 GetMoneySupply(unsigned char cUnit) const
+    {
+        std::map<unsigned char, int64>::const_iterator it = mapMoneySupply.find(cUnit);
+        if (it != mapMoneySupply.end())
+            return it->second;
+        else
+            return -1;
+    }
+
     std::string ToString() const
     {
-        return strprintf("CBlockIndex(nprev=%08x, pnext=%08x, nFile=%d, nBlockPos=%-6d nHeight=%d, nMint=%s, nMoneySupply=%s, nFlags=(%s)(%d)(%s), nStakeModifier=%016"PRI64x", nStakeModifierChecksum=%08x, hashProofOfStake=%s, prevoutStake=(%s), nStakeTime=%d merkle=%s, hashBlock=%s)",
+        return strprintf("CBlockIndex(nprev=%08x, pnext=%08x, nFile=%d, nBlockPos=%-6d nHeight=%d, nMint=%s, nMoneySupply(S)=%s, nMoneySupply(B)=%s, nFlags=(%s)(%d)(%s), nStakeModifier=%016"PRI64x", nStakeModifierChecksum=%08x, hashProofOfStake=%s, prevoutStake=(%s), nStakeTime=%d merkle=%s, hashBlock=%s)",
             pprev, pnext, nFile, nBlockPos, nHeight,
-            FormatMoney(nMint).c_str(), FormatMoney(nMoneySupply).c_str(),
+            FormatMoney(nMint).c_str(),
+            FormatMoney(GetMoneySupply('S')).c_str(),
+            FormatMoney(GetMoneySupply('B')).c_str(),
             GeneratedStakeModifier() ? "MOD" : "-", GetStakeEntropyBit(), IsProofOfStake()? "PoS" : "PoW",
             nStakeModifier, nStakeModifierChecksum, 
             hashProofOfStake.ToString().c_str(),
@@ -1533,7 +1544,15 @@ public:
         READWRITE(nBlockPos);
         READWRITE(nHeight);
         READWRITE(nMint);
-        READWRITE(nMoneySupply);
+        if (nVersion <= 30000)
+        {
+            int64 nMoneySupply = 0;
+            READWRITE(nMoneySupply);
+        }
+        else
+        {
+            READWRITE(mapMoneySupply);
+        }
         READWRITE(nFlags);
         READWRITE(nStakeModifier);
         if (IsProofOfStake())
