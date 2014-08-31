@@ -28,7 +28,7 @@ def wait_for(timeout = 5)
   end
 end
 
-Given(/^a network with nodes (.+) able to mint$/) do |node_names|
+Given(/^a network with nodes? (.+) able to mint$/) do |node_names|
   node_names = node_names.scan(/"(.*?)"/).map(&:first)
   available_nodes = %w( a b c d e )
   raise "More than #{available_nodes.size} nodes not supported" if node_names.size > available_nodes.size
