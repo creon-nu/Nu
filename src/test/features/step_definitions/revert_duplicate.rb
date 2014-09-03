@@ -3,6 +3,9 @@ Before do
   @addresses = {}
   @nodes = {}
   @tx = {}
+  @raw_tx = {}
+  @raw_tx_complete = {}
+  @pubkeys = {}
 end
 
 require 'timeout'
@@ -13,7 +16,7 @@ def wait_for(timeout = 5)
       loop do
         begin
           break if yield
-        rescue RSpec::Expectations::ExpectationNotMetError => e
+        rescue RSpec::Expectations::ExpectationNotMetError, RuntimeError => e
           last_exception = e
         end
         sleep 0.1
@@ -28,7 +31,7 @@ def wait_for(timeout = 5)
   end
 end
 
-Given(/^a network with nodes? (.+) able to mint$/) do |node_names|
+Given(/^a network with nodes? (.+)(?: able to mint)?$/) do |node_names|
   node_names = node_names.scan(/"(.*?)"/).map(&:first)
   available_nodes = %w( a b c d e )
   raise "More than #{available_nodes.size} nodes not supported" if node_names.size > available_nodes.size
@@ -78,6 +81,10 @@ When(/^node "(.*?)" finds a block "([^"]*?)"$/) do |node, block|
   @blocks[block] = @nodes[node].generate_stake
 end
 
+When(/^node "(.*?)" finds a block$/) do |node|
+  @nodes[node].generate_stake
+end
+
 Then(/^all nodes should be at block "(.*?)"$/) do |block|
   begin
     wait_for do
@@ -111,7 +118,7 @@ Then(/^transaction "(.*?)" on node "(.*?)" should have (\d+) confirmations?$/) d
   end
 end
 
-Then(/^all nodes should have (\d+) transactions? in memory pool$/) do |arg1|
+Then(/^all nodes should (?:have|reach) (\d+) transactions? in memory pool$/) do |arg1|
   wait_for do
     expect(@nodes.values.map { |node| node.rpc("getmininginfo")["pooledtx"] }).to eq(@nodes.map { arg1.to_i })
   end
