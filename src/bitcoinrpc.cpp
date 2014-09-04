@@ -3421,6 +3421,7 @@ Value createrawtransaction(const Array& params, bool fHelp)
     Object sendTo = params[1].get_obj();
 
     CTransaction rawTx;
+    rawTx.cUnit = pwalletMain->Unit();
 
     BOOST_FOREACH(Value& input, inputs)
     {
