@@ -515,7 +515,7 @@ public:
         vin.clear();
         vout.clear();
         nLockTime = 0;
-        cUnit = 0;
+        cUnit = '?';
         nDoS = 0;  // Denial-of-service prevention
     }
 
