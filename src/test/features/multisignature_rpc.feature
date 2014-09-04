@@ -42,4 +42,34 @@ Feature: Ability to sign multisignature transaction without all the keys
     When node "Alice" finds a block
     Then node "Erin" should reach a balance of "10,001,000"
 
-  Scenario: Send to multisig nubits
+  Scenario: Multisignature custodian
+    Given a network with nodes "Alice", "Cust1", "Cust2" and "Recipient"
+
+    And node "Cust1" generates a new NuBit address "cust1"
+    And the public key of address "cust1" is retreived from node "Cust1"
+
+    And node "Cust2" generates a new NuBit address "cust2"
+    And the public key of address "cust2" is retreived from node "Cust2"
+
+    And node "Cust1" adds a NuBit multisig address "cust" requiring 2 keys from the public keys "cust1" and "cust2"
+    And node "Cust2" adds a NuBit multisig address "cust" requiring 2 keys from the public keys "cust1" and "cust2"
+
+    And node "Alice" votes an amount of "1,000,000" for custodian "cust"
+    And node "Alice" finds blocks until custodian "cust" is elected in transaction "grant"
+    And all nodes reach the same height
+
+    And node "Recipient" generates a new NuBit address "recipient"
+    And node "Cust1" generates a raw NuBit transaction "raw" to send the amount sent to address "cust" in transaction "grant" to:
+      | Address   | Value      |
+      | recipient | 100,000.00 |
+      | cust      | 899,999.99 |
+    And node "Cust1" signs the raw NuBit transaction "raw"
+    And node "Cust2" signs the raw NuBit transaction "raw"
+    Then the raw transaction "raw" should be complete
+
+    When node "Cust2" sends the raw transaction "raw"
+    Then all nodes should reach 1 transaction in memory pool
+
+    When node "Alice" finds a block
+    Then node "Recipient" should reach a balance of "100,000" NuBits
+

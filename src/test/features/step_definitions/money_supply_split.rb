@@ -1,8 +1,8 @@
 def unit(unit_name)
-  case unit_name
-  when "NuShare" then 'S'
-  when 'NuBit' then 'B'
-  else raise
+  case unit_name.strip
+  when "NuShare", 'NuShares', "" then 'S'
+  when 'NuBit', 'NuBits' then 'B'
+  else raise "Unknown unit: #{unit_name.inspect}"
   end
 end
 
@@ -61,6 +61,30 @@ When(/^node "(.*?)" finds blocks until custodian "(.*?)" is elected$/) do |arg1,
     info = node.rpc("getblock", block)
     if elected_custodians = info["electedcustodians"]
       if elected_custodians.has_key?(@addresses[arg2])
+        break
+      end
+    end
+  end
+end
+
+When(/^node "(.*?)" finds blocks until custodian "(.*?)" is elected in transaction "(.*?)"$/) do |arg1, arg2, arg3|
+  node = @nodes[arg1]
+  address = @addresses[arg2]
+  loop do
+    block = node.generate_stake
+    info = node.rpc("getblock", block)
+    if elected_custodians = info["electedcustodians"]
+      if elected_custodians.has_key?(address)
+        info["tx"].each do |txid|
+          tx = node.rpc("getrawtransaction", txid, 1)
+          tx["vout"].each do |out|
+            if out["scriptPubKey"]["addresses"] == [address]
+              @tx[arg3] = txid
+              break
+            end
+          end
+        end
+        raise "Custodian grant transaction not found" if @tx[arg3].nil?
         break
       end
     end

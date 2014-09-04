@@ -2,7 +2,8 @@ When(/^the public key of address "(.*?)" is retreived from node "(.*?)"$/) do |a
   address_name = arg1
   address = @addresses[address_name]
   node = @nodes[arg2]
-  @pubkeys[address] = node.rpc("validateaddress", address)["pubkey"]
+  @pubkeys[address] = node.unit_rpc(@unit[address], "validateaddress", address)["pubkey"]
+  raise "Public key not found" unless @pubkeys[address]
 end
 
 When(/^node "(.*?)" creates a multisig address "(.*?)" requiring (\d+) keys? from the public keys (.*?)$/) do |arg1, arg2, arg3, arg4|
@@ -27,6 +28,17 @@ When(/^node "(.*?)" adds a multisig address "(.*?)" requiring (\d+) keys? from t
   @addresses[address_name] = result
 end
 
+When(/^node "(.*?)" adds a NuBit multisig address "(.*?)" requiring (\d+) keys? from the public keys (.*?)$/) do |arg1, arg2, arg3, arg4|
+  node = @nodes[arg1]
+  address_name = arg2
+  required = arg3.to_i
+  addresses = arg4.scan(/"(.*?)"/).map(&:first).map { |name| @addresses[name] }
+  pubkeys = addresses.map { |address| @pubkeys[address] }
+
+  result = node.unit_rpc('B', "addmultisigaddress", required, pubkeys)
+  @addresses[address_name] = result
+end
+
 When(/^node "(.*?)" sends "(.*?)" to "([^"]*?)" in transaction "(.*?)"$/) do |arg1, arg2, arg3, arg4|
   @tx[arg4] = @nodes[arg1].rpc "sendtoaddress", @addresses[arg3], parse_number(arg2)
 end
@@ -44,14 +56,15 @@ When(/^node "(.*?)" finds a block received by all other nodes$/) do |arg1|
   end
 end
 
-When(/^node "(.*?)" generates a raw transaction "(.*?)" to send the amount sent to address "(.*?)" in transaction "(.*?)" to:$/) do |arg1, arg2, arg3, arg4, table|
+When(/^node "(.*?)" generates a raw (NuBit |)transaction "(.*?)" to send the amount sent to address "(.*?)" in transaction "(.*?)" to:$/) do |arg1, unit_name, arg2, arg3, arg4, table|
   node = @nodes[arg1]
   raw_transaction_name = arg2
   address = @addresses[arg3]
   tx = @tx[arg4]
+  unit = unit(unit_name)
 
   outputs = []
-  source_tx = node.rpc("getrawtransaction", tx, 1)
+  source_tx = node.unit_rpc(unit, "getrawtransaction", tx, 1)
   source_tx["vout"].each do |output|
     if output["scriptPubKey"]["addresses"] == [address]
       outputs << {"txid" => tx, "vout" => output["n"]}
@@ -66,15 +79,16 @@ When(/^node "(.*?)" generates a raw transaction "(.*?)" to send the amount sent 
     recipients[address] = value
   end
 
-  result = node.rpc("createrawtransaction", outputs, recipients)
+  result = node.unit_rpc(unit, "createrawtransaction", outputs, recipients)
   @raw_tx[raw_transaction_name] = result
 end
 
-When(/^node "(.*?)" signs the raw transaction "(.*?)"$/) do |arg1, arg2|
+When(/^node "(.*?)" signs the raw (NuBit |)transaction "(.*?)"$/) do |arg1, unit_name, arg2|
   node = @nodes[arg1]
   raw_tx = @raw_tx[arg2]
-  result = node.rpc("signrawtransaction", raw_tx)
+  result = node.unit_rpc(unit(unit_name), "signrawtransaction", raw_tx)
   signed_raw_tx = result["hex"]
+  raise "Raw transaction was not modified" if signed_raw_tx == raw_tx
   @raw_tx[arg2] = signed_raw_tx
   @raw_tx_complete[arg2] = result["complete"]
 end
@@ -89,11 +103,11 @@ When(/^node "(.*?)" sends the raw transaction "(.*?)"$/) do |arg1, arg2|
   node.rpc("sendrawtransaction", raw_tx, 1)
 end
 
-Then(/^node "(.*?)" should reach a balance of "(.*?)"$/) do |arg1, arg2|
+Then(/^node "(.*?)" should reach a balance of "(.*?)"( NuBits|)$/) do |arg1, arg2, unit_name|
   node = @nodes[arg1]
   amount = parse_number(arg2)
   wait_for do
-    expect(node.rpc("getbalance")).to eq(amount)
+    expect(node.unit_rpc(unit(unit_name), "getbalance")).to eq(amount)
   end
 end
 

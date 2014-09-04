@@ -6,6 +6,7 @@ Before do
   @raw_tx = {}
   @raw_tx_complete = {}
   @pubkeys = {}
+  @unit = {}
 end
 
 require 'timeout'
@@ -96,6 +97,12 @@ Then(/^all nodes should be at block "(.*?)"$/) do |block|
   end
 end
 
+Given(/^all nodes reach the same height$/) do
+  wait_for do
+    expect(@nodes.values.map(&:block_count).uniq.size).to eq(1)
+  end
+end
+
 When(/^node "(.*?)" sends a duplicate "(.*?)" of block "(.*?)"$/) do |node, duplicate, original|
   @blocks[duplicate] = @nodes[node].rpc("duplicateblock", @blocks[original])
 end
@@ -105,7 +112,13 @@ When(/^node "(.*?)" finds a block "(.*?)" on top of block "(.*?)"$/) do |node, b
 end
 
 Given(/^node "(.*?)" generates a new address "(.*?)"$/) do |arg1, arg2|
-  @addresses[arg2] = @nodes[arg1].new_address
+  @addresses[arg2] = @nodes[arg1].unit_rpc('S', "getnewaddress")
+  @unit[@addresses[arg2]] = 'S'
+end
+
+Given(/^node "(.*?)" generates a new NuBit address "(.*?)"$/) do |arg1, arg2|
+  @addresses[arg2] = @nodes[arg1].unit_rpc('B', "getnewaddress")
+  @unit[@addresses[arg2]] = 'B'
 end
 
 When(/^node "(.*?)" sends "(.*?)" shares to "(.*?)" through transaction "(.*?)"$/) do |arg1, arg2, arg3, arg4|
