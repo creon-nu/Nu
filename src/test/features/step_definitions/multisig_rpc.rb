@@ -39,23 +39,6 @@ When(/^node "(.*?)" adds a NuBit multisig address "(.*?)" requiring (\d+) keys? 
   @addresses[address_name] = result
 end
 
-When(/^node "(.*?)" sends "(.*?)" to "([^"]*?)" in transaction "(.*?)"$/) do |arg1, arg2, arg3, arg4|
-  @tx[arg4] = @nodes[arg1].rpc "sendtoaddress", @addresses[arg3], parse_number(arg2)
-end
-
-When(/^node "(.*?)" sends "(.*?)" to "([^"]*?)"$/) do |arg1, arg2, arg3|
-  @nodes[arg1].rpc "sendtoaddress", @addresses[arg3], parse_number(arg2)
-end
-
-When(/^node "(.*?)" finds a block received by all other nodes$/) do |arg1|
-  node = @nodes[arg1]
-  block = node.generate_stake
-  wait_for do
-    main = @nodes.values.map(&:top_hash)
-    main.all? { |hash| hash == block }
-  end
-end
-
 When(/^node "(.*?)" generates a raw (NuBit |)transaction "(.*?)" to send the amount sent to address "(.*?)" in transaction "(.*?)" to:$/) do |arg1, unit_name, arg2, arg3, arg4, table|
   node = @nodes[arg1]
   raw_transaction_name = arg2
@@ -103,14 +86,6 @@ When(/^node "(.*?)" sends the raw transaction "(.*?)"$/) do |arg1, arg2|
   node.rpc("sendrawtransaction", raw_tx, 1)
 end
 
-Then(/^node "(.*?)" should reach a balance of "(.*?)"( NuBits|)$/) do |arg1, arg2, unit_name|
-  node = @nodes[arg1]
-  amount = parse_number(arg2)
-  wait_for do
-    expect(node.unit_rpc(unit(unit_name), "getbalance")).to eq(amount)
-  end
-end
-
 Then(/^node "(.*?)" should reach an unspent amount of "(.*?)" on address "(.*?)"$/) do |arg1, arg2, arg3|
   node = @nodes[arg1]
   expected_amount = parse_number(arg2)
@@ -121,5 +96,3 @@ Then(/^node "(.*?)" should reach an unspent amount of "(.*?)" on address "(.*?)"
     expect(amount).to eq(expected_amount)
   end
 end
-
-

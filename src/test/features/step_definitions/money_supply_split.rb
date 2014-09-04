@@ -1,19 +1,3 @@
-def unit(unit_name)
-  case unit_name.strip
-  when "NuShare", 'NuShares', "" then 'S'
-  when 'NuBit', 'NuBits' then 'B'
-  else raise "Unknown unit: #{unit_name.inspect}"
-  end
-end
-
-def money_supply(unit_name, node = @nodes.values.first)
-  node.unit_rpc(unit(unit_name), "getinfo")["moneysupply"]
-end
-
-def parse_number(n)
-  n.gsub(',', '').to_f
-end
-
 Then(/^the "(.*?)" supply should be between "(.*?)" and "(.*?)"$/) do |arg1, arg2, arg3|
   supply = money_supply(arg1)
   expect(supply).to be >= parse_number(arg2)
@@ -37,57 +21,6 @@ Then(/^"(.*?)" money supply on node "(.*?)" should increase by "(.*?)" when node
   end
   wait_for do
     expect(money_supply(unit_name, checked_node)).to eq(initial_supply + increase)
-  end
-end
-
-When(/^node "(.*?)" generates a "(.*?)" address "(.*?)"$/) do |arg1, arg2, arg3|
-  @addresses[arg3] = @nodes[arg1].unit_rpc(unit(arg2), "getnewaddress")
-end
-
-When(/^node "(.*?)" votes an amount of "(.*?)" for custodian "(.*?)"$/) do |arg1, arg2, arg3|
-  node = @nodes[arg1]
-  vote = node.rpc("getvote")
-  vote["custodians"] << {
-    "amount" => parse_number(arg2),
-    "address" => @addresses[arg3],
-  }
-  node.rpc("setvote", vote)
-end
-
-When(/^node "(.*?)" finds blocks until custodian "(.*?)" is elected$/) do |arg1, arg2|
-  node = @nodes[arg1]
-  loop do
-    block = node.generate_stake
-    info = node.rpc("getblock", block)
-    if elected_custodians = info["electedcustodians"]
-      if elected_custodians.has_key?(@addresses[arg2])
-        break
-      end
-    end
-  end
-end
-
-When(/^node "(.*?)" finds blocks until custodian "(.*?)" is elected in transaction "(.*?)"$/) do |arg1, arg2, arg3|
-  node = @nodes[arg1]
-  address = @addresses[arg2]
-  loop do
-    block = node.generate_stake
-    info = node.rpc("getblock", block)
-    if elected_custodians = info["electedcustodians"]
-      if elected_custodians.has_key?(address)
-        info["tx"].each do |txid|
-          tx = node.rpc("getrawtransaction", txid, 1)
-          tx["vout"].each do |out|
-            if out["scriptPubKey"]["addresses"] == [address]
-              @tx[arg3] = txid
-              break
-            end
-          end
-        end
-        raise "Custodian grant transaction not found" if @tx[arg3].nil?
-        break
-      end
-    end
   end
 end
 
