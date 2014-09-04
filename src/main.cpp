@@ -681,7 +681,10 @@ bool CTxMemPool::accept(CTxDB& txdb, CTransaction &tx, bool fCheckInputs,
 
         // Don't accept it if it can't get into a block
         if (!tx.IsUnpark() && nFees < tx.GetMinFee(1000, false, GMF_RELAY))
+        {
+            printf("Fees: %s, minimum: %s\n", FormatMoney(nFees).c_str(), FormatMoney(tx.GetMinFee(1000, false, GMF_RELAY)).c_str());
             return error("CTxMemPool::accept() : not enough fees");
+        }
 
         // Continuously rate-limit free transactions
         // This mitigates 'penny-flooding' -- sending thousands of free transactions just to
