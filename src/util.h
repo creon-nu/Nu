@@ -137,6 +137,10 @@ extern bool fTestNet;
 extern bool fNoListen;
 extern bool fLogTimestamps;
 
+#ifdef TESTING
+extern int64 nTimeShift;
+#endif
+
 void RandAddSeed();
 void RandAddSeedPerfmon();
 int OutputDebugStringF(const char* pszFormat, ...);

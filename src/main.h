@@ -54,7 +54,11 @@ static const int64 IPO_SHARES = 1000000000 * COIN; // Total number of shares to 
 static const int64 PROOF_OF_WORK_BLOCKS = 400; // Block height of the last proof of work block
 static const int64 PARK_RATE_VOTES = 2000; // Number of blocks used in park rate median vote calculation
 static const int64 PARK_RATE_PREVIOUS_VOTES = 1440; // Number of blocks used in the park rate increase limitation
+#ifdef TESTING
+static const unsigned int CUSTODIAN_VOTES = 5;
+#else
 static const unsigned int CUSTODIAN_VOTES = 10000;
+#endif
 static const int64 PROOF_OF_STAKE_REWARD = 40 * COIN; // Constant reward of Proof of Stake blocks
 static const int64 MIN_COINSTAKE_VALUE = 10000 * COIN; // Minimum value allowed as input in a CoinStake
 static const int64 COIN_PARK_RATE = 100000 * COIN; // Park rate internal encoding precision. The minimum possible rate is (1.0 / COIN_PARK_RATE) coins per parked coin
@@ -109,6 +113,9 @@ extern std::set<CWallet*> setpwalletRegistered;
 extern std::map<uint256, CBlock*> mapOrphanBlocks;
 extern std::map<CBitcoinAddress, CBlockIndex*> mapElectedCustodian;
 extern CCriticalSection cs_mapElectedCustodian;
+#ifdef TESTING
+extern uint256 hashSingleStakeBlock;
+#endif
 
 // Settings
 extern int64 nSplitShareOutputs;
@@ -147,7 +154,11 @@ bool IsInitialBlockDownload();
 std::string GetWarnings(std::string strFor);
 uint256 WantedByOrphan(const CBlock* pblockOrphan);
 const CBlockIndex* GetLastBlockIndex(const CBlockIndex* pindex, bool fProofOfStake);
+#ifdef TESTING
+void BitcoinMiner(CWallet *pwallet, bool fProofOfStake, bool fGenerateSingleBlock = false, CBlockIndex* parent = NULL);
+#else
 void BitcoinMiner(CWallet *pwallet, bool fProofOfStake);
+#endif
 
 
 inline int GetMaturity(bool fProofOfStake)
