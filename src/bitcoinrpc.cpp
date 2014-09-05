@@ -502,7 +502,7 @@ Value gethashespersec(const Array& params, bool fHelp)
 
 
 // ppcoin: get network Gh/s estimate
-// Peershares note: this is only useful during the initial proof-of-work 'IPO' phase of the network
+// peershares note: this is only useful during the initial proof-of-work 'IPO' phase of the network
 Value getnetworkghps(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 0)

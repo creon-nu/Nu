@@ -298,7 +298,7 @@ bool AppInit2(int argc, char* argv[])
 
 #ifndef QT_GUI
     for (int i = 1; i < argc; i++)
-        if (!IsSwitchChar(argv[i][0]) && !(strlen(argv[i]) >= 11 && strncasecmp(argv[i], "Nu:", 11) == 0))
+        if (!IsSwitchChar(argv[i][0]) && !(strlen(argv[i]) >= 3 && strncasecmp(argv[i], "Nu:", 3) == 0))
             fCommandLine = true;
 
     if (fCommandLine)
