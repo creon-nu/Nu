@@ -502,7 +502,7 @@ Value gethashespersec(const Array& params, bool fHelp)
 
 
 // ppcoin: get network Gh/s estimate
-// nu note: this is only useful during the initial proof-of-work 'IPO' phase of the network
+// Peershares note: this is only useful during the initial proof-of-work 'IPO' phase of the network
 Value getnetworkghps(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 0)
@@ -702,7 +702,7 @@ Value setaccount(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() < 1 || params.size() > 2)
         throw runtime_error(
-            "setaccount <nuaddress> <account>\n"
+            "setaccount <address> <account>\n"
             "Sets the account associated with the given address.");
 
     CBitcoinAddress address(params[0].get_str());
@@ -732,7 +732,7 @@ Value getaccount(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 1)
         throw runtime_error(
-            "getaccount <nuaddress>\n"
+            "getaccount <address>\n"
             "Returns the account associated with the given address.");
 
     CBitcoinAddress address(params[0].get_str());
@@ -794,12 +794,12 @@ Value sendtoaddress(const Array& params, bool fHelp)
 {
     if (pwalletMain->IsCrypted() && (fHelp || params.size() < 2 || params.size() > 4))
         throw runtime_error(
-            "sendtoaddress <nuaddress> <amount> [comment] [comment-to]\n"
+            "sendtoaddress <address> <amount> [comment] [comment-to]\n"
             "<amount> is a real and is rounded to the nearest 0.000001\n"
             "requires portfolio passphrase to be set with walletpassphrase first");
     if (!pwalletMain->IsCrypted() && (fHelp || params.size() < 2 || params.size() > 4))
         throw runtime_error(
-            "sendtoaddress <nuaddress> <amount> [comment] [comment-to]\n"
+            "sendtoaddress <address> <amount> [comment] [comment-to]\n"
             "<amount> is a real and is rounded to the nearest 0.000001");
 
     CBitcoinAddress address(params[0].get_str());
@@ -832,7 +832,7 @@ Value signmessage(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 2)
         throw runtime_error(
-            "signmessage <nuaddress> <message>\n"
+            "signmessage <address> <message>\n"
             "Sign a message with the private key of an address");
 
     if (pwalletMain->IsLocked())
@@ -864,7 +864,7 @@ Value verifymessage(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 3)
         throw runtime_error(
-            "verifymessage <nuaddress> <signature> <message>\n"
+            "verifymessage <address> <signature> <message>\n"
             "Verify a signed message");
 
     string strAddress  = params[0].get_str();
@@ -897,8 +897,8 @@ Value getreceivedbyaddress(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() < 1 || params.size() > 2)
         throw runtime_error(
-            "getreceivedbyaddress <nuaddress> [minconf=1]\n"
-            "Returns the total amount received by <nuaddress> in transactions with at least [minconf] confirmations.");
+            "getreceivedbyaddress <address> [minconf=1]\n"
+            "Returns the total amount received by <address> in transactions with at least [minconf] confirmations.");
 
     // Bitcoin address
     CBitcoinAddress address = CBitcoinAddress(params[0].get_str());
@@ -1119,12 +1119,12 @@ Value sendfrom(const Array& params, bool fHelp)
 {
     if (pwalletMain->IsCrypted() && (fHelp || params.size() < 3 || params.size() > 6))
         throw runtime_error(
-            "sendfrom <fromaccount> <tonuaddress> <amount> [minconf=1] [comment] [comment-to]\n"
+            "sendfrom <fromaccount> <toaddress> <amount> [minconf=1] [comment] [comment-to]\n"
             "<amount> is a real and is rounded to the nearest 0.000001\n"
             "requires portfolio passphrase to be set with walletpassphrase first");
     if (!pwalletMain->IsCrypted() && (fHelp || params.size() < 3 || params.size() > 6))
         throw runtime_error(
-            "sendfrom <fromaccount> <tonuaddress> <amount> [minconf=1] [comment] [comment-to]\n"
+            "sendfrom <fromaccount> <toaddress> <amount> [minconf=1] [comment] [comment-to]\n"
             "<amount> is a real and is rounded to the nearest 0.000001");
 
     string strAccount = AccountFromValue(params[0]);
@@ -2167,8 +2167,8 @@ Value validateaddress(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 1)
         throw runtime_error(
-            "validateaddress <nuaddress>\n"
-            "Return information about <nuaddress>.");
+            "validateaddress <address>\n"
+            "Return information about <address>.");
 
     CBitcoinAddress address(params[0].get_str());
     bool isValid = pwalletMain->IsAddressValid(address);
