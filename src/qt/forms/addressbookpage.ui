@@ -93,7 +93,7 @@
      <item>
       <widget class="QPushButton" name="signMessage">
        <property name="toolTip">
-        <string>Sign a message to prove you own this Peershares address</string>
+        <string>Sign a message to prove you own this Nu address</string>
        </property>
        <property name="text">
         <string>&amp;Sign Message</string>

@@ -80,7 +80,7 @@ BitcoinGUI::BitcoinGUI(QWidget *parent):
     resize(850, 550);
     setWindowTitle(tr("Nu"));
 #ifndef Q_WS_MAC
-    setWindowIcon(QIcon(":icons/peershares"));
+    setWindowIcon(QIcon(":icons/nu"));
 #else
     setUnifiedTitleAndToolBarOnMac(true);
     QApplication::setAttribute(Qt::AA_DontShowIconsInMenus);
@@ -375,9 +375,9 @@ void BitcoinGUI::setClientModel(ClientModel *clientModel)
             QString title_testnet = windowTitle() + QString(" ") + tr("[testnet]");
             setWindowTitle(title_testnet);
 #ifndef Q_WS_MAC
-            setWindowIcon(QIcon(":icons/peershares_testnet"));
+            setWindowIcon(QIcon(":icons/nu_testnet"));
 #else
-            MacDockIconHandler::instance()->setIcon(QIcon(":icons/peershares_testnet"));
+            MacDockIconHandler::instance()->setIcon(QIcon(":icons/nu_testnet"));
 #endif
             if(trayIcon)
             {
