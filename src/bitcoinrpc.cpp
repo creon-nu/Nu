@@ -3693,6 +3693,9 @@ int GetRPCPort(unsigned char cUnit)
     return port;
 }
 
+CCriticalSection cs_RPCConfigError;
+bool fRPCConfigErrorHandled = false;
+
 void ThreadRPCServer2(void* parg)
 {
     printf("ThreadRPCServer started\n");
@@ -3702,6 +3705,10 @@ void ThreadRPCServer2(void* parg)
     strRPCUserColonPass = mapArgs["-rpcuser"] + ":" + mapArgs["-rpcpassword"];
     if (mapArgs["-rpcpassword"] == "")
     {
+        LOCK(cs_RPCConfigError);
+        if (fRPCConfigErrorHandled)
+            return;
+
         unsigned char rand_pwd[32];
         RAND_bytes(rand_pwd, 32);
         string strWhatAmI = "To use nud";
@@ -3721,6 +3728,7 @@ void ThreadRPCServer2(void* parg)
                 EncodeBase58(&rand_pwd[0],&rand_pwd[0]+32).c_str()),
             _("Error"), wxOK | wxMODAL);
         StartShutdown();
+        fRPCConfigErrorHandled = true;
         return;
     }
 
