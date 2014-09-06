@@ -623,6 +623,9 @@ bool AppInit2(int argc, char* argv[])
     if (!CreateThread(StartNode, NULL))
         ThreadSafeMessageBox(_("Error: CreateThread(StartNode) failed"), _("Nu"), wxOK | wxMODAL);
 
+    if (mapArgs.count("-timetravel"))
+        nTimeShift = GetArg("-timetravel", 0);
+
     if (fServer)
     {
         BOOST_FOREACH(CWallet *wallet, setpwalletRegistered)

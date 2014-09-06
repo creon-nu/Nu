@@ -35,10 +35,7 @@ class CoinContainer
 
     connects = links.map do |linked_name, alias_name|
       upname = alias_name.upcase
-      [
-        "-connect=$#{upname}_PORT_7895_TCP_ADDR:$#{upname}_PORT_7895_TCP_PORT",
-        "-addnode=$#{upname}_PORT_7895_TCP_ADDR:$#{upname}_PORT_7895_TCP_PORT",
-      ].join(" ")
+      "-addnode=$#{upname}_PORT_7895_TCP_ADDR:$#{upname}_PORT_7895_TCP_PORT"
     end
 
     default_args = {

@@ -1,5 +1,5 @@
 require 'timeout'
-def wait_for(timeout = 10)
+def wait_for(timeout = 5)
   last_exception = nil
   begin
     Timeout.timeout(timeout) do

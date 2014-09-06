@@ -16,19 +16,23 @@ Given(/^a network with nodes? (.+)(?: able to mint)?$/) do |node_names|
   @nodes = {}
 
   node_names.each_with_index do |name, i|
-    node = CoinContainer.new(image: "nunet/#{available_nodes[i]}", links: @nodes.values.map(&:name), args: {debug: true})
+    options = {
+      image: "nunet/#{available_nodes[i]}",
+      links: @nodes.values.map(&:name),
+      args: {
+        debug: true,
+        timetravel: 5*24*3600,
+      },
+    }
+    node = CoinContainer.new(options)
     @nodes[name] = node
     node.wait_for_boot
-  end
-
-  @nodes.values.each do |node|
-    node.rpc "timetravel", 5*24*3600
   end
 
   wait_for(10) do
     @nodes.values.all? do |node|
       count = node.connection_count
-      count >= @nodes.size - 1
+      count == @nodes.size - 1
     end
   end
   wait_for do
