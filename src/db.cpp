@@ -652,7 +652,7 @@ bool CTxDB::LoadBlockIndex()
         if (!CheckStakeModifierCheckpoints(pindex->nHeight, pindex->nStakeModifierChecksum))
             return error("CTxDB::LoadBlockIndex() : Failed stake modifier checkpoint height=%d, modifier=0x%016"PRI64x, pindex->nHeight, pindex->nStakeModifier);
         // nubit: rebuild per unit money supply for version <= 0.3.0
-        if (pindex->mapMoneySupply.empty() || pindex->mapTotalParked.empty())
+        if (pindex->mapMoneySupply.empty() || pindex->mapTotalParked.empty() || GetBoolArg("-rebuildsupply", false))
         {
             map<unsigned char, int64> mapValueIn;
             map<unsigned char, int64> mapValueOut;
