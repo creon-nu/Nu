@@ -503,10 +503,10 @@ Value stop(const Array& params, bool fHelp)
     if (fHelp || params.size() != 0)
         throw runtime_error(
             "stop\n"
-            "Stop Peershares server.");
+            "Stop Nu server.");
     // Shutdown will take long enough that the response should get back
     StartShutdown();
-    return "Peershares server stopping";
+    return "Nu server stopping";
 }
 
 
@@ -704,7 +704,7 @@ Value getinfo(const Array& params, bool fHelp)
     obj.push_back(Pair("stake",         ValueFromAmount(pwalletMain->GetStake())));
     obj.push_back(Pair("parked",        ValueFromAmount(pwalletMain->GetParked())));
     obj.push_back(Pair("blocks",        (int)nBestHeight));
-    obj.push_back(Pair("moneysupply",   ValueFromAmount(pindexBest->nMoneySupply)));
+    obj.push_back(Pair("moneysupply",   ValueFromAmount(pindexBest->GetMoneySupply(pwalletMain->Unit()))));
     obj.push_back(Pair("connections",   (int)vNodes.size()));
     obj.push_back(Pair("proxy",         (fUseProxy ? addrProxy.ToStringIPPort() : string())));
     obj.push_back(Pair("ip",            addrSeenByPeer.ToStringIP()));
@@ -716,6 +716,9 @@ Value getinfo(const Array& params, bool fHelp)
     if (pwalletMain->IsCrypted())
         obj.push_back(Pair("unlocked_until", (boost::int64_t)nWalletUnlockTime / 1000));
     obj.push_back(Pair("errors",        GetWarnings("statusbar")));
+#ifdef TESTING
+    obj.push_back(Pair("time",          DateTimeStrFormat(GetAdjustedTime())));
+#endif
     return obj;
 }
 
@@ -772,7 +775,7 @@ Value getnewaddress(const Array& params, bool fHelp)
     if (fHelp || params.size() > 1)
         throw runtime_error(
             "getnewaddress [account]\n"
-            "Returns a new Peershares address for receiving payments.  "
+            "Returns a new Nu address for receiving payments.  "
             "If [account] is specified (recommended), it is added to the address book "
             "so payments received with the address will be credited to [account].");
 
@@ -839,7 +842,7 @@ Value getaccountaddress(const Array& params, bool fHelp)
     if (fHelp || params.size() != 1)
         throw runtime_error(
             "getaccountaddress <account>\n"
-            "Returns the current Peershares address for receiving payments to this account.");
+            "Returns the current Nu address for receiving payments to this account.");
 
     // Parse the account first so we don't generate a key if there's an error
     string strAccount = AccountFromValue(params[0]);
@@ -857,7 +860,7 @@ Value setaccount(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() < 1 || params.size() > 2)
         throw runtime_error(
-            "setaccount <peersharesaddress> <account>\n"
+            "setaccount <address> <account>\n"
             "Sets the account associated with the given address.");
 
     CBitcoinAddress address(params[0].get_str());
@@ -887,7 +890,7 @@ Value getaccount(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 1)
         throw runtime_error(
-            "getaccount <peersharesaddress>\n"
+            "getaccount <address>\n"
             "Returns the account associated with the given address.");
 
     CBitcoinAddress address(params[0].get_str());
@@ -949,12 +952,12 @@ Value sendtoaddress(const Array& params, bool fHelp)
 {
     if (pwalletMain->IsCrypted() && (fHelp || params.size() < 2 || params.size() > 4))
         throw runtime_error(
-            "sendtoaddress <peersharesaddress> <amount> [comment] [comment-to]\n"
+            "sendtoaddress <address> <amount> [comment] [comment-to]\n"
             "<amount> is a real and is rounded to the nearest 0.000001\n"
             "requires portfolio passphrase to be set with walletpassphrase first");
     if (!pwalletMain->IsCrypted() && (fHelp || params.size() < 2 || params.size() > 4))
         throw runtime_error(
-            "sendtoaddress <peersharesaddress> <amount> [comment] [comment-to]\n"
+            "sendtoaddress <address> <amount> [comment] [comment-to]\n"
             "<amount> is a real and is rounded to the nearest 0.000001");
 
     CBitcoinAddress address(params[0].get_str());
@@ -987,7 +990,7 @@ Value signmessage(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 2)
         throw runtime_error(
-            "signmessage <peersharesaddress> <message>\n"
+            "signmessage <address> <message>\n"
             "Sign a message with the private key of an address");
 
     if (pwalletMain->IsLocked())
@@ -1019,7 +1022,7 @@ Value verifymessage(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 3)
         throw runtime_error(
-            "verifymessage <peersharesaddress> <signature> <message>\n"
+            "verifymessage <address> <signature> <message>\n"
             "Verify a signed message");
 
     string strAddress  = params[0].get_str();
@@ -1052,8 +1055,8 @@ Value getreceivedbyaddress(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() < 1 || params.size() > 2)
         throw runtime_error(
-            "getreceivedbyaddress <peersharesaddress> [minconf=1]\n"
-            "Returns the total amount received by <peersharesaddress> in transactions with at least [minconf] confirmations.");
+            "getreceivedbyaddress <address> [minconf=1]\n"
+            "Returns the total amount received by <address> in transactions with at least [minconf] confirmations.");
 
     // Bitcoin address
     CBitcoinAddress address = CBitcoinAddress(params[0].get_str());
@@ -1274,12 +1277,12 @@ Value sendfrom(const Array& params, bool fHelp)
 {
     if (pwalletMain->IsCrypted() && (fHelp || params.size() < 3 || params.size() > 6))
         throw runtime_error(
-            "sendfrom <fromaccount> <topeersharesaddress> <amount> [minconf=1] [comment] [comment-to]\n"
+            "sendfrom <fromaccount> <toaddress> <amount> [minconf=1] [comment] [comment-to]\n"
             "<amount> is a real and is rounded to the nearest 0.000001\n"
             "requires portfolio passphrase to be set with walletpassphrase first");
     if (!pwalletMain->IsCrypted() && (fHelp || params.size() < 3 || params.size() > 6))
         throw runtime_error(
-            "sendfrom <fromaccount> <topeersharesaddress> <amount> [minconf=1] [comment] [comment-to]\n"
+            "sendfrom <fromaccount> <toaddress> <amount> [minconf=1] [comment] [comment-to]\n"
             "<amount> is a real and is rounded to the nearest 0.000001");
 
     string strAccount = AccountFromValue(params[0]);
@@ -1496,7 +1499,7 @@ Value distribute(const Array& params, bool fHelp)
         BOOST_FOREACH(const Distribution &distribution, distributor.GetDistributions())
         {
             Object obj;
-            obj.push_back(Pair("peershares_address", distribution.GetPeershareAddress().ToString()));
+            obj.push_back(Pair("nu_address", distribution.GetPeershareAddress().ToString()));
             obj.push_back(Pair("balance", (double)distribution.GetBalance() / COIN));
             obj.push_back(Pair("peercoin_address", distribution.GetPeercoinAddress().ToString()));
             obj.push_back(Pair("dividends", distribution.GetDividendAmount()));
@@ -2241,7 +2244,7 @@ Value encryptwallet(const Array& params, bool fHelp)
     // slack space in .dat files; that is bad if the old data is
     // unencrypted private keys.  So:
     StartShutdown();
-    return "Portfolio encrypted; Peershares server stopping. Please restart server to run with encrypted portfolio";
+    return "Portfolio encrypted; Nu server stopping. Please restart server to run with encrypted portfolio";
 }
 
 
@@ -2249,8 +2252,8 @@ Value validateaddress(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 1)
         throw runtime_error(
-            "validateaddress <peersharesaddress>\n"
-            "Return information about <peersharesaddress>.");
+            "validateaddress <address>\n"
+            "Return information about <address>.");
 
     CBitcoinAddress address(params[0].get_str());
     bool isValid = pwalletMain->IsAddressValid(address);
@@ -2312,10 +2315,10 @@ Value getwork(const Array& params, bool fHelp)
             "If [data] is specified, tries to solve the block and returns true if it was successful.");
 
     if (vNodes.empty())
-        throw JSONRPCError(-9, "Peershares is not connected!");
+        throw JSONRPCError(-9, "Nu is not connected!");
 
     if (IsInitialBlockDownload())
-        throw JSONRPCError(-10, "Peershares is downloading blocks...");
+        throw JSONRPCError(-10, "Nu is downloading blocks...");
 
     typedef map<uint256, pair<CBlock*, CScript> > mapNewBlock_t;
     static mapNewBlock_t mapNewBlock;
@@ -2445,10 +2448,10 @@ Value getblocktemplate(const Array& params, bool fHelp)
 
     {
         if (vNodes.empty())
-            throw JSONRPCError(-9, "Peershares is not connected!");
+            throw JSONRPCError(-9, "Nu is not connected!");
 
         if (IsInitialBlockDownload())
-            throw JSONRPCError(-10, "Peershares is downloading blocks...");
+            throw JSONRPCError(-10, "Nu is downloading blocks...");
 
         // Update block
         static unsigned int nTransactionsUpdatedLast;
@@ -3861,6 +3864,203 @@ Value getrawmempool(const Array& params, bool fHelp)
 }
 
 
+#ifdef TESTING
+
+Value generatestake(const Array& params, bool fHelp)
+{
+    if (fHelp || params.size() > 1)
+        throw runtime_error(
+            "generatestake [<parent block hash>]\n"
+            "generate a single proof of stake block on top of <parent block hash> (default: highest block hash)"
+            );
+
+    if (GetBoolArg("-stakegen", true))
+        throw JSONRPCError(-3, "Stake generation enabled. Won't start another generation.");
+
+    CBlockIndex *parent;
+    if (params.size() > 1)
+    {
+        uint256 parentHash;
+        parentHash.SetHex(params[1].get_str());
+        if (!mapBlockIndex.count(parentHash))
+            throw JSONRPCError(-3, "Parent hash not in main chain");
+        parent = mapBlockIndex[parentHash];
+    }
+    else
+    {
+        parent = pindexBest;
+    }
+
+    CWallet *pwallet = GetWallet('S');
+    BitcoinMiner(pwallet, true, true, parent);
+    return hashSingleStakeBlock.ToString();
+}
+
+
+Value shutdown(const Array& params, bool fHelp)
+{
+    if (fHelp || params.size() != 0)
+        throw runtime_error(
+            "shutdown\n"
+            "close the program"
+            );
+
+    fRequestShutdown = true;
+
+    return "";
+}
+
+
+Value timetravel(const Array& params, bool fHelp)
+{
+    if (fHelp || params.size() != 1)
+        throw runtime_error(
+            "timetravel <seconds>\n"
+            "change relative time"
+            );
+
+    nTimeShift += params[0].get_int();
+
+    return "";
+}
+
+
+unsigned int GetNextTargetRequired(const CBlockIndex* pindexLast, bool fProofOfStake);
+
+Value duplicateblock(const Array& params, bool fHelp)
+{
+    if (fHelp || params.size() < 1 || params.size() > 2)
+        throw runtime_error(
+            "duplicateblock <original hash> [<parent hash>]\n"
+            "propagate a new block with the same stake as block <original hash> on top of <parent hash> (default: same parent)"
+            );
+
+    uint256 originalHash;
+    originalHash.SetHex(params[0].get_str());
+    if (!mapBlockIndex.count(originalHash))
+        throw JSONRPCError(-3, "Original hash not in main chain");
+    CBlockIndex *original = mapBlockIndex[originalHash];
+
+    CBlockIndex *parent;
+    if (params.size() > 1)
+    {
+        uint256 parentHash;
+        parentHash.SetHex(params[1].get_str());
+        if (!mapBlockIndex.count(parentHash))
+            throw JSONRPCError(-3, "Parent hash not in main chain");
+        parent = mapBlockIndex[parentHash];
+    }
+    else
+    {
+        parent = original->pprev;
+    }
+
+    CWallet *pwallet = GetWallet('S');
+    CDefaultKey reservekey(pwallet);
+    bool fProofOfStake = true;
+    unsigned int nExtraNonce = 0;
+
+    auto_ptr<CBlock> pblock(new CBlock());
+    if (!pblock.get())
+        throw JSONRPCError(-3, "Unable to allocate block");
+
+    // Create coinbase tx
+    CTransaction txNew;
+    txNew.vin.resize(1);
+    txNew.vin[0].prevout.SetNull();
+    txNew.vout.resize(1);
+    txNew.vout[0].scriptPubKey << reservekey.GetReservedKey() << OP_CHECKSIG;
+    txNew.cUnit = pwallet->Unit();
+
+    // Add our coinbase tx as first transaction
+    pblock->vtx.push_back(txNew);
+
+    // ppcoin: if coinstake available add coinstake tx
+    CBlockIndex* pindexPrev = parent;
+    IncrementExtraNonce(pblock.get(), pindexPrev, nExtraNonce);
+
+    CBlock originalBlock;
+    originalBlock.ReadFromDisk(original, true);
+    CTransaction txCoinStake(originalBlock.vtx[1]);
+
+    pblock->vtx[0].vout[0].SetEmpty();
+    pblock->vtx[0].nTime = txCoinStake.nTime;
+    pblock->vtx.push_back(txCoinStake);
+
+    pblock->nBits = GetNextTargetRequired(pindexPrev, pblock->IsProofOfStake());
+
+    // nubit: Add expansion transactions
+    if (pblock->IsProofOfStake())
+    {
+        vector<CVote> vVote;
+        if (!ExtractVotes(*pblock, pindexPrev, CUSTODIAN_VOTES, vVote))
+            throw JSONRPCError(-3, "unable to extract votes");
+
+        vector<CTransaction> vCurrencyCoinBase;
+        {
+            LOCK(cs_mapElectedCustodian);
+
+            if (!GenerateCurrencyCoinBases(vVote, mapElectedCustodian, vCurrencyCoinBase))
+                throw JSONRPCError(-3, "unable to generate currency coin bases");
+        }
+
+        BOOST_FOREACH(const CTransaction& tx, vCurrencyCoinBase)
+            pblock->vtx.push_back(tx);
+    }
+
+    // Fill in header
+    pblock->hashPrevBlock  = pindexPrev->GetBlockHash();
+    pblock->hashMerkleRoot = pblock->BuildMerkleTree();
+    if (pblock->IsProofOfStake())
+        pblock->nTime      = pblock->vtx[1].nTime; //same as coinstake timestamp
+    pblock->nTime          = max(pindexPrev->GetMedianTimePast()+1, pblock->GetMaxTransactionTime());
+    pblock->nTime          = max(pblock->GetBlockTime(), pindexPrev->GetBlockTime() - nMaxClockDrift);
+    if (pblock->IsProofOfWork())
+        pblock->UpdateTime(pindexPrev);
+    pblock->nNonce         = 0;
+
+    if (fProofOfStake)
+    {
+        // ppcoin: if proof-of-stake block found then process block
+        if (pblock->IsProofOfStake())
+        {
+            if (!pblock->SignBlock(*pwallet))
+            {
+                // We ignore errors to be able to test duplicate blocks with invalid signature
+            }
+
+            // Found a solution
+            {
+                LOCK(cs_main);
+
+                // Remove key from key pool
+                reservekey.KeepKey();
+
+                // Track how many getdata requests this block gets
+                {
+                    LOCK(pwallet->cs_wallet);
+                    pwallet->mapRequestCount[pblock->GetHash()] = 0;
+                }
+
+                // Process this block the same as if we had received it from another node
+                // But do not check for errors as this is expected to fail
+                ProcessBlock(NULL, pblock.get());
+            }
+        }
+        else
+            throw JSONRPCError(-3, "generated block is not a Proof of Stake");
+    }
+
+    string result(pblock->GetHash().ToString());
+
+    pblock.release();
+
+    return result;
+}
+
+#endif
+
+
 //
 // Call Table
 //
@@ -3945,6 +4145,12 @@ static const CRPCCommand vRPCCommands[] =
     { "sendrawtransaction",     &sendrawtransaction,     false},
     { "gettxout",               &gettxout,               true },
     { "getrawmempool",          &getrawmempool,          true },
+#ifdef TESTING
+    { "generatestake",          &generatestake,          true },
+    { "duplicateblock",         &duplicateblock,         true },
+    { "shutdown",               &shutdown,               true },
+    { "timetravel",             &timetravel,             true },
+#endif
 };
 
 CRPCTable::CRPCTable()
@@ -3978,7 +4184,7 @@ string HTTPPost(const string& strMsg, const map<string,string>& mapRequestHeader
 {
     ostringstream s;
     s << "POST / HTTP/1.1\r\n"
-      << "User-Agent: peershares-json-rpc/" << FormatFullVersion() << "\r\n"
+      << "User-Agent: nu-json-rpc/" << FormatFullVersion() << "\r\n"
       << "Host: 127.0.0.1\r\n"
       << "Content-Type: application/json\r\n"
       << "Content-Length: " << strMsg.size() << "\r\n"
@@ -4009,7 +4215,7 @@ static string HTTPReply(int nStatus, const string& strMsg)
     if (nStatus == 401)
         return strprintf("HTTP/1.0 401 Authorization Required\r\n"
             "Date: %s\r\n"
-            "Server: peershares-json-rpc/%s\r\n"
+            "Server: nu-json-rpc/%s\r\n"
             "WWW-Authenticate: Basic realm=\"jsonrpc\"\r\n"
             "Content-Type: text/html\r\n"
             "Content-Length: 296\r\n"
@@ -4036,7 +4242,7 @@ static string HTTPReply(int nStatus, const string& strMsg)
             "Connection: close\r\n"
             "Content-Length: %d\r\n"
             "Content-Type: application/json\r\n"
-            "Server: peershares-json-rpc/%s\r\n"
+            "Server: nu-json-rpc/%s\r\n"
             "\r\n"
             "%s",
         nStatus,
@@ -4712,6 +4918,9 @@ Array RPCConvertValues(const std::string &strMethod, const std::vector<std::stri
     if (strMethod == "liquidityinfo"           && n > 2) ConvertTo<double>(params[2]);
     if (strMethod == "getmotions"              && n > 0) ConvertTo<boost::int64_t>(params[0]);
     if (strMethod == "getmotions"              && n > 1) ConvertTo<boost::int64_t>(params[1]);
+#ifdef TESTING
+    if (strMethod == "timetravel"              && n > 0) ConvertTo<boost::int64_t>(params[0]);
+#endif
     return params;
 }
 

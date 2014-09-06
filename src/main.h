@@ -54,7 +54,11 @@ static const int64 IPO_SHARES = 1000000000 * COIN; // Total number of shares to 
 static const int64 PROOF_OF_WORK_BLOCKS = 400; // Block height of the last proof of work block
 static const int64 PARK_RATE_VOTES = 2000; // Number of blocks used in park rate median vote calculation
 static const int64 PARK_RATE_PREVIOUS_VOTES = 1440; // Number of blocks used in the park rate increase limitation
+#ifdef TESTING
+static const unsigned int CUSTODIAN_VOTES = 5;
+#else
 static const unsigned int CUSTODIAN_VOTES = 10000;
+#endif
 static const int64 PROOF_OF_STAKE_REWARD = 40 * COIN; // Constant reward of Proof of Stake blocks
 static const int64 MIN_COINSTAKE_VALUE = 10000 * COIN; // Minimum value allowed as input in a CoinStake
 static const int64 COIN_PARK_RATE = 100000 * COIN; // Park rate internal encoding precision. The minimum possible rate is (1.0 / COIN_PARK_RATE) coins per parked coin
@@ -109,6 +113,9 @@ extern std::set<CWallet*> setpwalletRegistered;
 extern std::map<uint256, CBlock*> mapOrphanBlocks;
 extern std::map<CBitcoinAddress, CBlockIndex*> mapElectedCustodian;
 extern CCriticalSection cs_mapElectedCustodian;
+#ifdef TESTING
+extern uint256 hashSingleStakeBlock;
+#endif
 
 // Settings
 extern int64 nSplitShareOutputs;
@@ -148,7 +155,11 @@ bool IsInitialBlockDownload();
 std::string GetWarnings(std::string strFor);
 uint256 WantedByOrphan(const CBlock* pblockOrphan);
 const CBlockIndex* GetLastBlockIndex(const CBlockIndex* pindex, bool fProofOfStake);
+#ifdef TESTING
+void BitcoinMiner(CWallet *pwallet, bool fProofOfStake, bool fGenerateSingleBlock = false, CBlockIndex* parent = NULL);
+#else
 void BitcoinMiner(CWallet *pwallet, bool fProofOfStake);
+#endif
 bool GetTransaction(const uint256 &hash, CTransaction &tx, uint256 &hashBlock);
 
 
@@ -1254,7 +1265,7 @@ public:
     CBigNum bnChainTrust; // ppcoin: trust score of block chain
     int nHeight;
     int64 nMint;
-    int64 nMoneySupply;
+    std::map<unsigned char, int64> mapMoneySupply;
 
     unsigned int nFlags;  // ppcoin: block index flags
     enum  
@@ -1298,7 +1309,7 @@ public:
         nHeight = 0;
         bnChainTrust = 0;
         nMint = 0;
-        nMoneySupply = 0;
+        mapMoneySupply.clear();
         nFlags = 0;
         nStakeModifier = 0;
         nStakeModifierChecksum = 0;
@@ -1327,7 +1338,7 @@ public:
         nHeight = 0;
         bnChainTrust = 0;
         nMint = 0;
-        nMoneySupply = 0;
+        mapMoneySupply.clear();
         nFlags = 0;
         nStakeModifier = 0;
         nStakeModifierChecksum = 0;
@@ -1485,11 +1496,22 @@ public:
         return ::GetPremium(nValue, nDuration, cUnit, vParkRateResult);
     }
 
+    int64 GetMoneySupply(unsigned char cUnit) const
+    {
+        std::map<unsigned char, int64>::const_iterator it = mapMoneySupply.find(cUnit);
+        if (it != mapMoneySupply.end())
+            return it->second;
+        else
+            return -1;
+    }
+
     std::string ToString() const
     {
-        return strprintf("CBlockIndex(nprev=%08x, pnext=%08x, nFile=%d, nBlockPos=%-6d nHeight=%d, nMint=%s, nMoneySupply=%s, nFlags=(%s)(%d)(%s), nStakeModifier=%016"PRI64x", nStakeModifierChecksum=%08x, hashProofOfStake=%s, prevoutStake=(%s), nStakeTime=%d merkle=%s, hashBlock=%s)",
+        return strprintf("CBlockIndex(nprev=%08x, pnext=%08x, nFile=%d, nBlockPos=%-6d nHeight=%d, nMint=%s, nMoneySupply(S)=%s, nMoneySupply(B)=%s, nFlags=(%s)(%d)(%s), nStakeModifier=%016"PRI64x", nStakeModifierChecksum=%08x, hashProofOfStake=%s, prevoutStake=(%s), nStakeTime=%d merkle=%s, hashBlock=%s)",
             pprev, pnext, nFile, nBlockPos, nHeight,
-            FormatMoney(nMint).c_str(), FormatMoney(nMoneySupply).c_str(),
+            FormatMoney(nMint).c_str(),
+            FormatMoney(GetMoneySupply('S')).c_str(),
+            FormatMoney(GetMoneySupply('B')).c_str(),
             GeneratedStakeModifier() ? "MOD" : "-", GetStakeEntropyBit(), IsProofOfStake()? "PoS" : "PoW",
             nStakeModifier, nStakeModifierChecksum, 
             hashProofOfStake.ToString().c_str(),
@@ -1535,7 +1557,15 @@ public:
         READWRITE(nBlockPos);
         READWRITE(nHeight);
         READWRITE(nMint);
-        READWRITE(nMoneySupply);
+        if (nVersion <= 30000)
+        {
+            int64 nMoneySupply = 0;
+            READWRITE(nMoneySupply);
+        }
+        else
+        {
+            READWRITE(mapMoneySupply);
+        }
         READWRITE(nFlags);
         READWRITE(nStakeModifier);
         if (IsProofOfStake())

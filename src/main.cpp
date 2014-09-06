@@ -61,10 +61,14 @@ CCriticalSection cs_mapElectedCustodian;
 // Constant stuff for coinbase transactions we create:
 CScript COINBASE_FLAGS;
 
-const string strMessageMagic = "Peershares Signed Message:\n";
+const string strMessageMagic = "Nu Signed Message:\n";
 
 double dHashesPerSec;
 int64 nHPSTimerStart;
+
+#ifdef TESTING
+uint256 hashSingleStakeBlock;
+#endif
 
 // Settings
 int64 nSplitShareOutputs = MIN_COINSTAKE_VALUE;
@@ -1005,7 +1009,11 @@ unsigned int static GetInitialTarget(bool fProofOfStake)
         return bnInitialHashTarget.GetCompact();
 }
 
+#ifdef TESTING
+unsigned int GetNextTargetRequired(const CBlockIndex* pindexLast, bool fProofOfStake)
+#else
 unsigned int static GetNextTargetRequired(const CBlockIndex* pindexLast, bool fProofOfStake)
+#endif
 {
     if (pindexLast == NULL)
         return bnProofOfWorkLimit.GetCompact(); // genesis block
@@ -1552,8 +1560,8 @@ bool CBlock::ConnectBlock(CTxDB& txdb, CBlockIndex* pindex)
 
     map<uint256, CTxIndex> mapQueuedChanges;
     int64 nFees = 0;
-    int64 nValueIn = 0;
-    int64 nValueOut = 0;
+    map<unsigned char, int64> mapValueIn;
+    map<unsigned char, int64> mapValueOut;
     unsigned int nSigOps = 0;
     BOOST_FOREACH(CTransaction& tx, vtx)
     {
@@ -1566,7 +1574,7 @@ bool CBlock::ConnectBlock(CTxDB& txdb, CBlockIndex* pindex)
 
         MapPrevTx mapInputs;
         if (tx.IsCoinBase() || tx.IsCurrencyCoinBase())
-            nValueOut += tx.GetValueOut();
+            mapValueOut[tx.cUnit] += tx.GetValueOut();
         else
         {
             bool fInvalid;
@@ -1585,8 +1593,8 @@ bool CBlock::ConnectBlock(CTxDB& txdb, CBlockIndex* pindex)
 
             int64 nTxValueIn = tx.GetValueIn(mapInputs);
             int64 nTxValueOut = tx.GetValueOut();
-            nValueIn += nTxValueIn;
-            nValueOut += nTxValueOut;
+            mapValueIn[tx.cUnit] += nTxValueIn;
+            mapValueOut[tx.cUnit] += nTxValueOut;
             if (!tx.IsCoinStake())
                 nFees += nTxValueIn - nTxValueOut;
 
@@ -1598,8 +1606,9 @@ bool CBlock::ConnectBlock(CTxDB& txdb, CBlockIndex* pindex)
     }
 
     // ppcoin: track money supply and mint amount info
-    pindex->nMint = nValueOut - nValueIn + nFees;
-    pindex->nMoneySupply = (pindex->pprev? pindex->pprev->nMoneySupply : 0) + nValueOut - nValueIn;
+    pindex->nMint = mapValueOut['S'] - mapValueIn['S'] + nFees;
+    BOOST_FOREACH(unsigned char cUnit, sAvailableUnits)
+        pindex->mapMoneySupply[cUnit] = (pindex->pprev? pindex->pprev->mapMoneySupply[cUnit] : 0) + mapValueOut[cUnit] - mapValueIn[cUnit];
     if (!txdb.WriteBlockIndex(CDiskBlockIndex(pindex)))
         return error("Connect() : WriteBlockIndex for pindex failed");
 
@@ -1861,7 +1870,7 @@ bool CBlock::SetBestChain(CTxDB& txdb, CBlockIndex* pindexNew)
     bnBestChainTrust = pindexNew->bnChainTrust;
     nTimeBestReceived = GetTime();
     nTransactionsUpdated++;
-    printf("SetBestChain: new best=%s  height=%d  trust=%s  moneysupply=%s\n", hashBestChain.ToString().substr(0,20).c_str(), nBestHeight, bnBestChainTrust.ToString().c_str(), FormatMoney(pindexBest->nMoneySupply).c_str());
+    printf("SetBestChain: new best=%s  height=%d  trust=%s  moneysupply(S)=%s moneysupply(B)=%s\n", hashBestChain.ToString().substr(0,20).c_str(), nBestHeight, bnBestChainTrust.ToString().c_str(), FormatMoney(pindexBest->GetMoneySupply('S')).c_str(), FormatMoney(pindexBest->GetMoneySupply('B')).c_str());
 
     std::string strCmd = GetArg("-blocknotify", "");
 
@@ -2283,10 +2292,49 @@ bool ProcessBlock(CNode* pfrom, CBlock* pblock)
         return error("ProcessBlock() : already have block (orphan) %s", hash.ToString().substr(0,20).c_str());
 
     // ppcoin: check proof-of-stake
-    // Limited duplicity on stake: prevents block flood attack
-    // Duplicate stake allowed only when there is orphan child block
-    if (pblock->IsProofOfStake() && setStakeSeen.count(pblock->GetProofOfStake()) && !mapOrphanBlocksByPrev.count(hash) && !Checkpoints::WantedByPendingSyncCheckpoint(hash))
-        return error("ProcessBlock() : duplicate proof-of-stake (%s, %d) for block %s", pblock->GetProofOfStake().first.ToString().c_str(), pblock->GetProofOfStake().second, hash.ToString().c_str());
+    if (pblock->IsProofOfStake())
+    {
+        std::pair<COutPoint, unsigned int> proofOfStake = pblock->GetProofOfStake();
+
+        if (pindexBest->IsProofOfStake() && proofOfStake.first == pindexBest->prevoutStake)
+        {
+            // If the best block's stake is reused we revert the best block and propagate the duplicate so that other nodes do the same
+
+            // Only reject the best block if the duplicate is correctly signed
+            if (!pblock->CheckBlockSignature())
+            {
+                if (pfrom)
+                    pfrom->Misbehaving(100); // Immediate ban to prevent DoS because checking signature is expensive
+                return error("ProcessBlock() : Invalid signature on duplicate block");
+            }
+
+            printf("ProcessBlock() : block uses the same stake as the best block. Cancelling the best block\n");
+
+            // Propagate the duplicate block so that other nodes revert the best block too
+            RelayMessage(CInv(MSG_BLOCK, pblock->GetHash()), *pblock);
+            {
+                LOCK(cs_vNodes);
+                BOOST_FOREACH(CNode* pnode, vNodes)
+                    pnode->PushInventory(CInv(MSG_BLOCK, pblock->GetHash()));
+            }
+
+            CTxDB txdb;
+            CBlock previousBlock;
+            previousBlock.ReadFromDisk(pindexBest->pprev);
+
+            if (!previousBlock.SetBestChain(txdb, pindexBest->pprev))
+                return error("SetBestChain failed");
+
+            return false;
+        }
+        else
+        {
+            // Limited duplicity on stake: prevents block flood attack
+            // Duplicate stake allowed only when there is orphan child block
+            if (pblock->IsProofOfStake() && setStakeSeen.count(proofOfStake) && !mapOrphanBlocksByPrev.count(hash) && !Checkpoints::WantedByPendingSyncCheckpoint(hash))
+                return error("ProcessBlock() : duplicate proof-of-stake (%s, %d) for block %s", proofOfStake.first.ToString().c_str(), proofOfStake.second, hash.ToString().c_str());
+        }
+    }
 
     // Preliminary checks
     if (!pblock->CheckBlock())
@@ -2300,7 +2348,7 @@ bool ProcessBlock(CNode* pfrom, CBlock* pblock)
         {
             printf("WARNING: ProcessBlock(): check proof-of-stake failed for block %s\n", hash.ToString().c_str());
 
-            // peershares: ask for missing blocks
+            // nu: ask for missing blocks
             if (pfrom)
                 pfrom->PushGetBlocks(pindexBest, pblock->GetHash());
 
@@ -2482,7 +2530,7 @@ bool CheckDiskSpace(uint64 nAdditionalBytes)
         string strMessage = _("Warning: Disk space is low");
         strMiscWarning = strMessage;
         printf("*** %s\n", strMessage.c_str());
-        ThreadSafeMessageBox(strMessage, "Peershares", wxOK | wxICON_EXCLAMATION | wxMODAL);
+        ThreadSafeMessageBox(strMessage, "Nu", wxOK | wxICON_EXCLAMATION | wxMODAL);
         StartShutdown();
         return false;
     }
@@ -2540,8 +2588,13 @@ bool LoadBlockIndex(bool fAllowNew)
         nCoinbaseMaturity = 60;
         nCoinstakeMaturity = 60;
         bnInitialHashTarget = CBigNum(~uint256(0) >> 20);
+#ifdef TESTING
+        bnInitialProofOfStakeHashTarget = CBigNum(~uint256(0) >> 20);
+        nModifierInterval = 3;
+#else
         bnInitialProofOfStakeHashTarget = CBigNum(~uint256(0) >> 28);
         nModifierInterval = 60 * 20; // test net modifier interval is 20 minutes
+#endif
     }
 
     printf("%s Network: genesis=0x%s nBitsLimit=0x%08x nBitsInitial=0x%08x nStakeMinAge=%d nCoinbaseMaturity=%d nCoinstakeMaturity=%d nModifierInterval=%d\n",
@@ -2611,12 +2664,12 @@ bool LoadBlockIndex(bool fAllowNew)
             block.nNonce++;
         }
      
-        printf("Peershares Genesis Block Found:\n");
+        printf("Nu Genesis Block Found:\n");
         printf("genesis hash=%s\n", block.GetHash().ToString().c_str());
         printf("merkle root=%s\n", block.hashMerkleRoot.ToString().c_str());
         block.print();
      
-        printf("End Peershares Genesis Block\n");
+        printf("End Nu Genesis Block\n");
 
         //// debug print
         printf("%s\n", block.GetHash().ToString().c_str());
@@ -2816,7 +2869,7 @@ string GetWarnings(string strFor)
     if (Checkpoints::hashInvalidCheckpoint != 0)
     {
         nPriority = 3000;
-        strStatusBar = strRPC = "WARNING: Invalid checkpoint found! Displayed transactions may not be correct! You may need to upgrade, or notify developers of the issue (https://github.com/Peershares/Peershares/issues).";
+        strStatusBar = strRPC = "WARNING: Invalid checkpoint found! Displayed transactions may not be correct! You may need to upgrade, or notify developers of the issue.";
     }
 
     // ppcoin: if detected unmet upgrade requirement enter safe mode
@@ -3191,7 +3244,7 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv)
                 printf("  got inventory: %s  %s\n", inv.ToString().c_str(), fAlreadyHave ? "have" : "new");
 
             if (!fAlreadyHave)
-                pfrom->AskFor(inv, IsInitialBlockDownload()); // peershares: immediate retry during initial download
+                pfrom->AskFor(inv, IsInitialBlockDownload()); // nu: immediate retry during initial download
             else if (inv.type == MSG_BLOCK && mapOrphanBlocks.count(inv.hash)) {
                 pfrom->PushGetBlocks(pindexBest, GetOrphanRoot(mapOrphanBlocks[inv.hash]));
             } else if (nInv == nLastBlock) {
@@ -3226,6 +3279,9 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv)
                 return true;
             printf("received getdata for: %s\n", inv.ToString().c_str());
 
+            // nu: relay memory can contain blocks
+            bool fFound = false;
+
             if (inv.type == MSG_BLOCK)
             {
                 // Send block from disk
@@ -3235,6 +3291,7 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv)
                     CBlock block;
                     block.ReadFromDisk((*mi).second);
                     pfrom->PushMessage("block", block);
+                    fFound = true;
 
                     // Trigger them to send a getblocks request for the next batch of inventory
                     if (inv.hash == pfrom->hashContinue)
@@ -3245,7 +3302,7 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv)
                         // ppcoin: send latest proof-of-work block to allow the
                         // download node to accept as orphan (proof-of-stake 
                         // block might be rejected by stake connection check)
-                        // peershares: send latest block
+                        // nu: send latest block
                         vector<CInv> vInv;
                         vInv.push_back(CInv(MSG_BLOCK, hashBestChain));
                         pfrom->PushMessage("inv", vInv);
@@ -3253,7 +3310,8 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv)
                     }
                 }
             }
-            else if (inv.IsKnownType())
+
+            if (!fFound && inv.IsKnownType())
             {
                 // Send stream from relay memory
                 {
@@ -4331,7 +4389,11 @@ void SetMintWarning(const string& strNewWarning)
     }
 }
 
+#ifdef TESTING
+void BitcoinMiner(CWallet *pwallet, bool fProofOfStake, bool fGenerateSingleBlock, CBlockIndex *parent)
+#else
 void BitcoinMiner(CWallet *pwallet, bool fProofOfStake)
+#endif
 {
     printf("PeerMiner started for proof-of-%s\n", fProofOfStake? "stake" : "work");
     SetThreadPriority(THREAD_PRIORITY_LOWEST);
@@ -4364,7 +4426,15 @@ void BitcoinMiner(CWallet *pwallet, bool fProofOfStake)
         // Create new block
         //
         unsigned int nTransactionsUpdatedLast = nTransactionsUpdated;
+#ifdef TESTING
+        CBlockIndex* pindexPrev;
+        if (parent)
+            pindexPrev = parent;
+        else
+            pindexPrev = pindexBest;
+#else
         CBlockIndex* pindexPrev = pindexBest;
+#endif
 
         auto_ptr<CBlock> pblock(CreateNewBlock(reservekey, pwallet, fProofOfStake));
         if (!pblock.get())
@@ -4384,9 +4454,20 @@ void BitcoinMiner(CWallet *pwallet, bool fProofOfStake)
                 }
                 SetMintWarning("");
                 printf("CPUMinter : proof-of-stake block found %s\n", pblock->GetHash().ToString().c_str()); 
+#ifdef TESTING
+                SetThreadPriority(THREAD_PRIORITY_NORMAL);
+                bool fSuccess = CheckWork(pblock.get(), *pwallet, reservekey);
+                SetThreadPriority(THREAD_PRIORITY_LOWEST);
+                if (fSuccess && fGenerateSingleBlock)
+                {
+                    hashSingleStakeBlock = pblock->GetHash();
+                    return;
+                }
+#else
                 SetThreadPriority(THREAD_PRIORITY_NORMAL);
                 CheckWork(pblock.get(), *pwallet, reservekey);
                 SetThreadPriority(THREAD_PRIORITY_LOWEST);
+#endif
             }
             Sleep(500);
             continue;

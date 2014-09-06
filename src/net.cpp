@@ -905,7 +905,7 @@ void ThreadMapPort2(void* parg)
             }
         }
 
-        string strDesc = "Peershares " + FormatFullVersion();
+        string strDesc = "Nu" + FormatFullVersion();
 #ifndef UPNPDISCOVER_SUCCESS
         /* miniupnpc 1.5 */
         r = UPNP_AddPortMapping(urls.controlURL, data.first.servicetype,
@@ -1666,6 +1666,10 @@ void StartNode(void* parg)
     GenerateBitcoins(GetBoolArg("-gen", false), GetWallet('S'));
 
     // ppcoin: mint proof-of-stake blocks in the background
+#ifdef TESTING
+    if (!GetBoolArg("-stakegen", true))
+        return;
+#endif
     if (!CreateThread(ThreadStakeMinter, GetWallet('S')))
         printf("Error: CreateThread(ThreadStakeMinter) failed\n");
 }
