@@ -1532,6 +1532,7 @@ bool CBlock::ConnectBlock(CTxDB& txdb, CBlockIndex* pindex)
     int64 nFees = 0;
     map<unsigned char, int64> mapValueIn;
     map<unsigned char, int64> mapValueOut;
+    map<unsigned char, int64> mapParked;
     unsigned int nSigOps = 0;
     BOOST_FOREACH(CTransaction& tx, vtx)
     {
@@ -1568,6 +1569,14 @@ bool CBlock::ConnectBlock(CTxDB& txdb, CBlockIndex* pindex)
             if (!tx.IsCoinStake())
                 nFees += nTxValueIn - nTxValueOut;
 
+            for (int i = 0; i < tx.vout.size(); i++)
+            {
+                if (tx.IsParked(i))
+                    mapParked[tx.cUnit] += tx.vout[i].nValue;
+            }
+            if (tx.IsUnpark())
+                mapParked[tx.cUnit] -= nTxValueIn;
+
             if (!tx.ConnectInputs(txdb, mapInputs, mapQueuedChanges, posThisTx, pindex, true, false, fStrictPayToScriptHash))
                 return false;
         }
@@ -1576,9 +1585,15 @@ bool CBlock::ConnectBlock(CTxDB& txdb, CBlockIndex* pindex)
     }
 
     // ppcoin: track money supply and mint amount info
+    // nubit: per unit tracking
     pindex->nMint = mapValueOut['S'] - mapValueIn['S'] + nFees;
     BOOST_FOREACH(unsigned char cUnit, sAvailableUnits)
+    {
         pindex->mapMoneySupply[cUnit] = (pindex->pprev? pindex->pprev->mapMoneySupply[cUnit] : 0) + mapValueOut[cUnit] - mapValueIn[cUnit];
+        // nubit: track amount parked
+        pindex->mapTotalParked[cUnit] = (pindex->pprev? pindex->pprev->mapTotalParked[cUnit] : 0) + mapParked[cUnit];
+    }
+
     if (!txdb.WriteBlockIndex(CDiskBlockIndex(pindex)))
         return error("Connect() : WriteBlockIndex for pindex failed");
 

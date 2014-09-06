@@ -550,6 +550,8 @@ Value getinfo(const Array& params, bool fHelp)
     obj.push_back(Pair("parked",        ValueFromAmount(pwalletMain->GetParked())));
     obj.push_back(Pair("blocks",        (int)nBestHeight));
     obj.push_back(Pair("moneysupply",   ValueFromAmount(pindexBest->GetMoneySupply(pwalletMain->Unit()))));
+    if (pwalletMain->Unit() != 'S')
+        obj.push_back(Pair("totalparked",   ValueFromAmount(pindexBest->GetTotalParked(pwalletMain->Unit()))));
     obj.push_back(Pair("connections",   (int)vNodes.size()));
     obj.push_back(Pair("proxy",         (fUseProxy ? addrProxy.ToStringIPPort() : string())));
     obj.push_back(Pair("ip",            addrSeenByPeer.ToStringIP()));
