@@ -132,6 +132,7 @@ CWallet *GetWallet(unsigned char cUnit);
 void RegisterWallet(CWallet* pwalletIn);
 void UnregisterWallet(CWallet* pwalletIn);
 void UnregisterAndDeleteAllWallets();
+void SyncWithWallets(const CTransaction& tx, const CBlock* pblock = NULL, bool fUpdate = false, bool fConnect = true);
 bool ProcessBlock(CNode* pfrom, CBlock* pblock);
 bool CheckDiskSpace(uint64 nAdditionalBytes=0);
 FILE* OpenBlockFile(unsigned int nFile, unsigned int nBlockPos, const char* pszMode="rb");
@@ -159,6 +160,7 @@ void BitcoinMiner(CWallet *pwallet, bool fProofOfStake, bool fGenerateSingleBloc
 #else
 void BitcoinMiner(CWallet *pwallet, bool fProofOfStake);
 #endif
+bool GetTransaction(const uint256 &hash, CTransaction &tx, uint256 &hashBlock);
 
 
 inline int GetMaturity(bool fProofOfStake)
@@ -524,7 +526,7 @@ public:
         vin.clear();
         vout.clear();
         nLockTime = 0;
-        cUnit = 0;
+        cUnit = '?';
         nDoS = 0;  // Denial-of-service prevention
     }
 
@@ -1979,6 +1981,7 @@ public:
                 bool fCheckInputs, bool* pfMissingInputs);
     bool addUnchecked(CTransaction &tx);
     bool remove(CTransaction &tx);
+    void queryHashes(std::vector<uint256>& vtxid);
 
     unsigned long size()
     {
