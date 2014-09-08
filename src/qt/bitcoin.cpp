@@ -88,6 +88,9 @@ void ThreadSafeHandleURI(const std::string& strURI)
 
 void MainFrameRepaint()
 {
+    if(!guiref)
+        return;
+
     if(clientmodel)
         QMetaObject::invokeMethod(clientmodel, "update", Qt::QueuedConnection);
     if(walletmodel)
