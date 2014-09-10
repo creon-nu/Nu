@@ -3151,6 +3151,7 @@ Value getliquidityinfo(const Array& params, bool fHelp)
     if (!ValidUnit(cUnit) || cUnit == 'S')
         throw JSONRPCError(-3, "Invalid currency");
 
+    Object result;
     int64 nBuyAmount = 0;
     int64 nSellAmount = 0;
     {
@@ -3161,15 +3162,22 @@ Value getliquidityinfo(const Array& params, bool fHelp)
             const CLiquidityInfo& info = item.second;
             if (info.cUnit == cUnit)
             {
+                Object custodianInfo;
+                custodianInfo.push_back(Pair("buy", ValueFromAmount(info.nBuyAmount)));
+                custodianInfo.push_back(Pair("sell", ValueFromAmount(info.nSellAmount)));
+                result.push_back(Pair(info.GetCustodianAddress().ToString(), custodianInfo));
+
                 nBuyAmount += info.nBuyAmount;
                 nSellAmount += info.nSellAmount;
             }
         }
     }
 
-    Object result;
-    result.push_back(Pair("buy", ValueFromAmount(nBuyAmount)));
-    result.push_back(Pair("sell", ValueFromAmount(nSellAmount)));
+    Object total;
+    total.push_back(Pair("buy", ValueFromAmount(nBuyAmount)));
+    total.push_back(Pair("sell", ValueFromAmount(nSellAmount)));
+    result.push_back(Pair("total", total));
+
     return result;
 }
 
