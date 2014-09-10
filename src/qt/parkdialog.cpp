@@ -152,6 +152,9 @@ void ParkDialog::accept()
         if (!model->validateAddress(ui->unparkAddress->text()))
             throw runtime_error(tr("Invalid unpark address").toStdString());
 
+        if (getEstimatedPremium() == 0)
+            throw runtime_error(tr("Parking this amount for this duration would not provide any premium").toStdString());
+
         if (!confirmPark())
             return;
 
