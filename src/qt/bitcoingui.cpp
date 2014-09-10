@@ -287,9 +287,9 @@ void BitcoinGUI::createActions()
     changePassphraseAction->setToolTip(tr("Change the passphrase used for portfolio encryption"));
     openRPCConsoleAction = new QAction(tr("&Debug window"), this);
     openRPCConsoleAction->setToolTip(tr("Open debugging and diagnostic console"));
-    exportPeercoinKeysAction = new QAction(QIcon(":/icons/export"), tr("&Export Peercoin keys"), this);
+    exportPeercoinKeysAction = new QAction(QIcon(":/icons/export"), tr("&Export Peercoin keys..."), this);
     exportPeercoinKeysAction->setToolTip(tr("Export the Peercoin keys associated with the NuShares addresses to Peercoin via RPC"));
-    distributeDividendsAction = new QAction(tr("&Distribute dividends"), this);
+    distributeDividendsAction = new QAction(tr("&Distribute dividends..."), this);
     distributeDividendsAction->setToolTip(tr("Distribute dividends to share holders"));
 
     connect(quitAction, SIGNAL(triggered()), qApp, SLOT(quit()));
@@ -1013,6 +1013,13 @@ void BitcoinGUI::unlockWallet()
 
 void BitcoinGUI::exportPeercoinKeys()
 {
+    QMessageBox::StandardButton reply;
+
+    QString sQuestion = tr("All your NuShares private keys will be converted to Peercoin private keys and imported into your Peercoin wallet.\n\nThe Peercoin wallet must be running, unlocked (if it was encrypted) and accept RPC commands.\n\nThis process may take several minutes because Peercoin will scan the blockchain for transactions on all the imported keys.\n\nYour NuShares wallet must also be unlocked if it is encrypted.\n\nDo you want to proceed?");
+    reply = QMessageBox::warning(this, tr("Parking confirmation"), sQuestion, QMessageBox::Yes | QMessageBox::No);
+    if (reply != QMessageBox::Yes)
+        return;
+
     try {
         int iExportedCount, iErrorCount;
         walletModel->ExportPeercoinKeys(iExportedCount, iErrorCount);
