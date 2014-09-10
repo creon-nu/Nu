@@ -737,7 +737,7 @@ void BitcoinGUI::closeEvent(QCloseEvent *event)
 void BitcoinGUI::askFee(qint64 nFeeRequired, bool *payFee)
 {
     QString strMessage =
-        tr("This transaction is over the size limit. You can still send it for a fee of %1. Do you want to pay the fee?").arg(
+        tr("The fee for this transaction is %1. Are you sure you want to send this transaction?").arg(
                 BitcoinUnits::formatWithUnit(BitcoinUnits::BTC, nFeeRequired));
     QMessageBox::StandardButton retval = QMessageBox::question(
           this, tr("Sending..."), strMessage,
