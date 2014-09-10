@@ -435,6 +435,9 @@ void BitcoinGUI::setWalletModel(WalletModel *walletModel)
 
         voteAction->setVisible(walletModel->getUnit() == 'S');
 
+        if (walletModel->getUnit() != 'S' && centralWidget->currentWidget() == votePage)
+            gotoOverviewPage();
+
         setEncryptionStatus(walletModel->getEncryptionStatus());
         connect(walletModel, SIGNAL(encryptionStatusChanged(int)), this, SLOT(setEncryptionStatus(int)));
 
