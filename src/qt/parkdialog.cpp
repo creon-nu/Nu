@@ -128,11 +128,13 @@ bool ParkDialog::confirmPark()
 {
     QMessageBox::StandardButton reply;
 
-    QString sQuestion = tr("%1 %2 will be parked for about %3.\nThen they will be sent back to %4.\n\nAre you sure?").arg(
+    QString sQuestion = tr("%1 %2 will be parked for about %3.\nThen they will be sent back to %4.\nThe estimated premium is %5 %6.\n\nAre you sure?").arg(
             formatAmount(getAmount()),
             getUnitName(),
             formatBlockTime(getBlocks()),
-            getUnparkAddress());
+            getUnparkAddress(),
+            formatAmount(getEstimatedPremium()),
+            getUnitName());
     reply = QMessageBox::warning(this, tr("Parking confirmation"), sQuestion, QMessageBox::Yes | QMessageBox::No);
     return reply == QMessageBox::Yes;
 }
@@ -176,6 +178,11 @@ void ParkDialog::on_end_dateTimeChanged(const QDateTime& datetime)
     updatePremium();
 }
 
+qint64 ParkDialog::getEstimatedPremium() const
+{
+    return model->getPremium(getAmount(), getBlocks());
+}
+
 void ParkDialog::updatePremium()
 {
     if (!model)
@@ -187,7 +194,7 @@ void ParkDialog::updatePremium()
         return;
     }
 
-    qint64 premium = model->getPremium(getAmount(), getBlocks());
+    qint64 premium = getEstimatedPremium();
     QString amountString = formatAmount(premium);
     ui->estimatedPremium->setText(QString("%1 %2").arg(amountString, getUnitName()));
 }
