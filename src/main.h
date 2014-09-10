@@ -52,11 +52,13 @@ static const int STAKE_MIN_AGE = 60 * 60 * 24 * 7; // changed to 7 days so only 
 static const int STAKE_MAX_AGE = STAKE_MIN_AGE + 1; // changed to same as minimum to incentivize minting as soon as possible
 static const int64 IPO_SHARES = 1000000000 * COIN; // Total number of shares to create using proof of work (intented for IPO)
 static const int64 PROOF_OF_WORK_BLOCKS = 400; // Block height of the last proof of work block
-static const int64 PARK_RATE_VOTES = 2000; // Number of blocks used in park rate median vote calculation
-static const int64 PARK_RATE_PREVIOUS_VOTES = 1440; // Number of blocks used in the park rate increase limitation
 #ifdef TESTING
+static const int64 PARK_RATE_VOTES = 5; // Number of blocks used in park rate median vote calculation
+static const int64 PARK_RATE_PREVIOUS_VOTES = 1; // Number of blocks used in the park rate increase limitation
 static const unsigned int CUSTODIAN_VOTES = 5;
 #else
+static const int64 PARK_RATE_VOTES = 2000; // Number of blocks used in park rate median vote calculation
+static const int64 PARK_RATE_PREVIOUS_VOTES = 1440; // Number of blocks used in the park rate increase limitation
 static const unsigned int CUSTODIAN_VOTES = 10000;
 #endif
 static const int64 PROOF_OF_STAKE_REWARD = 40 * COIN; // Constant reward of Proof of Stake blocks

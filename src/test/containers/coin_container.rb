@@ -204,6 +204,10 @@ class CoinContainer
     rpc("getblockhash", rpc("getblockcount"))
   end
 
+  def top_block
+    rpc("getblock", top_hash)
+  end
+
   def connection_count
     rpc("getconnectioncount").to_i
   end

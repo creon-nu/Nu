@@ -98,6 +98,24 @@ When(/^node "(.*?)" votes an amount of "(.*?)" for custodian "(.*?)"$/) do |arg1
   node.rpc("setvote", vote)
 end
 
+When(/^node "(.*?)" votes a park rate of "(.*?)" NuBits per Nubit parked during (\d+) blocks$/) do |arg1, arg2, arg3|
+  node = @nodes[arg1]
+  vote = node.rpc("getvote")
+  vote["parkrates"] = [
+    {
+      "unit" => "B",
+      "rates" => [
+        {
+          "blocks" => arg3.to_i,
+          "rate" => parse_number(arg2),
+        },
+      ],
+    },
+  ]
+  node.rpc("setvote", vote)
+  expect(node.rpc("getvote")["parkrates"]).to eq(vote["parkrates"])
+end
+
 When(/^node "(.*?)" finds blocks until custodian "(.*?)" is elected$/) do |arg1, arg2|
   node = @nodes[arg1]
   loop do
@@ -108,6 +126,20 @@ When(/^node "(.*?)" finds blocks until custodian "(.*?)" is elected$/) do |arg1,
         break
       end
     end
+  end
+end
+
+When(/^node "(.*?)" finds blocks until the NuBit park rate for (\d+) blocks is "(.*?)"$/) do |arg1, arg2, arg3|
+  node = @nodes[arg1]
+  wait_for do
+    block = node.generate_stake
+    info = node.rpc("getblock", block)
+    park_rates = info["parkrates"].detect { |r| r["unit"] == "B" }
+    expect(park_rates).not_to be_nil
+    rates = park_rates["rates"]
+    rate = rates.detect { |r| r["blocks"] == arg2.to_i }
+    expect(rate).not_to be_nil
+    expect(rate["rate"]).to eq(parse_number(arg3))
   end
 end
 
@@ -141,6 +173,10 @@ end
 
 When(/^node "(.*?)" sends "(.*?)" to "([^"]*?)"$/) do |arg1, arg2, arg3|
   @nodes[arg1].rpc "sendtoaddress", @addresses[arg3], parse_number(arg2)
+end
+
+When(/^node "(.*?)" sends "(.*?)" NuBits to "(.*?)"$/) do |arg1, arg2, arg3|
+  @nodes[arg1].unit_rpc "B", "sendtoaddress", @addresses[arg3], parse_number(arg2)
 end
 
 When(/^node "(.*?)" finds a block received by all other nodes$/) do |arg1|
@@ -183,5 +219,15 @@ end
 Then(/^all nodes should (?:have|reach) (\d+) transactions? in memory pool$/) do |arg1|
   wait_for do
     expect(@nodes.values.map { |node| node.rpc("getmininginfo")["pooledtx"] }).to eq(@nodes.map { arg1.to_i })
+  end
+end
+
+When(/^node "(.*?)" parks "(.*?)" NuBits during (\d+) blocks$/) do |arg1, arg2, arg3|
+  @nodes[arg1].unit_rpc('B', 'park', parse_number(arg2), arg3.to_i)
+end
+
+Then(/^the NuBit balance of node "(.*?)" should reach "(.*?)"$/) do |arg1, arg2|
+  wait_for do
+    expect(@nodes[arg1].unit_rpc('B', 'getbalance')).to eq(parse_number(arg2))
   end
 end
