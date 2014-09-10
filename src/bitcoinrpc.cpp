@@ -726,14 +726,27 @@ Value getinfo(const Array& params, bool fHelp)
 
 Value getparkrates(const Array& params, bool fHelp)
 {
-    if (fHelp || params.size() != 0)
+    if (fHelp || params.size() > 1)
         throw runtime_error(
-            "getparkrates\n"
-            "Returns an object containing the park rates in the last block.");
+            "getparkrates [<height>]\n"
+            "Returns an object containing the park rates in the block at height <height> (default: the last block).");
+
+    CBlockIndex *pindex = pindexBest;
+
+    if (params.size() > 0)
+    {
+        int nHeight = params[0].get_int();
+
+        if (nHeight < 0 || nHeight > pindex->nHeight)
+            throw JSONRPCError(-12, "Error: Invalid height");
+
+        while (pindex->nHeight != nHeight)
+            pindex = pindex->pprev;
+    }
 
     Object obj;
 
-    BOOST_FOREACH(const CParkRateVote& parkRateVote, pindexBest->vParkRateResult)
+    BOOST_FOREACH(const CParkRateVote& parkRateVote, pindex->vParkRateResult)
     {
         if (parkRateVote.cUnit != pwalletMain->Unit())
             continue;
@@ -4919,6 +4932,7 @@ Array RPCConvertValues(const std::string &strMethod, const std::vector<std::stri
     if (strMethod == "liquidityinfo"           && n > 2) ConvertTo<double>(params[2]);
     if (strMethod == "getmotions"              && n > 0) ConvertTo<boost::int64_t>(params[0]);
     if (strMethod == "getmotions"              && n > 1) ConvertTo<boost::int64_t>(params[1]);
+    if (strMethod == "getparkrates"            && n > 0) ConvertTo<boost::int64_t>(params[0]);
 #ifdef TESTING
     if (strMethod == "timetravel"              && n > 0) ConvertTo<boost::int64_t>(params[0]);
 #endif
