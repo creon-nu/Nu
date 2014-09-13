@@ -3017,23 +3017,32 @@ struct MotionResult
 
 Value getmotions(const Array& params, bool fHelp)
 {
-    if (fHelp || params.size() != 2)
+    if (fHelp || params.size() > 2)
         throw runtime_error(
-            "getmotions <block height> <block quantity>\n"
+            "getmotions [<block height>] [<block quantity>]\n"
             "Returns an object containing the motion vote results.");
 
     Object obj;
 
-    int nHeight = params[0].get_int();
-    if (nHeight < 0 || nHeight > nBestHeight)
-        throw runtime_error("Invalid height\n");
-
     CBlockIndex *pindex = pindexBest;
 
-    for (int i = nBestHeight; i > nHeight; i--)
-        pindex = pindex->pprev;
+    if (params.size() > 0)
+    {
+        int nHeight = params[0].get_int();
 
-    int nQuantity = params[1].get_int();
+        if (nHeight < 0 || nHeight > nBestHeight)
+            throw runtime_error("Invalid height\n");
+
+        for (int i = nBestHeight; i > nHeight; i--)
+            pindex = pindex->pprev;
+    }
+
+    int nQuantity;
+    if (params.size() > 1)
+        nQuantity = params[1].get_int();
+    else
+        nQuantity = MOTION_VOTES;
+
     if (nQuantity <= 0)
         throw runtime_error("Invalid quantity\n");
 
