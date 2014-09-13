@@ -3048,6 +3048,7 @@ Value getmotions(const Array& params, bool fHelp)
 
     map<const uint160, MotionResult> mapMotion;
 
+    MotionResult total;
     for (int i = 0; i < nQuantity && pindex; i++, pindex = pindex->pprev)
     {
         if (!pindex->IsProofOfStake())
@@ -3057,7 +3058,9 @@ Value getmotions(const Array& params, bool fHelp)
 
         MotionResult& result = mapMotion[vote.hashMotion];
         result.nBlocks++;
+        total.nBlocks++;
         result.nShareDaysDestroyed += vote.nCoinAgeDestroyed;
+        total.nShareDaysDestroyed += vote.nCoinAgeDestroyed;
     }
 
     BOOST_FOREACH(const PAIRTYPE(uint160, MotionResult)& resultPair, mapMotion)
@@ -3066,7 +3069,9 @@ Value getmotions(const Array& params, bool fHelp)
         const MotionResult& result = resultPair.second;
         Object resultObject;
         resultObject.push_back(Pair("blocks", result.nBlocks));
+        resultObject.push_back(Pair("block_percentage", (double)result.nBlocks / total.nBlocks * 100.0));
         resultObject.push_back(Pair("sharedays", (boost::uint64_t)result.nShareDaysDestroyed));
+        resultObject.push_back(Pair("shareday_percentage", (double)result.nShareDaysDestroyed / total.nShareDaysDestroyed * 100.0));
         obj.push_back(Pair(hashMotion.ToString(), resultObject));
     }
     return obj;
