@@ -245,7 +245,7 @@ int main(int argc, char *argv[])
                     splash.finish(&window);
 
                 ClientModel clientModel(&optionsModel);
-                WalletModel *walletModel = new WalletModel(*setpwalletRegistered.begin(), &optionsModel);
+                WalletModel *walletModel = new WalletModel(GetWallet('B'), &optionsModel);
 
                 window.setClientModel(&clientModel);
                 window.setWalletModel(walletModel);
