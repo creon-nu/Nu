@@ -1015,14 +1015,29 @@ void BitcoinGUI::exportPeercoinKeys()
 {
     QMessageBox::StandardButton reply;
 
-    QString sQuestion = tr("All your NuShares private keys will be converted to Peercoin private keys and imported into your Peercoin wallet.\n\nThe Peercoin wallet must be running, unlocked (if it was encrypted) and accept RPC commands.\n\nThis process may take several minutes because Peercoin will scan the blockchain for transactions on all the imported keys.\n\nYour NuShares wallet must also be unlocked if it is encrypted.\n\nDo you want to proceed?");
+    QString sQuestion = tr("All your NuShares private keys will be converted to Peercoin private keys and imported into your Peercoin wallet.\n\nThe Peercoin wallet must be running, unlocked (if it was encrypted) and accept RPC commands.\n\nThis process may take several minutes because Peercoin will scan the blockchain for transactions on all the imported keys.\n\nDo you want to proceed?");
     reply = QMessageBox::warning(this, tr("Peercoin keys export confirmation"), sQuestion, QMessageBox::Yes | QMessageBox::No);
     if (reply != QMessageBox::Yes)
         return;
 
+    bool fMustLock;
+    if (walletModel->getEncryptionStatus() == WalletModel::Locked)
+    {
+        AskPassphraseDialog dlg(AskPassphraseDialog::Unlock, this);
+        dlg.setModel(walletModel);
+        dlg.exec();
+
+        if(walletModel->getEncryptionStatus() != WalletModel::Unlocked)
+            return;
+
+        fMustLock = true;
+    }
+
     try {
         int iExportedCount, iErrorCount;
         walletModel->ExportPeercoinKeys(iExportedCount, iErrorCount);
+        if (fMustLock)
+            walletModel->setWalletLocked(true);
         QMessageBox::information(this,
                 tr("Peercoin keys export"),
                 tr("%1 key(s) were exported to Peercoin.\n%2 key(s) were either already known or invalid.")
@@ -1031,6 +1046,8 @@ void BitcoinGUI::exportPeercoinKeys()
                 );
     }
     catch (std::runtime_error &e) {
+        if (fMustLock)
+            walletModel->setWalletLocked(true);
         QMessageBox::critical(this,
                 tr("Peercoin keys export"),
                 tr("Error: %1").arg(e.what()));
