@@ -726,10 +726,11 @@ Value getinfo(const Array& params, bool fHelp)
 
 Value getparkrates(const Array& params, bool fHelp)
 {
-    if (fHelp || params.size() > 1)
+    if (fHelp || params.size() > 2)
         throw runtime_error(
-            "getparkrates [<height>]\n"
-            "Returns an object containing the park rates in the block at height <height> (default: the last block).");
+            "getparkrates [<height>] [<currency>]\n"
+            "Returns an object containing the park rates in the block at height <height> (default: the last block).\n"
+            "The default <currency> is the currency of the RPC server's wallet.");
 
     CBlockIndex *pindex = pindexBest;
 
@@ -744,20 +745,33 @@ Value getparkrates(const Array& params, bool fHelp)
             pindex = pindex->pprev;
     }
 
-    Object obj;
+    unsigned char cUnit;
+    if (params.size() > 1)
+        cUnit = params[1].get_str()[0];
+    else
+        cUnit = pwalletMain->Unit();
+
+    if (!ValidUnit(cUnit))
+        throw JSONRPCError(-12, "Error: Invalid currency");
+
+    if (cUnit == 'S')
+        throw JSONRPCError(-12, "Error: Park rates are not available on NuShares");
 
     BOOST_FOREACH(const CParkRateVote& parkRateVote, pindex->vParkRateResult)
     {
-        if (parkRateVote.cUnit != pwalletMain->Unit())
+        if (parkRateVote.cUnit != cUnit)
             continue;
 
+        Object obj;
         BOOST_FOREACH(const CParkRate& parkRate, parkRateVote.vParkRate)
         {
             string label = boost::lexical_cast<std::string>(parkRate.GetDuration()) + " blocks";
             obj.push_back(Pair(label, ValueFromParkRate(parkRate.nRate)));
         }
+        return obj;
     }
-    return obj;
+
+    throw JSONRPCError(-12, "Error: Park rates not found");
 }
 
 
