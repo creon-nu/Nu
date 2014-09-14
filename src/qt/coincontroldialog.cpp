@@ -698,9 +698,10 @@ void CoinControlDialog::updateView()
             itemOutput->setText(COLUMN_DATE, QDateTime::fromTime_t(out.tx->GetTxTime()).toUTC().toString("yy-MM-dd hh:mm"));
             
             // immature PoS reward
-            if (out.tx->IsCoinStake() && out.tx->GetBlocksToMaturity() > 0 && out.tx->GetDepthInMainChain() > 0) {
-              itemOutput->setBackground(COLUMN_CONFIRMATIONS, Qt::red);
-              itemOutput->setDisabled(true);
+            if (out.tx->IsCoinStake() && out.tx->GetBlocksToMaturity() > 0 && out.tx->GetDepthInMainChain() > 0)
+            {
+                itemOutput->setBackground(COLUMN_CONFIRMATIONS, Qt::red);
+                itemOutput->setDisabled(true);
             }
 
             // confirmations
@@ -750,7 +751,7 @@ void CoinControlDialog::updateView()
             itemWalletAddress->setText(COLUMN_PRIORITY_INT64, strPad(QString::number((int64)dPrioritySum), 20, " "));
         }
     }
-    
+
     // expand all partially selected
     if (treeMode)
     {
@@ -758,8 +759,48 @@ void CoinControlDialog::updateView()
             if (ui->treeWidget->topLevelItem(i)->checkState(COLUMN_CHECKBOX) == Qt::PartiallyChecked)
                 ui->treeWidget->topLevelItem(i)->setExpanded(true);
     }
-    
+
     // sort view
     sortView(sortColumn, sortOrder);
     ui->treeWidget->setEnabled(true);
+
+    unselectSpent();
+}
+
+// Unselect coins that were spent (e.g. to mint a block)
+void CoinControlDialog::unselectSpent()
+{
+    map<QString, vector<COutput> > mapCoins;
+    vector<COutPoint> vCoinControl;
+    vector<COutPoint> vDelete;
+    int found;
+
+    model->listCoins(mapCoins);
+    coinControl->ListSelected(vCoinControl);
+
+    BOOST_FOREACH(const COutPoint outpt, vCoinControl)
+    {
+        found = 0;
+        BOOST_FOREACH(PAIRTYPE(QString, vector<COutput>) coins, mapCoins)
+        {
+            BOOST_FOREACH(const COutput& out, coins.second)
+            {
+                COutPoint outpt2(out.tx->GetHash(), out.i);
+                if(outpt2 == outpt)
+                {
+                    found = 1;
+                    break;
+                }
+            }
+            if(found)
+                break;
+        }
+        if(!found)
+            vDelete.push_back(outpt);
+    }
+
+    BOOST_FOREACH(COutPoint outpt, vDelete)
+    {
+        coinControl->UnSelect(outpt);
+    }
 }
