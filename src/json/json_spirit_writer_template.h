@@ -126,9 +126,8 @@ namespace json_spirit
                 case int_type:   output_int( value );         break;
 
                 /// Bitcoin: Added std::fixed and changed precision from 16 to 8
-                // nubit: changed precision to 4
-                case real_type:  os_ << std::showpoint << std::fixed << std::setprecision(4)
-                                     << value.get_real();     break;
+                /// nubit: trim trailing zeros
+                case real_type:  output_real( value );         break;
 
                 case null_type:  os_ << "null";               break;
                 default: assert( false );
@@ -162,6 +161,20 @@ namespace json_spirit
             {
                os_ << value.get_int64();
             }
+        }
+
+        void output_real( const Value_type& value )
+        {
+            std::string str = strprintf("%.8f", value.get_real());
+
+            // Right-trim excess 0's before the decimal point:
+            int nTrim = 0;
+            for (int i = str.size()-1; (str[i] == '0' && isdigit(str[i-1])); --i)
+                ++nTrim;
+            if (nTrim)
+                str.erase(str.size()-nTrim, nTrim);
+
+            os_ << str;
         }
 
         void output( const String_type& s )
