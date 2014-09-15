@@ -726,25 +726,52 @@ Value getinfo(const Array& params, bool fHelp)
 
 Value getparkrates(const Array& params, bool fHelp)
 {
-    if (fHelp || params.size() != 0)
+    if (fHelp || params.size() > 2)
         throw runtime_error(
-            "getparkrates\n"
-            "Returns an object containing the park rates in the last block.");
+            "getparkrates [<height>] [<currency>]\n"
+            "Returns an object containing the park rates in the block at height <height> (default: the last block).\n"
+            "The default <currency> is the currency of the RPC server's wallet.");
 
-    Object obj;
+    CBlockIndex *pindex = pindexBest;
 
-    BOOST_FOREACH(const CParkRateVote& parkRateVote, pindexBest->vParkRateResult)
+    if (params.size() > 0)
     {
-        if (parkRateVote.cUnit != pwalletMain->Unit())
+        int nHeight = params[0].get_int();
+
+        if (nHeight < 0 || nHeight > pindex->nHeight)
+            throw JSONRPCError(-12, "Error: Invalid height");
+
+        while (pindex->nHeight != nHeight)
+            pindex = pindex->pprev;
+    }
+
+    unsigned char cUnit;
+    if (params.size() > 1)
+        cUnit = params[1].get_str()[0];
+    else
+        cUnit = pwalletMain->Unit();
+
+    if (!ValidUnit(cUnit))
+        throw JSONRPCError(-12, "Error: Invalid currency");
+
+    if (cUnit == 'S')
+        throw JSONRPCError(-12, "Error: Park rates are not available on NuShares");
+
+    BOOST_FOREACH(const CParkRateVote& parkRateVote, pindex->vParkRateResult)
+    {
+        if (parkRateVote.cUnit != cUnit)
             continue;
 
+        Object obj;
         BOOST_FOREACH(const CParkRate& parkRate, parkRateVote.vParkRate)
         {
             string label = boost::lexical_cast<std::string>(parkRate.GetDuration()) + " blocks";
             obj.push_back(Pair(label, ValueFromParkRate(parkRate.nRate)));
         }
+        return obj;
     }
-    return obj;
+
+    throw JSONRPCError(-12, "Error: Park rates not found");
 }
 
 
@@ -5044,6 +5071,7 @@ Array RPCConvertValues(const std::string &strMethod, const std::vector<std::stri
     if (strMethod == "liquidityinfo"           && n > 2) ConvertTo<double>(params[2]);
     if (strMethod == "getmotions"              && n > 0) ConvertTo<boost::int64_t>(params[0]);
     if (strMethod == "getmotions"              && n > 1) ConvertTo<boost::int64_t>(params[1]);
+    if (strMethod == "getparkrates"            && n > 0) ConvertTo<boost::int64_t>(params[0]);
     if (strMethod == "getcustodianvotes"       && n > 0) ConvertTo<boost::int64_t>(params[0]);
     if (strMethod == "getcustodianvotes"       && n > 1) ConvertTo<boost::int64_t>(params[1]);
 #ifdef TESTING
