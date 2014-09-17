@@ -2228,6 +2228,9 @@ void CWallet::GetAllReserveAddresses(set<CBitcoinAddress>& setAddress)
 
 void CWallet::ExportPeercoinKeys(int &nExportedCount, int &nErrorCount)
 {
+    if (cUnit != 'S')
+        throw runtime_error("Currency wallets will not receive dividends. Refusing to export keys to Peercoin.");
+
     nExportedCount = 0;
     nErrorCount = 0;
 

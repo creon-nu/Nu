@@ -325,9 +325,9 @@ void BitcoinGUI::createMenuBar()
     file->addSeparator();
     file->addAction(quitAction);
 
-    QMenu *shares = appMenuBar->addMenu(tr("S&hares"));
-    shares->addAction(exportPeercoinKeysAction);
-	shares->addAction(distributeDividendsAction);
+    sharesMenu = appMenuBar->addMenu(tr("S&hares"));
+    sharesMenu->addAction(exportPeercoinKeysAction);
+    sharesMenu->addAction(distributeDividendsAction);
 
     unitMenu = appMenuBar->addMenu(tr("&Unit"));
 
@@ -434,6 +434,8 @@ void BitcoinGUI::setWalletModel(WalletModel *walletModel)
         parkAction->setVisible(walletModel->getUnit() != 'S');
 
         voteAction->setVisible(walletModel->getUnit() == 'S');
+
+        sharesMenu->setEnabled(walletModel->getUnit() == 'S');
 
         setEncryptionStatus(walletModel->getEncryptionStatus());
         connect(walletModel, SIGNAL(encryptionStatusChanged(int)), this, SLOT(setEncryptionStatus(int)));
