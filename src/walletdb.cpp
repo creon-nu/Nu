@@ -112,7 +112,6 @@ int CWalletDB::LoadWallet(CWallet* pwallet)
     pwallet->vchDefaultKey.clear();
     int nFileVersion = 0;
     vector<uint256> vWalletUpgrade;
-    bool fIsEncrypted = false;
 
     //// todo: shouldn't we catch exceptions and try to recover and continue?
     {
@@ -276,7 +275,6 @@ int CWalletDB::LoadWallet(CWallet* pwallet)
                     printf("Error reading wallet database: LoadCryptedKey failed\n");
                     return DB_CORRUPT;
                 }
-                fIsEncrypted = true;
             }
             else if (strType == "defaultkey")
             {
@@ -322,11 +320,6 @@ int CWalletDB::LoadWallet(CWallet* pwallet)
         WriteTx(hash, pwallet->mapWallet[hash]);
 
     printf("nFileVersion = %d\n", nFileVersion);
-
-
-    // Rewrite encrypted wallets of versions 0.4.0 and 0.5.0rc:
-    if (fIsEncrypted && (nFileVersion == 40000 || nFileVersion == 50000))
-        return DB_NEED_REWRITE;
 
     if (nFileVersion < CLIENT_VERSION) // Update
         WriteVersion(CLIENT_VERSION);
