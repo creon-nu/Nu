@@ -1,4 +1,4 @@
-Nu 0.4.0 BETA
+Nu 0.4.1 BETA
 
 Copyright (c) 2014 Nu Developers
 Distributed under the MIT/X11 software license, see the accompanying
