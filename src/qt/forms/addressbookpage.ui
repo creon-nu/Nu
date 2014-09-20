@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>627</width>
+    <width>794</width>
     <height>347</height>
    </rect>
   </property>
@@ -59,10 +59,6 @@
        <property name="text">
         <string>&amp;New Address...</string>
        </property>
-       <property name="icon">
-        <iconset resource="../bitcoin.qrc">
-         <normaloff>:/icons/add</normaloff>:/icons/add</iconset>
-       </property>
       </widget>
      </item>
      <item>
@@ -73,20 +69,12 @@
        <property name="text">
         <string>&amp;Copy to Clipboard</string>
        </property>
-       <property name="icon">
-        <iconset resource="../bitcoin.qrc">
-         <normaloff>:/icons/editcopy</normaloff>:/icons/editcopy</iconset>
-       </property>
       </widget>
      </item>
      <item>
       <widget class="QPushButton" name="showQRCode">
        <property name="text">
         <string>Show &amp;QR Code</string>
-       </property>
-       <property name="icon">
-        <iconset resource="../bitcoin.qrc">
-         <normaloff>:/images/qrcode</normaloff>:/images/qrcode</iconset>
        </property>
       </widget>
      </item>
@@ -98,10 +86,6 @@
        <property name="text">
         <string>&amp;Sign Message</string>
        </property>
-       <property name="icon">
-        <iconset resource="../bitcoin.qrc">
-         <normaloff>:/icons/edit</normaloff>:/icons/edit</iconset>
-       </property>
       </widget>
      </item>
      <item>
@@ -111,10 +95,6 @@
        </property>
        <property name="text">
         <string>&amp;Delete</string>
-       </property>
-       <property name="icon">
-        <iconset resource="../bitcoin.qrc">
-         <normaloff>:/icons/remove</normaloff>:/icons/remove</iconset>
        </property>
       </widget>
      </item>
@@ -148,8 +128,6 @@
    </item>
   </layout>
  </widget>
- <resources>
-  <include location="../bitcoin.qrc"/>
- </resources>
+ <resources/>
  <connections/>
 </ui>

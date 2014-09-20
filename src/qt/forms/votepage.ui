@@ -161,10 +161,6 @@
        <property name="text">
         <string>Custodian vote...</string>
        </property>
-       <property name="icon">
-        <iconset resource="../bitcoin.qrc">
-         <normaloff>:/icons/edit</normaloff>:/icons/edit</iconset>
-       </property>
       </widget>
      </item>
      <item>
@@ -172,20 +168,12 @@
        <property name="text">
         <string>Park rate vote...</string>
        </property>
-       <property name="icon">
-        <iconset resource="../bitcoin.qrc">
-         <normaloff>:/icons/edit</normaloff>:/icons/edit</iconset>
-       </property>
       </widget>
      </item>
      <item>
       <widget class="QPushButton" name="motionVote">
        <property name="text">
         <string>Motion vote...</string>
-       </property>
-       <property name="icon">
-        <iconset resource="../bitcoin.qrc">
-         <normaloff>:/icons/edit</normaloff>:/icons/edit</iconset>
        </property>
       </widget>
      </item>
@@ -206,8 +194,6 @@
    </item>
   </layout>
  </widget>
- <resources>
-  <include location="../bitcoin.qrc"/>
- </resources>
+ <resources/>
  <connections/>
 </ui>

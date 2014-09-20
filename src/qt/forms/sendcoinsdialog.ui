@@ -25,11 +25,20 @@
         <x>0</x>
         <y>0</y>
         <width>666</width>
-        <height>165</height>
+        <height>162</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_2">
-       <property name="margin">
+       <property name="leftMargin">
+        <number>0</number>
+       </property>
+       <property name="topMargin">
+        <number>0</number>
+       </property>
+       <property name="rightMargin">
+        <number>0</number>
+       </property>
+       <property name="bottomMargin">
         <number>0</number>
        </property>
        <item>
@@ -66,10 +75,6 @@
        <property name="text">
         <string>&amp;Add recipient...</string>
        </property>
-       <property name="icon">
-        <iconset resource="../bitcoin.qrc">
-         <normaloff>:/icons/add</normaloff>:/icons/add</iconset>
-       </property>
       </widget>
      </item>
      <item>
@@ -85,10 +90,6 @@
        </property>
        <property name="text">
         <string>Clear all</string>
-       </property>
-       <property name="icon">
-        <iconset resource="../bitcoin.qrc">
-         <normaloff>:/icons/remove</normaloff>:/icons/remove</iconset>
        </property>
        <property name="autoRepeatDelay">
         <number>300</number>
@@ -146,10 +147,6 @@
        <property name="text">
         <string>&amp;Send</string>
        </property>
-       <property name="icon">
-        <iconset resource="../bitcoin.qrc">
-         <normaloff>:/icons/send</normaloff>:/icons/send</iconset>
-       </property>
        <property name="default">
         <bool>true</bool>
        </property>
@@ -159,8 +156,6 @@
    </item>
   </layout>
  </widget>
- <resources>
-  <include location="../bitcoin.qrc"/>
- </resources>
+ <resources/>
  <connections/>
 </ui>
