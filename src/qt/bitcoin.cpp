@@ -104,7 +104,7 @@ void InitMessage(const std::string &message)
 {
     if(splashref)
     {
-        splashref->showMessage(QString::fromStdString(message), Qt::AlignBottom|Qt::AlignHCenter, QColor(255,255,200));
+        splashref->showMessage(QString::fromStdString(message), Qt::AlignBottom|Qt::AlignHCenter, QColor(255,255,255));
         QApplication::instance()->processEvents();
     }
 }
@@ -218,6 +218,7 @@ int main(int argc, char *argv[])
         app.installTranslator(&translator);
 
     QSplashScreen splash(QPixmap(":/images/splash"), 0);
+    splash.setStyleSheet("background-color:transparent;");
     if (GetBoolArg("-splash", true) && !GetBoolArg("-min"))
     {
         splash.show();

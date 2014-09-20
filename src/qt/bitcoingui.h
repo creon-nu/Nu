@@ -101,6 +101,7 @@ private:
     QAction *distributeDividendsAction;
     QAction *parkAction;
     QAction *voteAction;
+    QAction *switchUnitAction;
     QVector<QAction*> changeUnitActions;
 
     QMenu *unitMenu;
@@ -200,6 +201,9 @@ private slots:
 
     /** Switch to another unit */
     void changeUnit(const QString &unit);
+
+    /** Switch wallet units button**/
+    void switchUnitButtonClicked();
 };
 
 #endif
