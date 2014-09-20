@@ -3199,6 +3199,41 @@ Value getcustodianvotes(const Array& params, bool fHelp)
 }
 
 
+Value getelectedcustodians(const Array& params, bool fHelp)
+{
+    if (fHelp || params.size() != 0)
+        throw runtime_error(
+            "getelectedcustodians\n"
+            "Returns an object containing the elected custodians.");
+
+    Array result;
+
+    LOCK(cs_mapElectedCustodian);
+    BOOST_FOREACH(const PAIRTYPE(CBitcoinAddress, CBlockIndex*)& pair, mapElectedCustodian)
+    {
+        const CBitcoinAddress address = pair.first;
+        const CBlockIndex* pindex = pair.second;
+
+        BOOST_FOREACH(const CCustodianVote& custodianVote, pindex->vElectedCustodian)
+        {
+            if (custodianVote.GetAddress() != address)
+                continue;
+
+            Object custodianObject;
+            custodianObject.push_back(Pair("unit", string(1, custodianVote.cUnit)));
+            custodianObject.push_back(Pair("address", address.ToString()));
+            custodianObject.push_back(Pair("amount", ValueFromAmount(custodianVote.nAmount)));
+            custodianObject.push_back(Pair("block", pindex->GetBlockHash().ToString()));
+            custodianObject.push_back(Pair("time", DateTimeStrFormat(pindex->nTime)));
+
+            result.push_back(custodianObject);
+        }
+    }
+
+    return result;
+}
+
+
 Value liquidityinfo(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 4)
@@ -4282,6 +4317,7 @@ static const CRPCCommand vRPCCommands[] =
     { "getliquidityinfo",       &getliquidityinfo,       false},
     { "getmotions",             &getmotions,             true },
     { "getcustodianvotes",      &getcustodianvotes,      true },
+    { "getelectedcustodians",   &getelectedcustodians,   true },
     { "listunspent",            &listunspent,            false},
     { "getrawtransaction",      &getrawtransaction,      false},
     { "createrawtransaction",   &createrawtransaction,   false},
