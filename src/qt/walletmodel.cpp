@@ -11,17 +11,23 @@
 #include "walletdb.h" // for BackupWallet
 
 #include <QSet>
+#include <QTimer>
 
 WalletModel::WalletModel(CWallet *wallet, OptionsModel *optionsModel, QObject *parent) :
     QObject(parent), wallet(wallet), optionsModel(optionsModel), addressTableModel(0),
     transactionTableModel(0),
     parkTableModel(0),
     cachedBalance(0), cachedUnconfirmedBalance(0), cachedNumTransactions(0),
-    cachedEncryptionStatus(Unencrypted)
+    cachedEncryptionStatus(Unencrypted),
+    pendingUpdate(false)
 {
     addressTableModel = new AddressTableModel(wallet, this);
     transactionTableModel = new TransactionTableModel(wallet, this);
     parkTableModel = new ParkTableModel(wallet, this);
+
+    QTimer *timer = new QTimer(this);
+    connect(timer, SIGNAL(timeout()), this, SLOT(processPendingUpdate()));
+    timer->start(MODEL_UPDATE_DELAY);
 }
 
 WalletModel::~WalletModel()
@@ -81,6 +87,15 @@ unsigned char WalletModel::getUnit() const
 
 void WalletModel::update()
 {
+    pendingUpdate = true;
+    processPendingUpdate();
+}
+
+void WalletModel::processPendingUpdate()
+{
+    if (!pendingUpdate)
+        return;
+
     // Get required locks upfront. This avoids the GUI from getting stuck on
     // periodical polls if the core is holding the locks for a longer time -
     // for example, during a wallet rescan.
@@ -110,6 +125,8 @@ void WalletModel::update()
     cachedUnconfirmedBalance = newUnconfirmedBalance;
     cachedParked = newParked;
     cachedNumTransactions = newNumTransactions;
+
+    pendingUpdate = false;
 }
 
 void WalletModel::updateAddressList()
