@@ -113,6 +113,8 @@ private:
 
     QMovie *syncIconMovie;
 
+    QString switchUnitTarget;
+
     /** Create the main UI actions. */
     void createActions();
     /** Create the menu bar and submenus. */
