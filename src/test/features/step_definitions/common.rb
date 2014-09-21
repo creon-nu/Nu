@@ -43,6 +43,22 @@ Given(/^a network with nodes? (.+)(?: able to mint)?$/) do |node_names|
   end
 end
 
+Given(/^a node "(.*?)" with an empty wallet$/) do |arg1|
+  name = arg1
+  options = {
+    image: "nunet/a",
+    links: @nodes.values.map(&:name),
+    args: {
+      debug: true,
+      timetravel: 5*24*3600,
+    },
+    remove_wallet_before_startup: true,
+  }
+  node = CoinContainer.new(options)
+  @nodes[name] = node
+  node.wait_for_boot
+end
+
 After do
   if @nodes
     require 'thread'
@@ -90,7 +106,7 @@ Given(/^all nodes reach the same height$/) do
   end
 end
 
-When(/^node "(.*?)" generates a "(.*?)" address "(.*?)"$/) do |arg1, arg2, arg3|
+When(/^node "(.*?)" generates a "?(.*?)"? address "(.*?)"$/) do |arg1, arg2, arg3|
   @addresses[arg3] = @nodes[arg1].unit_rpc(unit(arg2), "getnewaddress")
 end
 
@@ -168,8 +184,8 @@ When(/^node "(.*?)" sends "(.*?)" to "([^"]*?)"$/) do |arg1, arg2, arg3|
   @nodes[arg1].rpc "sendtoaddress", @addresses[arg3], parse_number(arg2)
 end
 
-When(/^node "(.*?)" sends "(.*?)" NuBits to "(.*?)"$/) do |arg1, arg2, arg3|
-  @nodes[arg1].unit_rpc "B", "sendtoaddress", @addresses[arg3], parse_number(arg2)
+When(/^node "(.*?)" sends "(.*?)" (NuBits|NuShares) to "(.*?)"$/) do |arg1, arg2, unit_name, arg3|
+  @nodes[arg1].unit_rpc unit(unit_name), "sendtoaddress", @addresses[arg3], parse_number(arg2)
 end
 
 When(/^node "(.*?)" finds a block received by all other nodes$/) do |arg1|
