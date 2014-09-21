@@ -156,11 +156,19 @@ When(/^node "(.*?)" finds a block received by all other nodes$/) do |arg1|
   end
 end
 
-Then(/^node "(.*?)" should reach a balance of "(.*?)"( NuBits|)$/) do |arg1, arg2, unit_name|
+Then(/^node "(.*?)" should reach a balance of "([^"]*?)"( NuBits|)$/) do |arg1, arg2, unit_name|
   node = @nodes[arg1]
   amount = parse_number(arg2)
   wait_for do
     expect(node.unit_rpc(unit(unit_name), "getbalance")).to eq(amount)
+  end
+end
+
+Then(/^node "(.*?)" should reach a balance of "([^"]*?)"( NuBits|) on account "([^"]*?)"$/) do |arg1, arg2, unit_name, account|
+  node = @nodes[arg1]
+  amount = parse_number(arg2)
+  wait_for do
+    expect(node.unit_rpc(unit(unit_name), "getbalance", account)).to eq(amount)
   end
 end
 
@@ -193,5 +201,12 @@ end
 When(/^some time pass$/) do
   @nodes.values.each do |node|
     node.rpc "timetravel", 5
+  end
+end
+
+When(/^node "(.*?)" finds enough blocks to mature a Proof of Stake block$/) do |arg1|
+  node = @nodes[arg1]
+  3.times do
+    node.generate_stake
   end
 end
