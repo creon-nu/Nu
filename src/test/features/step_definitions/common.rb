@@ -67,6 +67,12 @@ When(/^node "(.*?)" finds a block$/) do |node|
   @nodes[node].generate_stake
 end
 
+When(/^node "(.*?)" finds (\d+) blocks$/) do |arg1, arg2|
+  arg2.to_i.times do
+    @nodes[arg1].generate_stake
+  end
+end
+
 Then(/^all nodes should be at block "(.*?)"$/) do |block|
   begin
     wait_for do
@@ -97,6 +103,25 @@ When(/^node "(.*?)" votes an amount of "(.*?)" for custodian "(.*?)"$/) do |arg1
   }
   node.rpc("setvote", vote)
 end
+
+When(/^node "(.*?)" votes a park rate of "(.*?)" NuBits per Nubit parked during (\d+) blocks$/) do |arg1, arg2, arg3|
+  node = @nodes[arg1]
+  vote = node.rpc("getvote")
+  vote["parkrates"] = [
+    {
+      "unit" => "B",
+      "rates" => [
+        {
+          "blocks" => arg3.to_i,
+          "rate" => parse_number(arg2),
+        },
+      ],
+    },
+  ]
+  node.rpc("setvote", vote)
+  expect(node.rpc("getvote")["parkrates"]).to eq(vote["parkrates"])
+end
+
 
 When(/^node "(.*?)" finds blocks until custodian "(.*?)" is elected$/) do |arg1, arg2|
   node = @nodes[arg1]
@@ -156,7 +181,7 @@ When(/^node "(.*?)" finds a block received by all other nodes$/) do |arg1|
   end
 end
 
-Then(/^node "(.*?)" should reach a balance of "([^"]*?)"( NuBits|)$/) do |arg1, arg2, unit_name|
+Then(/^node "(.*?)" (?:should reach|reaches) a balance of "([^"]*?)"( NuBits|)$/) do |arg1, arg2, unit_name|
   node = @nodes[arg1]
   amount = parse_number(arg2)
   wait_for do
@@ -217,4 +242,17 @@ When(/^node "(.*?)" finds enough blocks to mature a Proof of Stake block$/) do |
   3.times do
     node.generate_stake
   end
+end
+
+When(/^node "(.*?)" parks "(.*?)" NuBits for (\d+) blocks$/) do |arg1, arg2, arg3|
+  node = @nodes[arg1]
+  amount = parse_number(arg2)
+  blocks = arg3.to_i
+
+  node.unit_rpc('B', 'park', amount, blocks)
+end
+
+When(/^node "(.*?)" unparks$/) do |arg1|
+  node = @nodes[arg1]
+  node.unit_rpc('B', 'unpark')
 end
