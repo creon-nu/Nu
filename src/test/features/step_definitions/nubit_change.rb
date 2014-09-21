@@ -10,3 +10,10 @@ Then(/^the (\d+)\S+ transaction sould be a send of "(.*?)" to "(.*?)"$/) do |arg
   expect(tx["address"]).to eq(@addresses[arg3])
 end
 
+Then(/^the (\d+)\S+ transaction sould be a receive of "(.*?)" to "(.*?)"$/) do |arg1, arg2, arg3|
+  tx = @listtransactions[arg1.to_i - 1]
+  expect(tx["category"]).to eq("receive")
+  expect(tx["amount"]).to eq(parse_number(arg2))
+  expect(tx["address"]).to eq(@addresses[arg3])
+end
+

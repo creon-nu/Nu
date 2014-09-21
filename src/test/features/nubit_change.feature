@@ -11,3 +11,6 @@ Feature: NuBit change is not reported as a transaction
     And node "Custodian" sends "1000" NuBits to "bob"
     Then node "Custodian" should have 2 NuBit transactions
     And the 2nd transaction sould be a send of "1000" to "bob"
+    And node "Bob" should reach an unconfirmed balance of "1000" NuBits
+    And node "Bob" should have 1 NuBit transactions
+    And the 1st transaction sould be a receive of "1000" to "bob"
