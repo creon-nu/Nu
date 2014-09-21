@@ -249,8 +249,8 @@ void BitcoinGUI::createActions()
     voteAction->setShortcut(QKeySequence(Qt::ALT + Qt::Key_7));
     tabGroup->addAction(voteAction);
 
-    switchUnitAction = new QAction(tr("NuShares"), this);
-    switchUnitAction->setToolTip(tr("Switch Units"));
+    switchUnitAction = new QAction(tr(""), this);
+    switchUnitAction->setToolTip(tr("Switch unit"));
     switchUnitAction->setCheckable(true);
     switchUnitAction->setShortcut(QKeySequence(Qt::ALT + Qt::Key_8));
     tabGroup->addAction(switchUnitAction);
@@ -508,6 +508,16 @@ void BitcoinGUI::setWalletModel(WalletModel *walletModel)
         for (int i=0; i < changeUnitActions.size(); ++i)
             unitMenu->addAction(changeUnitActions[i]);
 
+        if (walletModel->getUnit() == 'S')
+        {
+            switchUnitTarget = "B";
+            switchUnitAction->setText(tr("NuBits"));
+        }
+        else
+        {
+            switchUnitTarget = "S";
+            switchUnitAction->setText(tr("NuShares"));
+        }
     }
 }
 
@@ -1115,14 +1125,5 @@ void BitcoinGUI::switchUnitButtonClicked()
 {
     gotoOverviewPage();
 
-    if (walletModel->getUnit() == 'S')
-    {
-        switchUnitAction->setText(tr("NuShares"));
-        changeUnit("B");
-    }
-    else
-    {
-        switchUnitAction->setText(tr("NuBits"));
-        changeUnit("S");
-    }
+    changeUnit(switchUnitTarget);
 }
