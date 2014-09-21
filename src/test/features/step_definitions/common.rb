@@ -106,10 +106,6 @@ Given(/^all nodes reach the same height$/) do
   end
 end
 
-When(/^node "(.*?)" generates a "?(.*?)"? address "(.*?)"$/) do |arg1, arg2, arg3|
-  @addresses[arg3] = @nodes[arg1].unit_rpc(unit(arg2), "getnewaddress")
-end
-
 When(/^node "(.*?)" votes an amount of "(.*?)" for custodian "(.*?)"$/) do |arg1, arg2, arg3|
   node = @nodes[arg1]
   vote = node.rpc("getvote")
@@ -233,14 +229,10 @@ Then(/^node "(.*?)" should reach a balance of "([^"]*?)"( NuBits|) on account "(
   end
 end
 
-Given(/^node "(.*?)" generates a new address "(.*?)"$/) do |arg1, arg2|
-  @addresses[arg2] = @nodes[arg1].unit_rpc('S', "getnewaddress")
-  @unit[@addresses[arg2]] = 'S'
-end
-
-Given(/^node "(.*?)" generates a new NuBit address "(.*?)"$/) do |arg1, arg2|
-  @addresses[arg2] = @nodes[arg1].unit_rpc('B', "getnewaddress")
-  @unit[@addresses[arg2]] = 'B'
+Given(/^node "(.*?)" generates a (\w+) address "(.*?)"$/) do |arg1, unit_name, arg2|
+  unit_name = "NuShares" if unit_name == "new"
+  @addresses[arg2] = @nodes[arg1].unit_rpc(unit(unit_name), "getnewaddress")
+  @unit[@addresses[arg2]] = unit(unit_name)
 end
 
 When(/^node "(.*?)" sends "(.*?)" shares to "(.*?)" through transaction "(.*?)"$/) do |arg1, arg2, arg3, arg4|

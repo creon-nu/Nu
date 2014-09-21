@@ -13,7 +13,7 @@ Feature: Split money supply
 
   Scenario: Money supply after a custodian is elected
     Given a network with nodes "A" and "B" able to mint
-    When node "B" generates a "NuBit" address "cust"
+    When node "B" generates a NuBit address "cust"
     And node "A" votes an amount of "1,000,000" for custodian "cust"
     And node "A" finds blocks until custodian "cust" is elected
     Then the "NuShare" supply should be between "1,000,000,000" and "1,000,100,000"
