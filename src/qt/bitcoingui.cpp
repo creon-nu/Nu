@@ -249,7 +249,7 @@ void BitcoinGUI::createActions()
     voteAction->setShortcut(QKeySequence(Qt::ALT + Qt::Key_7));
     tabGroup->addAction(voteAction);
 
-    switchUnitAction = new QAction(tr("NuBits"), this);
+    switchUnitAction = new QAction(tr("NuShares"), this);
     switchUnitAction->setToolTip(tr("Switch Units"));
     switchUnitAction->setCheckable(true);
     switchUnitAction->setShortcut(QKeySequence(Qt::ALT + Qt::Key_8));
