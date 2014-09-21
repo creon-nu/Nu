@@ -143,6 +143,10 @@ When(/^node "(.*?)" sends "(.*?)" to "([^"]*?)"$/) do |arg1, arg2, arg3|
   @nodes[arg1].rpc "sendtoaddress", @addresses[arg3], parse_number(arg2)
 end
 
+When(/^node "(.*?)" sends "(.*?)" NuBits to "(.*?)"$/) do |arg1, arg2, arg3|
+  @nodes[arg1].unit_rpc "B", "sendtoaddress", @addresses[arg3], parse_number(arg2)
+end
+
 When(/^node "(.*?)" finds a block received by all other nodes$/) do |arg1|
   node = @nodes[arg1]
   block = node.generate_stake
@@ -183,5 +187,11 @@ end
 Then(/^all nodes should (?:have|reach) (\d+) transactions? in memory pool$/) do |arg1|
   wait_for do
     expect(@nodes.values.map { |node| node.rpc("getmininginfo")["pooledtx"] }).to eq(@nodes.map { arg1.to_i })
+  end
+end
+
+When(/^some time pass$/) do
+  @nodes.values.each do |node|
+    node.rpc "timetravel", 5
   end
 end
