@@ -43,6 +43,22 @@ Given(/^a network with nodes? (.+)(?: able to mint)?$/) do |node_names|
   end
 end
 
+Given(/^a node "(.*?)" with an empty wallet$/) do |arg1|
+  name = arg1
+  options = {
+    image: "nunet/a",
+    links: @nodes.values.map(&:name),
+    args: {
+      debug: true,
+      timetravel: 5*24*3600,
+    },
+    remove_wallet_before_startup: true,
+  }
+  node = CoinContainer.new(options)
+  @nodes[name] = node
+  node.wait_for_boot
+end
+
 After do
   if @nodes
     require 'thread'
@@ -88,10 +104,6 @@ Given(/^all nodes reach the same height$/) do
   wait_for do
     expect(@nodes.values.map(&:block_count).uniq.size).to eq(1)
   end
-end
-
-When(/^node "(.*?)" generates a "(.*?)" address "(.*?)"$/) do |arg1, arg2, arg3|
-  @addresses[arg3] = @nodes[arg1].unit_rpc(unit(arg2), "getnewaddress")
 end
 
 When(/^node "(.*?)" votes an amount of "(.*?)" for custodian "(.*?)"$/) do |arg1, arg2, arg3|
@@ -168,8 +180,8 @@ When(/^node "(.*?)" sends "(.*?)" to "([^"]*?)"$/) do |arg1, arg2, arg3|
   @nodes[arg1].rpc "sendtoaddress", @addresses[arg3], parse_number(arg2)
 end
 
-When(/^node "(.*?)" sends "(.*?)" NuBits to "(.*?)"$/) do |arg1, arg2, arg3|
-  @nodes[arg1].unit_rpc "B", "sendtoaddress", @addresses[arg3], parse_number(arg2)
+When(/^node "(.*?)" sends "(.*?)" (NuBits|NuShares) to "(.*?)"$/) do |arg1, arg2, unit_name, arg3|
+  @nodes[arg1].unit_rpc unit(unit_name), "sendtoaddress", @addresses[arg3], parse_number(arg2)
 end
 
 When(/^node "(.*?)" finds a block received by all other nodes$/) do |arg1|
@@ -181,7 +193,7 @@ When(/^node "(.*?)" finds a block received by all other nodes$/) do |arg1|
   end
 end
 
-Then(/^node "(.*?)" (?:should reach|reaches) a balance of "([^"]*?)"( NuBits|)$/) do |arg1, arg2, unit_name|
+Then(/^node "(.*?)" (?:should reach|reaches) a balance of "([^"]*?)"( NuBits| NuShares|)$/) do |arg1, arg2, unit_name|
   node = @nodes[arg1]
   amount = parse_number(arg2)
   wait_for do
@@ -217,14 +229,10 @@ Then(/^node "(.*?)" should reach a balance of "([^"]*?)"( NuBits|) on account "(
   end
 end
 
-Given(/^node "(.*?)" generates a new address "(.*?)"$/) do |arg1, arg2|
-  @addresses[arg2] = @nodes[arg1].unit_rpc('S', "getnewaddress")
-  @unit[@addresses[arg2]] = 'S'
-end
-
-Given(/^node "(.*?)" generates a new NuBit address "(.*?)"$/) do |arg1, arg2|
-  @addresses[arg2] = @nodes[arg1].unit_rpc('B', "getnewaddress")
-  @unit[@addresses[arg2]] = 'B'
+Given(/^node "(.*?)" generates a (\w+) address "(.*?)"$/) do |arg1, unit_name, arg2|
+  unit_name = "NuShares" if unit_name == "new"
+  @addresses[arg2] = @nodes[arg1].unit_rpc(unit(unit_name), "getnewaddress")
+  @unit[@addresses[arg2]] = unit(unit_name)
 end
 
 When(/^node "(.*?)" sends "(.*?)" shares to "(.*?)" through transaction "(.*?)"$/) do |arg1, arg2, arg3, arg4|
