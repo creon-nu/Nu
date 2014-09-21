@@ -189,6 +189,12 @@ Then(/^node "(.*?)" (?:should reach|reaches) a balance of "([^"]*?)"( NuBits|)$/
   end
 end
 
+Then(/^node "(.*?)" should have a balance of "([^"]*?)"( NuBits|)$/) do |arg1, arg2, unit_name|
+  node = @nodes[arg1]
+  amount = parse_number(arg2)
+  expect(node.unit_rpc(unit(unit_name), "getbalance")).to eq(amount)
+end
+
 Then(/^node "(.*?)" should reach an unconfirmed balance of "([^"]*?)"( NuBits|)$/) do |arg1, arg2, unit_name|
   node = @nodes[arg1]
   amount = parse_number(arg2)
@@ -255,4 +261,11 @@ end
 When(/^node "(.*?)" unparks$/) do |arg1|
   node = @nodes[arg1]
   node.unit_rpc('B', 'unpark')
+end
+
+Then(/^"(.*?)" should have "(.*?)" NuBits parked$/) do |arg1, arg2|
+  node = @nodes[arg1]
+  amount = parse_number(arg2)
+  info = node.unit_rpc("B", "getinfo")
+  expect(info["parked"]).to eq(amount)
 end
