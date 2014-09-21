@@ -574,9 +574,9 @@ void CWalletTx::GetAmounts(int64& nGeneratedImmature, int64& nGeneratedMature, l
     if (IsCoinBase() || IsCoinStake())
     {
         if (GetBlocksToMaturity() > 0)
-            nGeneratedImmature = pwallet->GetCredit(*this);
+            nGeneratedImmature = pwallet->GetCredit(*this) - pwallet->GetDebit(*this);
         else
-            nGeneratedMature = GetCredit();
+            nGeneratedMature = GetCredit() - GetDebit();
         return;
     }
 
@@ -1274,7 +1274,7 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, int64> >& vecSend, CW
                     //  rediscover unknown transactions that were written with keys of ours to recover
                     //  post-backup change.
 
-                    if (!GetBoolArg("-avatar", true)) // ppcoin: not avatar mode; nu: avatar mode enabled by default to avoid change being sent to hidden address
+                    if (!GetBoolArg("-avatar", (cUnit == 'S'))) // ppcoin: not avatar mode; nu: avatar mode enabled by default only on Share wallet to avoid change being sent to hidden address
                     {
                         // Reserve a new key pair from key pool
                         vector<unsigned char> vchPubKey = reservekey.GetReservedKey();
