@@ -203,6 +203,12 @@ Then(/^node "(.*?)" should reach an unconfirmed balance of "([^"]*?)"( NuBits|)$
   end
 end
 
+Then(/^node "(.*?)" should have an unconfirmed balance of "([^"]*?)"( NuBits|)$/) do |arg1, arg2, unit_name|
+  node = @nodes[arg1]
+  amount = parse_number(arg2)
+  expect(node.unit_rpc(unit(unit_name), "getbalance", "*", 0)).to eq(amount)
+end
+
 Then(/^node "(.*?)" should reach a balance of "([^"]*?)"( NuBits|) on account "([^"]*?)"$/) do |arg1, arg2, unit_name, account|
   node = @nodes[arg1]
   amount = parse_number(arg2)
