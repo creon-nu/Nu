@@ -1076,7 +1076,7 @@ void BitcoinGUI::exportPeercoinKeys()
     if (reply != QMessageBox::Yes)
         return;
 
-    bool fMustLock;
+    bool fMustLock = false;
     if (walletModel->getEncryptionStatus() == WalletModel::Locked)
     {
         AskPassphraseDialog dlg(AskPassphraseDialog::Unlock, this);
