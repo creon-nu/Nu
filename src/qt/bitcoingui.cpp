@@ -972,12 +972,12 @@ void BitcoinGUI::setEncryptionStatus(int status)
     case WalletModel::Unlocked:
         labelEncryptionIcon->show();
         labelEncryptionIcon->setPixmap(QIcon(":/icons/lock_open").pixmap(STATUSBAR_ICONSIZE,STATUSBAR_ICONSIZE));
-        labelEncryptionIcon->setToolTip(fWalletUnlockMintOnly? tr("Wallet is <b>encrypted</b> and currently <b>unlocked for block minting only</b>") : tr("Wallet is <b>encrypted</b> and currently <b>unlocked</b>"));
+        labelEncryptionIcon->setToolTip(walletModel->isUnlockedForMintingOnly()? tr("Wallet is <b>encrypted</b> and currently <b>unlocked for block minting only</b>") : tr("Wallet is <b>encrypted</b> and currently <b>unlocked</b>"));
         encryptWalletAction->setChecked(true);
         changePassphraseAction->setEnabled(true);
         encryptWalletAction->setEnabled(false); // TODO: decrypt currently not supported
-        unlockForMintingAction->setEnabled(fShares && fWalletUnlockMintOnly);
-        unlockForMintingAction->setChecked(fShares && fWalletUnlockMintOnly);
+        unlockForMintingAction->setEnabled(fShares && walletModel->isUnlockedForMintingOnly());
+        unlockForMintingAction->setChecked(fShares && walletModel->isUnlockedForMintingOnly());
         break;
     case WalletModel::Locked:
         labelEncryptionIcon->show();
@@ -1021,18 +1021,18 @@ void BitcoinGUI::unlockForMinting(bool status)
         if(walletModel->getEncryptionStatus() != WalletModel::Unlocked)
             return;
 
-        fWalletUnlockMintOnly = true;
+        walletModel->setUnlockedForMintingOnly(true);
     }
     else
     {
         if(walletModel->getEncryptionStatus() != WalletModel::Unlocked)
             return;
 
-        if (!fWalletUnlockMintOnly)
+        if (!walletModel->isUnlockedForMintingOnly())
             return;
 
         walletModel->setWalletLocked(true);
-        fWalletUnlockMintOnly = false;
+        walletModel->setUnlockedForMintingOnly(false);
     }
 }
 
