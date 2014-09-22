@@ -260,9 +260,9 @@ void DistributeDivDialog::on_exportButton_clicked()
 
     for (unsigned int i=0; i < vDistribution.size(); i++)
     {
-        fprintf(fp, "%s,%lld,%s,%f\n",
+        fprintf(fp, "%s,%f,%s,%f\n",
                 vDistribution[i].GetPeershareAddress().ToString().c_str(),
-                vDistribution[i].GetBalance(),
+                (double)vDistribution[i].GetBalance() / COIN,
                 vDistribution[i].GetPeercoinAddress().ToString().c_str(),
                 vDistribution[i].GetDividendAmount());
     }
