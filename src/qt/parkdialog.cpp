@@ -159,7 +159,7 @@ void ParkDialog::accept()
         if (!confirmPark())
             return;
 
-        bool fMustLock;
+        bool fMustLock = false;
         if (model->getEncryptionStatus() == WalletModel::Locked)
         {
             AskPassphraseDialog dlg(AskPassphraseDialog::Unlock, this);
