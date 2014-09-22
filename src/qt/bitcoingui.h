@@ -80,6 +80,7 @@ private:
     QProgressBar *progressBar;
 
     QMenuBar *appMenuBar;
+    QMenu *sharesMenu;
     QAction *overviewAction;
     QAction *historyAction;
     QAction *quitAction;
