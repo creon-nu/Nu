@@ -65,6 +65,8 @@ public:
     unsigned char getUnit() const;
     qint64 getMinTxFee() const;
     qint64 getMinTxOutAmount() const;
+    bool isUnlockedForMintingOnly() const;
+    void setUnlockedForMintingOnly(bool fUnlockedForMintingOnly);
 
     // Check address for validity
     bool validateAddress(const QString &address);
