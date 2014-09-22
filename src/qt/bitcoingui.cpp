@@ -958,6 +958,7 @@ void BitcoinGUI::handleURI(QString strURI)
 
 void BitcoinGUI::setEncryptionStatus(int status)
 {
+    bool fShares = (walletModel->getUnit() == 'S');
     switch(status)
     {
     case WalletModel::Unencrypted:
@@ -975,8 +976,8 @@ void BitcoinGUI::setEncryptionStatus(int status)
         encryptWalletAction->setChecked(true);
         changePassphraseAction->setEnabled(true);
         encryptWalletAction->setEnabled(false); // TODO: decrypt currently not supported
-        unlockForMintingAction->setEnabled(fWalletUnlockMintOnly);
-        unlockForMintingAction->setChecked(fWalletUnlockMintOnly);
+        unlockForMintingAction->setEnabled(fShares && fWalletUnlockMintOnly);
+        unlockForMintingAction->setChecked(fShares && fWalletUnlockMintOnly);
         break;
     case WalletModel::Locked:
         labelEncryptionIcon->show();
@@ -985,7 +986,7 @@ void BitcoinGUI::setEncryptionStatus(int status)
         encryptWalletAction->setChecked(true);
         changePassphraseAction->setEnabled(true);
         encryptWalletAction->setEnabled(false); // TODO: decrypt currently not supported
-        unlockForMintingAction->setEnabled(true);
+        unlockForMintingAction->setEnabled(fShares);
         unlockForMintingAction->setChecked(false);
         break;
     }
