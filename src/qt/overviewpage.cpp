@@ -151,7 +151,6 @@ void OverviewPage::setBalance(qint64 balance, qint64 stake, qint64 unconfirmedBa
     // Hiding doesn't remove the margin so we have to remove the widgets
     // See https://bugreports.qt-project.org/browse/QTBUG-6864
     static int parkedRow = -1;
-
     QFormLayout* formLayout = (QFormLayout*)ui->frame->layout();
     if (parkedRow == -1)
         formLayout->getWidgetPosition(ui->labelParked, &parkedRow, NULL);
@@ -162,7 +161,6 @@ void OverviewPage::setBalance(qint64 balance, qint64 stake, qint64 unconfirmedBa
         ui->labelParked->hide();
         ui->frame->layout()->removeWidget(ui->labelParkedLabel);
         ui->frame->layout()->removeWidget(ui->labelParked);
-
         //show stake label in place of park label
         formLayout->insertRow(parkedRow, ui->label_6, ui->labelStake);
         ui->label_6->show();
@@ -173,7 +171,6 @@ void OverviewPage::setBalance(qint64 balance, qint64 stake, qint64 unconfirmedBa
         formLayout->insertRow(parkedRow, ui->labelParkedLabel, ui->labelParked);
         ui->labelParkedLabel->show();
         ui->labelParked->show();
-
         //hide stake label when on currency unit
         ui->label_6->hide();
         ui->labelStake->hide();
