@@ -35,7 +35,7 @@
      <item>
       <widget class="QValidatedLineEdit" name="signFrom">
        <property name="toolTip">
-        <string>Enter tshe address to sign the message with</string>
+        <string>Enter the address to sign the message with</string>
        </property>
        <property name="maxLength">
         <number>34</number>
