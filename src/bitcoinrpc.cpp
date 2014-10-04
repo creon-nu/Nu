@@ -3278,18 +3278,26 @@ Value getparkvotes(const Array& params, bool fHelp)
             rateWeights[0] += abstainedCoinAge;
         }
 
+        uint64 accumulatedWeight = 0;
+
         Array votes;
         BOOST_FOREACH(const RateWeight& rateWeight, rateWeights)
         {
             Object rateVoteObject;
             boost::uint64_t rate = rateWeight.first;
             boost::uint64_t weight = rateWeight.second;
+
             double shareDays = (double)weight / (24 * 60 * 60);
             double shareDayPercentage = (double)weight / (double)totalVoteWeight * 100;
+
+            accumulatedWeight += weight;
+            double accumulatedPercentage = (double)accumulatedWeight / (double)totalVoteWeight * 100;
+
             rateVoteObject.push_back(Pair("rate", ValueFromParkRate(rate)));
             rateVoteObject.push_back(Pair("annual_percentage", AnnualInterestRatePercentage(rate, blocks)));
             rateVoteObject.push_back(Pair("sharedays", shareDays));
             rateVoteObject.push_back(Pair("shareday_percentage", shareDayPercentage));
+            rateVoteObject.push_back(Pair("accumulated_percentage", accumulatedPercentage));
 
             votes.push_back(rateVoteObject);
         }
