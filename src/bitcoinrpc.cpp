@@ -3238,6 +3238,7 @@ Value getparkvotes(const Array& params, bool fHelp)
 
     DurationRateWeightMap durationRateWeights;
     uint64 totalVoteWeight = 0;
+    map<unsigned char, uint64> coinAgeDestroyedPerDuration;
 
     for (int i = 0; i < nQuantity && pindex; i++, pindex = pindex->pprev)
     {
@@ -3254,6 +3255,7 @@ Value getparkvotes(const Array& params, bool fHelp)
             {
                 RateWeightMap &rateWeights = durationRateWeights[parkRate.nCompactDuration];
                 rateWeights[parkRate.nRate] += vote.nCoinAgeDestroyed;
+                coinAgeDestroyedPerDuration[parkRate.nCompactDuration] += vote.nCoinAgeDestroyed;
             }
         }
     }
@@ -3268,6 +3270,13 @@ Value getparkvotes(const Array& params, bool fHelp)
         boost::int64_t blocks = (int64)1<<nCompactDuration;
         durationObject.push_back(Pair("blocks", blocks));
         durationObject.push_back(Pair("estimated_duration", BlocksToTime(blocks)));
+
+        uint64 abstainedCoinAge = totalVoteWeight - coinAgeDestroyedPerDuration[nCompactDuration];
+        if (abstainedCoinAge > 0)
+        {
+            RateWeightMap &rateWeights = durationRateWeights[nCompactDuration];
+            rateWeights[0] += abstainedCoinAge;
+        }
 
         Array votes;
         BOOST_FOREACH(const RateWeight& rateWeight, rateWeights)
