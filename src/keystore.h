@@ -21,6 +21,7 @@ protected:
     unsigned char cUnit;
 
 public:
+    CKeyStore() : cUnit('?') {}
     virtual ~CKeyStore() {}
 
     // Add a key to the store.
