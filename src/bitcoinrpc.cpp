@@ -3735,7 +3735,7 @@ Value signrawtransaction(const Array& params, bool fHelp)
             tempKeystore.AddKey(key);
         }
     }
-    else if(pwalletMain->IsCrypted())
+    else if(pwalletMain->IsLocked())
       throw runtime_error("The wallet must be unlocked with walletpassphrase first");
 
     // Add previous txouts given in the RPC call:
