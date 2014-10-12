@@ -9,6 +9,7 @@ class CoinContainer
       delete_at_exit: false,
       remove_addr_after_shutdown: true,
       remove_wallet_after_shutdown: false,
+      remove_wallet_before_startup: false,
     }
 
     options = default_options.merge(options)
@@ -65,26 +66,30 @@ class CoinContainer
     end
     cmd_args += connects
 
-    bash_cmd = ""
+    bash_cmds = []
 
     if options[:show_environment]
-      bash_cmd += "echo Environment:; env; "
+      bash_cmds += ["echo Environment:", "env"]
     end
 
-    bash_cmd += "./nud " + cmd_args.join(" ")
+    if options[:remove_wallet_before_startup]
+      bash_cmds += ["rm -f /.nu/testnet/wallet*.dat"]
+    end
+
+    bash_cmds += ["./nud " + cmd_args.join(" ")]
 
     if options[:remove_addr_after_shutdown]
-      bash_cmd += "; rm /.nu/testnet/addr.dat"
+      bash_cmds += ["rm /.nu/testnet/addr.dat"]
     end
 
     if options[:remove_wallet_after_shutdown]
-      bash_cmd += "; rm /.nu/testnet/wallet*.dat"
+      bash_cmds = ["rm /.nu/testnet/wallet*.dat"]
     end
 
     command = [
       "stdbuf", "-oL", "-eL",
       '/bin/bash', '-c',
-      bash_cmd,
+      bash_cmds.join("; "),
     ]
 
     create_options = {
@@ -202,6 +207,10 @@ class CoinContainer
 
   def top_hash
     rpc("getblockhash", rpc("getblockcount"))
+  end
+
+  def top_block
+    rpc("getblock", top_hash)
   end
 
   def connection_count

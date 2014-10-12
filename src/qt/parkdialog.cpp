@@ -10,6 +10,7 @@
 #include "walletmodel.h"
 #include "optionsmodel.h"
 #include "bitcoinunits.h"
+#include "askpassphrasedialog.h"
 
 using namespace std;
 
@@ -128,11 +129,13 @@ bool ParkDialog::confirmPark()
 {
     QMessageBox::StandardButton reply;
 
-    QString sQuestion = tr("%1 %2 will be parked for about %3.\nThen they will be sent back to %4.\n\nAre you sure?").arg(
+    QString sQuestion = tr("%1 %2 will be parked for about %3.\nThen they will be sent back to %4.\nThe estimated premium is %5 %6.\n\nAre you sure?").arg(
             formatAmount(getAmount()),
             getUnitName(),
             formatBlockTime(getBlocks()),
-            getUnparkAddress());
+            getUnparkAddress(),
+            formatAmount(getEstimatedPremium()),
+            getUnitName());
     reply = QMessageBox::warning(this, tr("Parking confirmation"), sQuestion, QMessageBox::Yes | QMessageBox::No);
     return reply == QMessageBox::Yes;
 }
@@ -150,10 +153,29 @@ void ParkDialog::accept()
         if (!model->validateAddress(ui->unparkAddress->text()))
             throw runtime_error(tr("Invalid unpark address").toStdString());
 
+        if (getEstimatedPremium() == 0)
+            throw runtime_error(tr("Parking this amount for this duration would not provide any premium").toStdString());
+
         if (!confirmPark())
             return;
 
+        bool fMustLock = false;
+        if (model->getEncryptionStatus() == WalletModel::Locked)
+        {
+            AskPassphraseDialog dlg(AskPassphraseDialog::Unlock, this);
+            dlg.setModel(model);
+            dlg.exec();
+
+            if(model->getEncryptionStatus() != WalletModel::Unlocked)
+                return;
+
+            fMustLock = true;
+        }
+
         QString result = model->park(getAmount(), getBlocks(), getUnparkAddress());
+
+        if (fMustLock)
+            model->setWalletLocked(true);
 
         if (result == "")
             QDialog::accept();
@@ -176,6 +198,11 @@ void ParkDialog::on_end_dateTimeChanged(const QDateTime& datetime)
     updatePremium();
 }
 
+qint64 ParkDialog::getEstimatedPremium() const
+{
+    return model->getPremium(getAmount(), getBlocks());
+}
+
 void ParkDialog::updatePremium()
 {
     if (!model)
@@ -187,7 +214,7 @@ void ParkDialog::updatePremium()
         return;
     }
 
-    qint64 premium = model->getPremium(getAmount(), getBlocks());
+    qint64 premium = getEstimatedPremium();
     QString amountString = formatAmount(premium);
     ui->estimatedPremium->setText(QString("%1 %2").arg(amountString, getUnitName()));
 }

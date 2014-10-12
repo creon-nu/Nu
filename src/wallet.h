@@ -12,8 +12,6 @@
 #include "script.h"
 #include "walletdb.h"
 
-extern bool fWalletUnlockMintOnly;
-
 class CWalletTx;
 class CReserveKey;
 class COutput;
@@ -93,6 +91,10 @@ public:
 
     CVote vote;
 
+    // ppcoin: optional setting to unlock wallet for block minting only;
+    //         serves to disable the trivial sendmoney when OS account compromised
+    // nubit: moved the setting into the wallet
+    bool fWalletUnlockMintOnly;
 
     typedef std::map<unsigned int, CMasterKey> MasterKeyMap;
     MasterKeyMap mapMasterKeys;
@@ -110,6 +112,7 @@ public:
         nLastTimeResendWalletTransactions = 0;
         nNextTimeCheckUnparkableOutputs = 0;
         nLastTimeCheckUnparkableOutputs = 0;
+        fWalletUnlockMintOnly = false;
     }
     CWallet(std::string strWalletFileIn)
     {
@@ -124,6 +127,7 @@ public:
         nLastTimeResendWalletTransactions = 0;
         nNextTimeCheckUnparkableOutputs = 0;
         nLastTimeCheckUnparkableOutputs = 0;
+        fWalletUnlockMintOnly = false;
     }
 
     std::map<uint256, CWalletTx> mapWallet;
