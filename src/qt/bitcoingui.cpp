@@ -457,6 +457,12 @@ void BitcoinGUI::setWalletModel(WalletModel *walletModel)
 
         voteAction->setVisible(walletModel->getUnit() == 'S');
 
+        if (walletModel->getUnit() != 'S' && centralWidget->currentWidget() == votePage)
+            gotoOverviewPage();
+
+        if (walletModel->getUnit() == 'S' && centralWidget->currentWidget() == parkPage)
+            gotoOverviewPage();
+
         sharesMenu->setEnabled(walletModel->getUnit() == 'S');
 
         setEncryptionStatus(walletModel->getEncryptionStatus());
