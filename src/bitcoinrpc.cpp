@@ -216,13 +216,28 @@ void ScriptPubKeyToJSON(const CScript& scriptPubKey, Object& out, unsigned char 
         return;
     }
 
-    out.push_back(Pair("reqSigs", nRequired));
     out.push_back(Pair("type", GetTxnOutputType(type)));
+    if (type == TX_PARK)
+    {
+        uint64 nDuration;
+        CBitcoinAddress unparkAddress;
+        Object park;
+        if (ExtractPark(scriptPubKey, cUnit, nDuration, unparkAddress))
+        {
+            park.push_back(Pair("duration", (boost::uint64_t)nDuration));
+            park.push_back(Pair("unparkaddress", unparkAddress.ToString()));
+        }
+        out.push_back(Pair("park", park));
+    }
+    else
+    {
+        out.push_back(Pair("reqSigs", nRequired));
 
-    Array a;
-    BOOST_FOREACH(const CBitcoinAddress& addr, addresses)
-        a.push_back(CBitcoinAddress(addr).ToString());
-    out.push_back(Pair("addresses", a));
+        Array a;
+        BOOST_FOREACH(const CBitcoinAddress& addr, addresses)
+            a.push_back(CBitcoinAddress(addr).ToString());
+        out.push_back(Pair("addresses", a));
+    }
 }
 
 void TxToJSON(const CTransaction& tx, const uint256 hashBlock, Object& entry)
@@ -3706,6 +3721,7 @@ Value signrawtransaction(const Array& params, bool fHelp)
     if (params.size() > 2 && params[2].type() != null_type)
     {
         fGivenKeys = true;
+        tempKeystore.SetUnit(pwalletMain->Unit());
         Array keys = params[2].get_array();
         BOOST_FOREACH(Value k, keys)
         {
@@ -3720,7 +3736,7 @@ Value signrawtransaction(const Array& params, bool fHelp)
             tempKeystore.AddKey(key);
         }
     }
-    else if(pwalletMain->IsCrypted())
+    else if(pwalletMain->IsLocked())
       throw runtime_error("The wallet must be unlocked with walletpassphrase first");
 
     // Add previous txouts given in the RPC call:
