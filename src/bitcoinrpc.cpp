@@ -3721,6 +3721,7 @@ Value signrawtransaction(const Array& params, bool fHelp)
     if (params.size() > 2 && params[2].type() != null_type)
     {
         fGivenKeys = true;
+        tempKeystore.SetUnit(pwalletMain->Unit());
         Array keys = params[2].get_array();
         BOOST_FOREACH(Value k, keys)
         {
@@ -3735,7 +3736,7 @@ Value signrawtransaction(const Array& params, bool fHelp)
             tempKeystore.AddKey(key);
         }
     }
-    else if(pwalletMain->IsCrypted())
+    else if(pwalletMain->IsLocked())
       throw runtime_error("The wallet must be unlocked with walletpassphrase first");
 
     // Add previous txouts given in the RPC call:
