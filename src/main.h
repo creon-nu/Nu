@@ -61,6 +61,7 @@ static const int64 PARK_RATE_VOTES = 2000; // Number of blocks used in park rate
 static const int64 PARK_RATE_PREVIOUS_VOTES = 1440; // Number of blocks used in the park rate increase limitation
 static const unsigned int CUSTODIAN_VOTES = 10000;
 #endif
+static const int64 MOTION_VOTES = 10000;
 static const int64 PROOF_OF_STAKE_REWARD = 40 * COIN; // Constant reward of Proof of Stake blocks
 static const int64 MIN_COINSTAKE_VALUE = 10000 * COIN; // Minimum value allowed as input in a CoinStake
 static const int64 COIN_PARK_RATE = 100000 * COIN; // Park rate internal encoding precision. The minimum possible rate is (1.0 / COIN_PARK_RATE) coins per parked coin
@@ -1268,6 +1269,7 @@ public:
     int nHeight;
     int64 nMint;
     std::map<unsigned char, int64> mapMoneySupply;
+    std::map<unsigned char, int64> mapTotalParked;
 
     unsigned int nFlags;  // ppcoin: block index flags
     enum  
@@ -1312,6 +1314,7 @@ public:
         bnChainTrust = 0;
         nMint = 0;
         mapMoneySupply.clear();
+        mapTotalParked.clear();
         nFlags = 0;
         nStakeModifier = 0;
         nStakeModifierChecksum = 0;
@@ -1341,6 +1344,7 @@ public:
         bnChainTrust = 0;
         nMint = 0;
         mapMoneySupply.clear();
+        mapTotalParked.clear();
         nFlags = 0;
         nStakeModifier = 0;
         nStakeModifierChecksum = 0;
@@ -1507,6 +1511,15 @@ public:
             return -1;
     }
 
+    int64 GetTotalParked(unsigned char cUnit) const
+    {
+        std::map<unsigned char, int64>::const_iterator it = mapTotalParked.find(cUnit);
+        if (it != mapTotalParked.end())
+            return it->second;
+        else
+            return -1;
+    }
+
     std::string ToString() const
     {
         return strprintf("CBlockIndex(nprev=%08x, pnext=%08x, nFile=%d, nBlockPos=%-6d nHeight=%d, nMint=%s, nMoneySupply(S)=%s, nMoneySupply(B)=%s, nFlags=(%s)(%d)(%s), nStakeModifier=%016"PRI64x", nStakeModifierChecksum=%08x, hashProofOfStake=%s, prevoutStake=(%s), nStakeTime=%d merkle=%s, hashBlock=%s)",
@@ -1559,15 +1572,15 @@ public:
         READWRITE(nBlockPos);
         READWRITE(nHeight);
         READWRITE(nMint);
-        if (nVersion <= 30000)
+        if (nVersion <= 30000) // v0.3.0
         {
             int64 nMoneySupply = 0;
             READWRITE(nMoneySupply);
         }
         else
-        {
             READWRITE(mapMoneySupply);
-        }
+        if (nVersion > 40400) // v0.4.4
+            READWRITE(mapTotalParked);
         READWRITE(nFlags);
         READWRITE(nStakeModifier);
         if (IsProofOfStake())
@@ -1958,7 +1971,7 @@ public:
     bool CheckSignature()
     {
         CKey key;
-        if (!key.SetPubKey(ParseHex("04a0a849dd49b113d3179a332dd77715c43be4d0076e2f19e66de23dd707e56630f792f298dfd209bf042bb3561f4af6983f3d81e439737ab0bf7f898fecd21aab")))
+        if (!key.SetPubKey(ParseHex("")))
             return error("CAlert::CheckSignature() : SetPubKey failed");
         if (!key.Verify(Hash(vchMsg.begin(), vchMsg.end()), vchSig))
             return error("CAlert::CheckSignature() : verify signature failed");

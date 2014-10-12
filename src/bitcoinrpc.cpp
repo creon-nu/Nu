@@ -216,13 +216,28 @@ void ScriptPubKeyToJSON(const CScript& scriptPubKey, Object& out, unsigned char 
         return;
     }
 
-    out.push_back(Pair("reqSigs", nRequired));
     out.push_back(Pair("type", GetTxnOutputType(type)));
+    if (type == TX_PARK)
+    {
+        uint64 nDuration;
+        CBitcoinAddress unparkAddress;
+        Object park;
+        if (ExtractPark(scriptPubKey, cUnit, nDuration, unparkAddress))
+        {
+            park.push_back(Pair("duration", (boost::uint64_t)nDuration));
+            park.push_back(Pair("unparkaddress", unparkAddress.ToString()));
+        }
+        out.push_back(Pair("park", park));
+    }
+    else
+    {
+        out.push_back(Pair("reqSigs", nRequired));
 
-    Array a;
-    BOOST_FOREACH(const CBitcoinAddress& addr, addresses)
-        a.push_back(CBitcoinAddress(addr).ToString());
-    out.push_back(Pair("addresses", a));
+        Array a;
+        BOOST_FOREACH(const CBitcoinAddress& addr, addresses)
+            a.push_back(CBitcoinAddress(addr).ToString());
+        out.push_back(Pair("addresses", a));
+    }
 }
 
 void TxToJSON(const CTransaction& tx, const uint256 hashBlock, Object& entry)
@@ -706,10 +721,12 @@ Value getinfo(const Array& params, bool fHelp)
     obj.push_back(Pair("parked",        ValueFromAmount(pwalletMain->GetParked())));
     obj.push_back(Pair("blocks",        (int)nBestHeight));
     obj.push_back(Pair("moneysupply",   ValueFromAmount(pindexBest->GetMoneySupply(pwalletMain->Unit()))));
+    if (pwalletMain->Unit() != 'S')
+        obj.push_back(Pair("totalparked",   ValueFromAmount(pindexBest->GetTotalParked(pwalletMain->Unit()))));
     obj.push_back(Pair("connections",   (int)vNodes.size()));
     obj.push_back(Pair("proxy",         (fUseProxy ? addrProxy.ToStringIPPort() : string())));
     obj.push_back(Pair("ip",            addrSeenByPeer.ToStringIP()));
-    obj.push_back(Pair("difficulty",    (double)GetDifficulty()));
+    obj.push_back(Pair("difficulty",    (double)GetDifficulty(GetLastBlockIndex(pindexBest, true))));
     obj.push_back(Pair("testnet",       fTestNet));
     obj.push_back(Pair("keypoololdest", (boost::int64_t)pwalletMain->GetOldestKeyPoolTime()));
     obj.push_back(Pair("keypoolsize",   pwalletMain->GetKeyPoolSize()));
@@ -726,25 +743,52 @@ Value getinfo(const Array& params, bool fHelp)
 
 Value getparkrates(const Array& params, bool fHelp)
 {
-    if (fHelp || params.size() != 0)
+    if (fHelp || params.size() > 2)
         throw runtime_error(
-            "getparkrates\n"
-            "Returns an object containing the park rates in the last block.");
+            "getparkrates [<height>] [<currency>]\n"
+            "Returns an object containing the park rates in the block at height <height> (default: the last block).\n"
+            "The default <currency> is the currency of the RPC server's wallet.");
 
-    Object obj;
+    CBlockIndex *pindex = pindexBest;
 
-    BOOST_FOREACH(const CParkRateVote& parkRateVote, pindexBest->vParkRateResult)
+    if (params.size() > 0)
     {
-        if (parkRateVote.cUnit != pwalletMain->Unit())
+        int nHeight = params[0].get_int();
+
+        if (nHeight < 0 || nHeight > pindex->nHeight)
+            throw JSONRPCError(-12, "Error: Invalid height");
+
+        while (pindex->nHeight != nHeight)
+            pindex = pindex->pprev;
+    }
+
+    unsigned char cUnit;
+    if (params.size() > 1)
+        cUnit = params[1].get_str()[0];
+    else
+        cUnit = pwalletMain->Unit();
+
+    if (!ValidUnit(cUnit))
+        throw JSONRPCError(-12, "Error: Invalid currency");
+
+    if (cUnit == 'S')
+        throw JSONRPCError(-12, "Error: Park rates are not available on NuShares");
+
+    BOOST_FOREACH(const CParkRateVote& parkRateVote, pindex->vParkRateResult)
+    {
+        if (parkRateVote.cUnit != cUnit)
             continue;
 
+        Object obj;
         BOOST_FOREACH(const CParkRate& parkRate, parkRateVote.vParkRate)
         {
             string label = boost::lexical_cast<std::string>(parkRate.GetDuration()) + " blocks";
             obj.push_back(Pair(label, ValueFromParkRate(parkRate.nRate)));
         }
+        return obj;
     }
-    return obj;
+
+    throw JSONRPCError(-12, "Error: Park rates not found");
 }
 
 
@@ -1442,7 +1486,7 @@ Value sendmany(const Array& params, bool fHelp)
 
     if (pwalletMain->IsLocked())
         throw JSONRPCError(-13, "Error: Please enter the portfolio passphrase with walletpassphrase first.");
-    if (fWalletUnlockMintOnly)
+    if (pwalletMain->fWalletUnlockMintOnly)
         throw JSONRPCError(-13, "Error: portfolio unlocked for block minting only.");
 
     // Check funds
@@ -2152,9 +2196,9 @@ Value walletpassphrase(const Array& params, bool fHelp)
 
     // ppcoin: if user OS account compromised prevent trivial sendmoney commands
     if (params.size() > 2)
-        fWalletUnlockMintOnly = params[2].get_bool();
+        pwalletMain->fWalletUnlockMintOnly = params[2].get_bool();
     else
-        fWalletUnlockMintOnly = false;
+        pwalletMain->fWalletUnlockMintOnly = false;
 
     return Value::null;
 }
@@ -3017,28 +3061,38 @@ struct MotionResult
 
 Value getmotions(const Array& params, bool fHelp)
 {
-    if (fHelp || params.size() != 2)
+    if (fHelp || params.size() > 2)
         throw runtime_error(
-            "getmotions <block height> <block quantity>\n"
+            "getmotions [<block height>] [<block quantity>]\n"
             "Returns an object containing the motion vote results.");
 
     Object obj;
 
-    int nHeight = params[0].get_int();
-    if (nHeight < 0 || nHeight > nBestHeight)
-        throw runtime_error("Invalid height\n");
-
     CBlockIndex *pindex = pindexBest;
 
-    for (int i = nBestHeight; i > nHeight; i--)
-        pindex = pindex->pprev;
+    if (params.size() > 0)
+    {
+        int nHeight = params[0].get_int();
 
-    int nQuantity = params[1].get_int();
+        if (nHeight < 0 || nHeight > nBestHeight)
+            throw runtime_error("Invalid height\n");
+
+        for (int i = nBestHeight; i > nHeight; i--)
+            pindex = pindex->pprev;
+    }
+
+    int nQuantity;
+    if (params.size() > 1)
+        nQuantity = params[1].get_int();
+    else
+        nQuantity = MOTION_VOTES;
+
     if (nQuantity <= 0)
         throw runtime_error("Invalid quantity\n");
 
     map<const uint160, MotionResult> mapMotion;
 
+    MotionResult total;
     for (int i = 0; i < nQuantity && pindex; i++, pindex = pindex->pprev)
     {
         if (!pindex->IsProofOfStake())
@@ -3048,7 +3102,9 @@ Value getmotions(const Array& params, bool fHelp)
 
         MotionResult& result = mapMotion[vote.hashMotion];
         result.nBlocks++;
+        total.nBlocks++;
         result.nShareDaysDestroyed += vote.nCoinAgeDestroyed;
+        total.nShareDaysDestroyed += vote.nCoinAgeDestroyed;
     }
 
     BOOST_FOREACH(const PAIRTYPE(uint160, MotionResult)& resultPair, mapMotion)
@@ -3057,9 +3113,254 @@ Value getmotions(const Array& params, bool fHelp)
         const MotionResult& result = resultPair.second;
         Object resultObject;
         resultObject.push_back(Pair("blocks", result.nBlocks));
+        resultObject.push_back(Pair("block_percentage", (double)result.nBlocks / total.nBlocks * 100.0));
         resultObject.push_back(Pair("sharedays", (boost::uint64_t)result.nShareDaysDestroyed));
+        resultObject.push_back(Pair("shareday_percentage", (double)result.nShareDaysDestroyed / total.nShareDaysDestroyed * 100.0));
         obj.push_back(Pair(hashMotion.ToString(), resultObject));
     }
+    return obj;
+}
+
+
+struct CustodianResult
+{
+    int nBlocks;
+    uint64 nShareDaysDestroyed;
+
+    CustodianResult() :
+        nBlocks(0),
+        nShareDaysDestroyed(0.0)
+    {
+    }
+};
+
+typedef map<uint64, CustodianResult> CustodianAmountResultMap;
+typedef map<CBitcoinAddress, CustodianAmountResultMap> CustodianResultMap;
+
+Value getcustodianvotes(const Array& params, bool fHelp)
+{
+    if (fHelp || params.size() > 2)
+        throw runtime_error(
+            "getcustodianvotes [<block height>] [<block quantity>]\n"
+            "Returns an object containing the custodian vote results.");
+
+    Object obj;
+
+    CBlockIndex *pindex = pindexBest;
+
+    if (params.size() > 0)
+    {
+        int nHeight = params[0].get_int();
+
+        if (nHeight < 0 || nHeight > nBestHeight)
+            throw runtime_error("Invalid height\n");
+
+        for (int i = nBestHeight; i > nHeight; i--)
+            pindex = pindex->pprev;
+    }
+
+    int nQuantity;
+    if (params.size() > 1)
+        nQuantity = params[1].get_int();
+    else
+        nQuantity = CUSTODIAN_VOTES;
+
+    if (nQuantity <= 0)
+        throw runtime_error("Invalid quantity\n");
+
+    CustodianResultMap mapCustodian;
+
+    CustodianResult total;
+    for (int i = 0; i < nQuantity && pindex; i++, pindex = pindex->pprev)
+    {
+        if (!pindex->IsProofOfStake())
+            continue;
+
+        const CVote& vote = pindex->vote;
+
+        BOOST_FOREACH(const CCustodianVote& custodianVote, vote.vCustodianVote)
+        {
+            CustodianResult& result = mapCustodian[custodianVote.GetAddress()][custodianVote.nAmount];
+            result.nBlocks++;
+            result.nShareDaysDestroyed += vote.nCoinAgeDestroyed;
+        }
+
+        total.nBlocks++;
+        total.nShareDaysDestroyed += vote.nCoinAgeDestroyed;
+    }
+
+    BOOST_FOREACH(const PAIRTYPE(CBitcoinAddress, CustodianAmountResultMap)& custodianResultPair, mapCustodian)
+    {
+        const CBitcoinAddress& address = custodianResultPair.first;
+        Object custodianObject;
+        BOOST_FOREACH(const PAIRTYPE(uint64, CustodianResult)& resultPair, custodianResultPair.second)
+        {
+            uint64 nAmount = resultPair.first;
+            const CustodianResult& result = resultPair.second;
+            Object resultObject;
+            resultObject.push_back(Pair("blocks", result.nBlocks));
+            resultObject.push_back(Pair("block_percentage", (double)result.nBlocks / total.nBlocks * 100.0));
+            resultObject.push_back(Pair("sharedays", (boost::uint64_t)result.nShareDaysDestroyed));
+            resultObject.push_back(Pair("shareday_percentage", (double)result.nShareDaysDestroyed / total.nShareDaysDestroyed * 100.0));
+            custodianObject.push_back(Pair(FormatMoney(nAmount), resultObject));
+        }
+        obj.push_back(Pair(address.ToString(), custodianObject));
+    }
+
+    Object totalObject;
+    totalObject.push_back(Pair("blocks", total.nBlocks));
+    totalObject.push_back(Pair("sharedays", (boost::uint64_t)total.nShareDaysDestroyed));
+    obj.push_back(Pair("total", totalObject));
+
+    return obj;
+}
+
+
+Value getelectedcustodians(const Array& params, bool fHelp)
+{
+    if (fHelp || params.size() != 0)
+        throw runtime_error(
+            "getelectedcustodians\n"
+            "Returns an object containing the elected custodians.");
+
+    Array result;
+
+    LOCK(cs_mapElectedCustodian);
+    BOOST_FOREACH(const PAIRTYPE(CBitcoinAddress, CBlockIndex*)& pair, mapElectedCustodian)
+    {
+        const CBitcoinAddress address = pair.first;
+        const CBlockIndex* pindex = pair.second;
+
+        BOOST_FOREACH(const CCustodianVote& custodianVote, pindex->vElectedCustodian)
+        {
+            if (custodianVote.GetAddress() != address)
+                continue;
+
+            Object custodianObject;
+            custodianObject.push_back(Pair("unit", string(1, custodianVote.cUnit)));
+            custodianObject.push_back(Pair("address", address.ToString()));
+            custodianObject.push_back(Pair("amount", ValueFromAmount(custodianVote.nAmount)));
+            custodianObject.push_back(Pair("block", pindex->GetBlockHash().ToString()));
+            custodianObject.push_back(Pair("time", DateTimeStrFormat(pindex->nTime)));
+
+            result.push_back(custodianObject);
+        }
+    }
+
+    return result;
+}
+
+
+typedef map<uint64, uint64> RateWeightMap;
+typedef RateWeightMap::value_type RateWeight;
+
+typedef map<unsigned char, RateWeightMap> DurationRateWeightMap;
+typedef DurationRateWeightMap::value_type DurationRateWeight;
+
+Value getparkvotes(const Array& params, bool fHelp)
+{
+    if (fHelp || params.size() > 2)
+        throw runtime_error(
+            "getparkvotes [<block height>] [<block quantity>]\n"
+            "Returns an object containing a summary of the park rate votes.");
+
+    Object obj;
+
+    CBlockIndex *pindex = pindexBest;
+
+    if (params.size() > 0)
+    {
+        int nHeight = params[0].get_int();
+
+        if (nHeight < 0 || nHeight > nBestHeight)
+            throw runtime_error("Invalid height\n");
+
+        for (int i = nBestHeight; i > nHeight; i--)
+            pindex = pindex->pprev;
+    }
+
+    int nQuantity;
+    if (params.size() > 1)
+        nQuantity = params[1].get_int();
+    else
+        nQuantity = PARK_RATE_VOTES;
+
+    if (nQuantity <= 0)
+        throw runtime_error("Invalid quantity\n");
+
+    DurationRateWeightMap durationRateWeights;
+    uint64 totalVoteWeight = 0;
+    map<unsigned char, uint64> coinAgeDestroyedPerDuration;
+
+    for (int i = 0; i < nQuantity && pindex; i++, pindex = pindex->pprev)
+    {
+        if (!pindex->IsProofOfStake())
+            continue;
+
+        const CVote& vote = pindex->vote;
+
+        totalVoteWeight += vote.nCoinAgeDestroyed;
+
+        BOOST_FOREACH(const CParkRateVote& parkRateVote, vote.vParkRateVote)
+        {
+            BOOST_FOREACH(const CParkRate& parkRate, parkRateVote.vParkRate)
+            {
+                RateWeightMap &rateWeights = durationRateWeights[parkRate.nCompactDuration];
+                rateWeights[parkRate.nRate] += vote.nCoinAgeDestroyed;
+                coinAgeDestroyedPerDuration[parkRate.nCompactDuration] += vote.nCoinAgeDestroyed;
+            }
+        }
+    }
+
+    Object unitResult;
+    BOOST_FOREACH(const DurationRateWeight& durationRateWeight, durationRateWeights)
+    {
+        unsigned char nCompactDuration = durationRateWeight.first;
+        const RateWeightMap &rateWeights = durationRateWeight.second;
+
+        Object durationObject;
+        boost::int64_t blocks = (int64)1<<nCompactDuration;
+        durationObject.push_back(Pair("blocks", blocks));
+        durationObject.push_back(Pair("estimated_duration", BlocksToTime(blocks)));
+
+        uint64 abstainedCoinAge = totalVoteWeight - coinAgeDestroyedPerDuration[nCompactDuration];
+        if (abstainedCoinAge > 0)
+        {
+            RateWeightMap &rateWeights = durationRateWeights[nCompactDuration];
+            rateWeights[0] += abstainedCoinAge;
+        }
+
+        uint64 accumulatedWeight = 0;
+
+        Array votes;
+        BOOST_FOREACH(const RateWeight& rateWeight, rateWeights)
+        {
+            Object rateVoteObject;
+            boost::uint64_t rate = rateWeight.first;
+            boost::uint64_t weight = rateWeight.second;
+
+            double shareDays = (double)weight / (24 * 60 * 60);
+            double shareDayPercentage = (double)weight / (double)totalVoteWeight * 100;
+
+            accumulatedWeight += weight;
+            double accumulatedPercentage = (double)accumulatedWeight / (double)totalVoteWeight * 100;
+
+            rateVoteObject.push_back(Pair("rate", ValueFromParkRate(rate)));
+            rateVoteObject.push_back(Pair("annual_percentage", AnnualInterestRatePercentage(rate, blocks)));
+            rateVoteObject.push_back(Pair("sharedays", shareDays));
+            rateVoteObject.push_back(Pair("shareday_percentage", shareDayPercentage));
+            rateVoteObject.push_back(Pair("accumulated_percentage", accumulatedPercentage));
+
+            votes.push_back(rateVoteObject);
+        }
+        durationObject.push_back(Pair("votes", votes));
+
+
+        string durationLabel = boost::lexical_cast<std::string>((int)nCompactDuration);
+        unitResult.push_back(Pair(durationLabel, durationObject));
+    }
+    obj.push_back(Pair("B", unitResult));
+
     return obj;
 }
 
@@ -3151,6 +3452,7 @@ Value getliquidityinfo(const Array& params, bool fHelp)
     if (!ValidUnit(cUnit) || cUnit == 'S')
         throw JSONRPCError(-3, "Invalid currency");
 
+    Object result;
     int64 nBuyAmount = 0;
     int64 nSellAmount = 0;
     {
@@ -3161,15 +3463,22 @@ Value getliquidityinfo(const Array& params, bool fHelp)
             const CLiquidityInfo& info = item.second;
             if (info.cUnit == cUnit)
             {
+                Object custodianInfo;
+                custodianInfo.push_back(Pair("buy", ValueFromAmount(info.nBuyAmount)));
+                custodianInfo.push_back(Pair("sell", ValueFromAmount(info.nSellAmount)));
+                result.push_back(Pair(info.GetCustodianAddress().ToString(), custodianInfo));
+
                 nBuyAmount += info.nBuyAmount;
                 nSellAmount += info.nSellAmount;
             }
         }
     }
 
-    Object result;
-    result.push_back(Pair("buy", ValueFromAmount(nBuyAmount)));
-    result.push_back(Pair("sell", ValueFromAmount(nSellAmount)));
+    Object total;
+    total.push_back(Pair("buy", ValueFromAmount(nBuyAmount)));
+    total.push_back(Pair("sell", ValueFromAmount(nSellAmount)));
+    result.push_back(Pair("total", total));
+
     return result;
 }
 
@@ -3563,6 +3872,7 @@ Value signrawtransaction(const Array& params, bool fHelp)
     if (params.size() > 2 && params[2].type() != null_type)
     {
         fGivenKeys = true;
+        tempKeystore.SetUnit(pwalletMain->Unit());
         Array keys = params[2].get_array();
         BOOST_FOREACH(Value k, keys)
         {
@@ -3577,7 +3887,7 @@ Value signrawtransaction(const Array& params, bool fHelp)
             tempKeystore.AddKey(key);
         }
     }
-    else if(pwalletMain->IsCrypted())
+    else if(pwalletMain->IsLocked())
       throw runtime_error("The wallet must be unlocked with walletpassphrase first");
 
     // Add previous txouts given in the RPC call:
@@ -4138,6 +4448,9 @@ static const CRPCCommand vRPCCommands[] =
     { "liquidityinfo",          &liquidityinfo,          false},
     { "getliquidityinfo",       &getliquidityinfo,       false},
     { "getmotions",             &getmotions,             true },
+    { "getcustodianvotes",      &getcustodianvotes,      true },
+    { "getelectedcustodians",   &getelectedcustodians,   true },
+    { "getparkvotes",           &getparkvotes,           true },
     { "listunspent",            &listunspent,            false},
     { "getrawtransaction",      &getrawtransaction,      false},
     { "createrawtransaction",   &createrawtransaction,   false},
@@ -4475,6 +4788,9 @@ int GetRPCPort(unsigned char cUnit)
     return port;
 }
 
+CCriticalSection cs_RPCConfigError;
+bool fRPCConfigErrorHandled = false;
+
 void ThreadRPCServer2(void* parg)
 {
     printf("ThreadRPCServer started\n");
@@ -4484,6 +4800,10 @@ void ThreadRPCServer2(void* parg)
     strRPCUserColonPass = mapArgs["-rpcuser"] + ":" + mapArgs["-rpcpassword"];
     if (mapArgs["-rpcpassword"] == "")
     {
+        LOCK(cs_RPCConfigError);
+        if (fRPCConfigErrorHandled)
+            return;
+
         unsigned char rand_pwd[32];
         RAND_bytes(rand_pwd, 32);
         string strWhatAmI = "To use nud";
@@ -4503,6 +4823,7 @@ void ThreadRPCServer2(void* parg)
                 EncodeBase58(&rand_pwd[0],&rand_pwd[0]+32).c_str()),
             _("Error"), wxOK | wxMODAL);
         StartShutdown();
+        fRPCConfigErrorHandled = true;
         return;
     }
 
@@ -4919,6 +5240,11 @@ Array RPCConvertValues(const std::string &strMethod, const std::vector<std::stri
     if (strMethod == "liquidityinfo"           && n > 2) ConvertTo<double>(params[2]);
     if (strMethod == "getmotions"              && n > 0) ConvertTo<boost::int64_t>(params[0]);
     if (strMethod == "getmotions"              && n > 1) ConvertTo<boost::int64_t>(params[1]);
+    if (strMethod == "getparkrates"            && n > 0) ConvertTo<boost::int64_t>(params[0]);
+    if (strMethod == "getcustodianvotes"       && n > 0) ConvertTo<boost::int64_t>(params[0]);
+    if (strMethod == "getcustodianvotes"       && n > 1) ConvertTo<boost::int64_t>(params[1]);
+    if (strMethod == "getparkvotes"            && n > 0) ConvertTo<boost::int64_t>(params[0]);
+    if (strMethod == "getparkvotes"            && n > 1) ConvertTo<boost::int64_t>(params[1]);
 #ifdef TESTING
     if (strMethod == "timetravel"              && n > 0) ConvertTo<boost::int64_t>(params[0]);
 #endif

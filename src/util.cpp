@@ -9,6 +9,7 @@
 #include "strlcpy.h"
 #include "version.h"
 #include "ui_interface.h"
+#include "main.h"
 #include <boost/algorithm/string/join.hpp>
 
 // Work around clang compilation problem in Boost 1.46:
@@ -380,7 +381,7 @@ string FormatMoney(int64 n, bool fPlus)
     int64 n_abs = (n > 0 ? n : -n);
     int64 quotient = n_abs/COIN;
     int64 remainder = n_abs%COIN;
-    string str = strprintf("%"PRI64d".%06"PRI64d, quotient, remainder);
+    string str = strprintf("%"PRI64d".%04"PRI64d, quotient, remainder);
 
     // Right-trim excess 0's before the decimal point:
     int nTrim = 0;
@@ -1515,4 +1516,45 @@ void runCommand(std::string strCommand)
     int nErr = ::system(strCommand.c_str());
     if (nErr)
         printf("runCommand error: system(%s) returned %d\n", strCommand.c_str(), nErr);
+}
+
+std::string BlocksToTime(int64 blocks)
+{
+    double time = (double)blocks * STAKE_TARGET_SPACING / 60;
+    if (time < 55)
+        return (boost::format("%.1f min") % time).str();
+    time = time / 60;
+    if (time == 1)
+        return (boost::format("%.1f hour") % time).str();
+    if (time < 23.5)
+        return (boost::format("%.1f hours") % time).str();
+    time = time / 24;
+    if (time == 1)
+        return (boost::format("%.1f day") % time).str();
+    if (time < 30)
+        return (boost::format("%.1f days") % time).str();
+    time = time / 30;
+    if (time == 1)
+        return (boost::format("%.1f month") % time).str();
+    if (time < 12)
+        return (boost::format("%.1f months") % time).str();
+    time = time / 12;
+    if (time == 1)
+        return (boost::format("%.1f year") % time).str();
+    return (boost::format("%.1f years") % time).str();
+}
+
+double DurationInYears(int64 blocks)
+{
+    return (double)blocks * STAKE_TARGET_SPACING / (365.25 * 24 * 3600);
+}
+
+double AnnualInterestRatePercentage(int64 rate, int64 blocks)
+{
+    return (double)rate / COIN_PARK_RATE * 100 / DurationInYears(blocks);
+}
+
+int64 AnnualInterestRatePercentageToRate(double percentage, int64 blocks)
+{
+    return round(percentage * DurationInYears(blocks) / 100 * COIN_PARK_RATE);
 }
