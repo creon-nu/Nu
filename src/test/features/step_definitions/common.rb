@@ -134,7 +134,6 @@ When(/^node "(.*?)" votes a park rate of "(.*?)" NuBits per Nubit parked during 
   expect(node.rpc("getvote")["parkrates"]).to eq(vote["parkrates"])
 end
 
-
 When(/^node "(.*?)" finds blocks until custodian "(.*?)" is elected$/) do |arg1, arg2|
   node = @nodes[arg1]
   loop do
@@ -145,6 +144,20 @@ When(/^node "(.*?)" finds blocks until custodian "(.*?)" is elected$/) do |arg1,
         break
       end
     end
+  end
+end
+
+When(/^node "(.*?)" finds blocks until the NuBit park rate for (\d+) blocks is "(.*?)"$/) do |arg1, arg2, arg3|
+  node = @nodes[arg1]
+  wait_for do
+    block = node.generate_stake
+    info = node.rpc("getblock", block)
+    park_rates = info["parkrates"].detect { |r| r["unit"] == "B" }
+    expect(park_rates).not_to be_nil
+    rates = park_rates["rates"]
+    rate = rates.detect { |r| r["blocks"] == arg2.to_i }
+    expect(rate).not_to be_nil
+    expect(rate["rate"]).to eq(parse_number(arg3))
   end
 end
 
@@ -251,6 +264,12 @@ Then(/^all nodes should (?:have|reach) (\d+) transactions? in memory pool$/) do 
   end
 end
 
+Then(/^the NuBit balance of node "(.*?)" should reach "(.*?)"$/) do |arg1, arg2|
+  wait_for do
+    expect(@nodes[arg1].unit_rpc('B', 'getbalance')).to eq(parse_number(arg2))
+  end
+end
+
 When(/^some time pass$/) do
   @nodes.values.each do |node|
     node.rpc "timetravel", 5
@@ -264,7 +283,7 @@ When(/^node "(.*?)" finds enough blocks to mature a Proof of Stake block$/) do |
   end
 end
 
-When(/^node "(.*?)" parks "(.*?)" NuBits for (\d+) blocks$/) do |arg1, arg2, arg3|
+When(/^node "(.*?)" parks "(.*?)" NuBits (?:for|during) (\d+) blocks$/) do |arg1, arg2, arg3|
   node = @nodes[arg1]
   amount = parse_number(arg2)
   blocks = arg3.to_i
