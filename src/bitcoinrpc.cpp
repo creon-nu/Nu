@@ -3214,6 +3214,120 @@ Value getcustodianvotes(const Array& params, bool fHelp)
 }
 
 
+typedef map<uint64, uint64> RateWeightMap;
+typedef RateWeightMap::value_type RateWeight;
+
+typedef map<unsigned char, RateWeightMap> DurationRateWeightMap;
+typedef DurationRateWeightMap::value_type DurationRateWeight;
+
+Value getparkvotes(const Array& params, bool fHelp)
+{
+    if (fHelp || params.size() > 2)
+        throw runtime_error(
+            "getparkvotes [<block height>] [<block quantity>]\n"
+            "Returns an object containing a summary of the park rate votes.");
+
+    Object obj;
+
+    CBlockIndex *pindex = pindexBest;
+
+    if (params.size() > 0)
+    {
+        int nHeight = params[0].get_int();
+
+        if (nHeight < 0 || nHeight > nBestHeight)
+            throw runtime_error("Invalid height\n");
+
+        for (int i = nBestHeight; i > nHeight; i--)
+            pindex = pindex->pprev;
+    }
+
+    int nQuantity;
+    if (params.size() > 1)
+        nQuantity = params[1].get_int();
+    else
+        nQuantity = PARK_RATE_VOTES;
+
+    if (nQuantity <= 0)
+        throw runtime_error("Invalid quantity\n");
+
+    DurationRateWeightMap durationRateWeights;
+    uint64 totalVoteWeight = 0;
+    map<unsigned char, uint64> coinAgeDestroyedPerDuration;
+
+    for (int i = 0; i < nQuantity && pindex; i++, pindex = pindex->pprev)
+    {
+        if (!pindex->IsProofOfStake())
+            continue;
+
+        const CVote& vote = pindex->vote;
+
+        totalVoteWeight += vote.nCoinAgeDestroyed;
+
+        BOOST_FOREACH(const CParkRateVote& parkRateVote, vote.vParkRateVote)
+        {
+            BOOST_FOREACH(const CParkRate& parkRate, parkRateVote.vParkRate)
+            {
+                RateWeightMap &rateWeights = durationRateWeights[parkRate.nCompactDuration];
+                rateWeights[parkRate.nRate] += vote.nCoinAgeDestroyed;
+                coinAgeDestroyedPerDuration[parkRate.nCompactDuration] += vote.nCoinAgeDestroyed;
+            }
+        }
+    }
+
+    Object unitResult;
+    BOOST_FOREACH(const DurationRateWeight& durationRateWeight, durationRateWeights)
+    {
+        unsigned char nCompactDuration = durationRateWeight.first;
+        const RateWeightMap &rateWeights = durationRateWeight.second;
+
+        Object durationObject;
+        boost::int64_t blocks = (int64)1<<nCompactDuration;
+        durationObject.push_back(Pair("blocks", blocks));
+        durationObject.push_back(Pair("estimated_duration", BlocksToTime(blocks)));
+
+        uint64 abstainedCoinAge = totalVoteWeight - coinAgeDestroyedPerDuration[nCompactDuration];
+        if (abstainedCoinAge > 0)
+        {
+            RateWeightMap &rateWeights = durationRateWeights[nCompactDuration];
+            rateWeights[0] += abstainedCoinAge;
+        }
+
+        uint64 accumulatedWeight = 0;
+
+        Array votes;
+        BOOST_FOREACH(const RateWeight& rateWeight, rateWeights)
+        {
+            Object rateVoteObject;
+            boost::uint64_t rate = rateWeight.first;
+            boost::uint64_t weight = rateWeight.second;
+
+            double shareDays = (double)weight / (24 * 60 * 60);
+            double shareDayPercentage = (double)weight / (double)totalVoteWeight * 100;
+
+            accumulatedWeight += weight;
+            double accumulatedPercentage = (double)accumulatedWeight / (double)totalVoteWeight * 100;
+
+            rateVoteObject.push_back(Pair("rate", ValueFromParkRate(rate)));
+            rateVoteObject.push_back(Pair("annual_percentage", AnnualInterestRatePercentage(rate, blocks)));
+            rateVoteObject.push_back(Pair("sharedays", shareDays));
+            rateVoteObject.push_back(Pair("shareday_percentage", shareDayPercentage));
+            rateVoteObject.push_back(Pair("accumulated_percentage", accumulatedPercentage));
+
+            votes.push_back(rateVoteObject);
+        }
+        durationObject.push_back(Pair("votes", votes));
+
+
+        string durationLabel = boost::lexical_cast<std::string>((int)nCompactDuration);
+        unitResult.push_back(Pair(durationLabel, durationObject));
+    }
+    obj.push_back(Pair("B", unitResult));
+
+    return obj;
+}
+
+
 Value liquidityinfo(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 4)
@@ -4298,6 +4412,7 @@ static const CRPCCommand vRPCCommands[] =
     { "getliquidityinfo",       &getliquidityinfo,       false},
     { "getmotions",             &getmotions,             true },
     { "getcustodianvotes",      &getcustodianvotes,      true },
+    { "getparkvotes",           &getparkvotes,           true },
     { "listunspent",            &listunspent,            false},
     { "getrawtransaction",      &getrawtransaction,      false},
     { "createrawtransaction",   &createrawtransaction,   false},
@@ -5090,6 +5205,8 @@ Array RPCConvertValues(const std::string &strMethod, const std::vector<std::stri
     if (strMethod == "getparkrates"            && n > 0) ConvertTo<boost::int64_t>(params[0]);
     if (strMethod == "getcustodianvotes"       && n > 0) ConvertTo<boost::int64_t>(params[0]);
     if (strMethod == "getcustodianvotes"       && n > 1) ConvertTo<boost::int64_t>(params[1]);
+    if (strMethod == "getparkvotes"            && n > 0) ConvertTo<boost::int64_t>(params[0]);
+    if (strMethod == "getparkvotes"            && n > 1) ConvertTo<boost::int64_t>(params[1]);
 #ifdef TESTING
     if (strMethod == "timetravel"              && n > 0) ConvertTo<boost::int64_t>(params[0]);
 #endif

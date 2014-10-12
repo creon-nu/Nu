@@ -220,43 +220,22 @@ bool isObscured(QWidget *w)
 
 QString blocksToTime(qint64 blocks)
 {
-    double time = (double)blocks * STAKE_TARGET_SPACING / 60;
-    if (time < 55)
-        return QString("%1 min").arg(QString::number(time, 'f', 1));
-    time = time / 60;
-    if (time == 1)
-        return QString("%1 hour").arg(QString::number(time, 'f', 1));
-    if (time < 23.5)
-        return QString("%1 hours").arg(QString::number(time, 'f', 1));
-    time = time / 24;
-    if (time == 1)
-        return QString("%1 day").arg(QString::number(time, 'f', 1));
-    if (time < 30)
-        return QString("%1 days").arg(QString::number(time, 'f', 1));
-    time = time / 30;
-    if (time == 1)
-        return QString("%1 month").arg(QString::number(time, 'f', 1));
-    if (time < 12)
-        return QString("%1 months").arg(QString::number(time, 'f', 1));
-    time = time / 12;
-    if (time == 1)
-        return QString("%1 year").arg(QString::number(time, 'f', 1));
-    return QString("%1 years").arg(QString::number(time, 'f', 1));
+    return QString::fromStdString(BlocksToTime(blocks));
 }
 
 double durationInYears(qint64 blocks)
 {
-    return (double)blocks * STAKE_TARGET_SPACING / (365.25 * 24 * 3600);
+    return DurationInYears(blocks);
 }
 
 double annualInterestRatePercentage(qint64 rate, qint64 blocks)
 {
-    return (double)rate / COIN_PARK_RATE * 100 / durationInYears(blocks);
+    return AnnualInterestRatePercentage(rate, blocks);
 }
 
 qint64 annualInterestRatePercentageToRate(double percentage, qint64 blocks)
 {
-    return round(percentage * durationInYears(blocks) / 100 * COIN_PARK_RATE);
+    return AnnualInterestRatePercentageToRate(percentage, blocks);
 }
 
 } // namespace GUIUtil
