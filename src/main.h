@@ -61,6 +61,7 @@ static const int64 PARK_RATE_VOTES = 2000; // Number of blocks used in park rate
 static const int64 PARK_RATE_PREVIOUS_VOTES = 1440; // Number of blocks used in the park rate increase limitation
 static const unsigned int CUSTODIAN_VOTES = 10000;
 #endif
+static const int64 MOTION_VOTES = 10000;
 static const int64 PROOF_OF_STAKE_REWARD = 40 * COIN; // Constant reward of Proof of Stake blocks
 static const int64 MIN_COINSTAKE_VALUE = 10000 * COIN; // Minimum value allowed as input in a CoinStake
 static const int64 COIN_PARK_RATE = 100000 * COIN; // Park rate internal encoding precision. The minimum possible rate is (1.0 / COIN_PARK_RATE) coins per parked coin
@@ -134,6 +135,7 @@ CWallet *GetWallet(unsigned char cUnit);
 void RegisterWallet(CWallet* pwalletIn);
 void UnregisterWallet(CWallet* pwalletIn);
 void UnregisterAndDeleteAllWallets();
+void SyncWithWallets(const CTransaction& tx, const CBlock* pblock = NULL, bool fUpdate = false, bool fConnect = true);
 bool ProcessBlock(CNode* pfrom, CBlock* pblock);
 bool CheckDiskSpace(uint64 nAdditionalBytes=0);
 FILE* OpenBlockFile(unsigned int nFile, unsigned int nBlockPos, const char* pszMode="rb");
@@ -161,6 +163,7 @@ void BitcoinMiner(CWallet *pwallet, bool fProofOfStake, bool fGenerateSingleBloc
 #else
 void BitcoinMiner(CWallet *pwallet, bool fProofOfStake);
 #endif
+bool GetTransaction(const uint256 &hash, CTransaction &tx, uint256 &hashBlock);
 
 
 inline int GetMaturity(bool fProofOfStake)
@@ -526,7 +529,7 @@ public:
         vin.clear();
         vout.clear();
         nLockTime = 0;
-        cUnit = 0;
+        cUnit = '?';
         nDoS = 0;  // Denial-of-service prevention
     }
 
@@ -1576,7 +1579,7 @@ public:
         }
         else
             READWRITE(mapMoneySupply);
-        if (nVersion > 30100) // v0.3.1
+        if (nVersion > 40400) // v0.4.4
             READWRITE(mapTotalParked);
         READWRITE(nFlags);
         READWRITE(nStakeModifier);
@@ -1968,7 +1971,7 @@ public:
     bool CheckSignature()
     {
         CKey key;
-        if (!key.SetPubKey(ParseHex("04a0a849dd49b113d3179a332dd77715c43be4d0076e2f19e66de23dd707e56630f792f298dfd209bf042bb3561f4af6983f3d81e439737ab0bf7f898fecd21aab")))
+        if (!key.SetPubKey(ParseHex("")))
             return error("CAlert::CheckSignature() : SetPubKey failed");
         if (!key.Verify(Hash(vchMsg.begin(), vchMsg.end()), vchSig))
             return error("CAlert::CheckSignature() : verify signature failed");
@@ -1993,6 +1996,7 @@ public:
                 bool fCheckInputs, bool* pfMissingInputs);
     bool addUnchecked(CTransaction &tx);
     bool remove(CTransaction &tx);
+    void queryHashes(std::vector<uint256>& vtxid);
 
     unsigned long size()
     {

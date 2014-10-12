@@ -37,6 +37,5 @@ dist
 *.app
 *.dmg
 .afpDeleted*
-
-# temporary
-src/qt/res/styles
+src/qt/res/styles/.sass-cache/
+src/qt/res/styles/fire_app_log.txt

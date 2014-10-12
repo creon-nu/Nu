@@ -146,7 +146,7 @@ void static EraseFromWallets(uint256 hash)
 }
 
 // make sure all wallets know about the given transaction, in the given block
-void static SyncWithWallets(const CTransaction& tx, const CBlock* pblock = NULL, bool fUpdate = false, bool fConnect = true)
+void SyncWithWallets(const CTransaction& tx, const CBlock* pblock, bool fUpdate, bool fConnect)
 {
     if (!fConnect)
     {
@@ -673,7 +673,7 @@ bool CTxMemPool::accept(CTxDB& txdb, CTransaction &tx, bool fCheckInputs,
             return error("CTxMemPool::accept() : cross unit transaction");
 
         // Check for non-standard pay-to-script-hash in inputs
-        if (!tx.AreInputsStandard(mapInputs) && !fTestNet)
+        if (!tx.AreInputsStandard(mapInputs))
             return error("CTxMemPool::accept() : nonstandard transaction input");
 
         // Note: if you modify this code to accept non-standard transactions, then
@@ -685,7 +685,10 @@ bool CTxMemPool::accept(CTxDB& txdb, CTransaction &tx, bool fCheckInputs,
 
         // Don't accept it if it can't get into a block
         if (!tx.IsUnpark() && nFees < tx.GetMinFee(1000, false, GMF_RELAY))
+        {
+            printf("Fees: %s, minimum: %s\n", FormatMoney(nFees).c_str(), FormatMoney(tx.GetMinFee(1000, false, GMF_RELAY)).c_str());
             return error("CTxMemPool::accept() : not enough fees");
+        }
 
         // Continuously rate-limit free transactions
         // This mitigates 'penny-flooding' -- sending thousands of free transactions just to
@@ -779,6 +782,15 @@ bool CTxMemPool::remove(CTransaction &tx)
     return true;
 }
 
+void CTxMemPool::queryHashes(std::vector<uint256>& vtxid)
+{
+    vtxid.clear();
+
+    LOCK(cs);
+    vtxid.reserve(mapTx.size());
+    for (map<uint256, CTransaction>::iterator mi = mapTx.begin(); mi != mapTx.end(); ++mi)
+        vtxid.push_back((*mi).first);
+}
 
 
 
@@ -814,7 +826,11 @@ int CMerkleTx::GetBlocksToMaturity() const
 {
     if (!(IsCoinBase() || IsCoinStake()))
         return 0;
+#ifdef TESTING
+    return max(0, (GetMaturity(IsCoinStake())   ) - GetDepthInMainChain());
+#else
     return max(0, (GetMaturity(IsCoinStake())+20) - GetDepthInMainChain());
+#endif
 }
 
 
@@ -883,13 +899,31 @@ int CTxIndex::GetDepthInMainChain(CBlockIndex* &pindexRet) const
     return 1 + nBestHeight - pindex->nHeight;
 }
 
-
-
-
-
-
-
-
+// Return transaction in tx, and if it was found inside a block, its hash is placed in hashBlock
+bool GetTransaction(const uint256 &hash, CTransaction &tx, uint256 &hashBlock)
+{
+    {
+        LOCK(cs_main);
+        {
+            LOCK(mempool.cs);
+            if (mempool.exists(hash))
+            {
+                tx = mempool.lookup(hash);
+                return true;
+            }
+        }
+        CTxDB txdb("r");
+        CTxIndex txindex;
+        if (tx.ReadFromDisk(txdb, COutPoint(hash, 0), txindex))
+        {
+            CBlock block;
+            if (block.ReadFromDisk(txindex.pos.nFile, txindex.pos.nBlockPos, false))
+                hashBlock = block.GetHash();
+            return true;
+        }
+    }
+    return false;
+}
 
 
 //////////////////////////////////////////////////////////////////////////////
@@ -2568,15 +2602,20 @@ bool LoadBlockIndex(bool fAllowNew)
     if (fTestNet)
     {
         hashGenesisBlock = hashGenesisBlockTestNet;
+#ifdef TESTING
+        bnProofOfWorkLimit = CBigNum(~uint256(0) >> 20);
+        nStakeMinAge = 300; // test net min age is 5 minutes
+        nCoinbaseMaturity = 60;
+        nCoinstakeMaturity = 3;
+        bnInitialHashTarget = CBigNum(~uint256(0) >> 20);
+        bnInitialProofOfStakeHashTarget = CBigNum(~uint256(0) >> 20);
+        nModifierInterval = 3;
+#else
         bnProofOfWorkLimit = CBigNum(~uint256(0) >> 20);
         nStakeMinAge = 300; // test net min age is 5 minutes
         nCoinbaseMaturity = 60;
         nCoinstakeMaturity = 60;
         bnInitialHashTarget = CBigNum(~uint256(0) >> 20);
-#ifdef TESTING
-        bnInitialProofOfStakeHashTarget = CBigNum(~uint256(0) >> 20);
-        nModifierInterval = 3;
-#else
         bnInitialProofOfStakeHashTarget = CBigNum(~uint256(0) >> 28);
         nModifierInterval = 60 * 20; // test net modifier interval is 20 minutes
 #endif

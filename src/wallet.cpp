@@ -75,10 +75,6 @@ bool CWallet::AddCScript(const CScript& redeemScript)
     return CWalletDB(strWalletFile).WriteCScript(Hash160(redeemScript), redeemScript);
 }
 
-// ppcoin: optional setting to unlock wallet for block minting only;
-//         serves to disable the trivial sendmoney when OS account compromised
-bool fWalletUnlockMintOnly = false;
-
 bool CWallet::Unlock(const SecureString& strWalletPassphrase)
 {
     if (!IsLocked())
@@ -574,9 +570,9 @@ void CWalletTx::GetAmounts(int64& nGeneratedImmature, int64& nGeneratedMature, l
     if (IsCoinBase() || IsCoinStake())
     {
         if (GetBlocksToMaturity() > 0)
-            nGeneratedImmature = pwallet->GetCredit(*this);
+            nGeneratedImmature = pwallet->GetCredit(*this) - pwallet->GetDebit(*this);
         else
-            nGeneratedMature = GetCredit();
+            nGeneratedMature = GetCredit() - GetDebit();
         return;
     }
 
@@ -954,6 +950,33 @@ int64 CWallet::GetUnconfirmedBalance() const
     return nTotal;
 }
 
+// populate vCoins with vector of spendable COutputs
+void CWallet::AvailableCoins(vector<COutput>& vCoins, bool fOnlyConfirmed) const
+{
+    vCoins.clear();
+
+    {
+        LOCK(cs_wallet);
+        for (map<uint256, CWalletTx>::const_iterator it = mapWallet.begin(); it != mapWallet.end(); ++it)
+        {
+            const CWalletTx* pcoin = &(*it).second;
+
+            if (!pcoin->IsFinal())
+                continue;
+
+            if (fOnlyConfirmed && !pcoin->IsConfirmed())
+                continue;
+
+            if (pcoin->IsCoinBase() && pcoin->GetBlocksToMaturity() > 0)
+                continue;
+
+            for (unsigned int i = 0; i < pcoin->vout.size(); i++)
+                if (!(pcoin->IsSpent(i)) && IsMine(pcoin->vout[i]) && pcoin->vout[i].nValue > 0)
+                    vCoins.push_back(COutput(pcoin, i, pcoin->GetDepthInMainChain()));
+        }
+    }
+}
+
 // ppcoin: total coins staked (non-spendable until maturity)
 int64 CWallet::GetStake() const
 {
@@ -1247,7 +1270,7 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, int64> >& vecSend, CW
                     //  rediscover unknown transactions that were written with keys of ours to recover
                     //  post-backup change.
 
-                    if (!GetBoolArg("-avatar", true)) // ppcoin: not avatar mode; nu: avatar mode enabled by default to avoid change being sent to hidden address
+                    if (!GetBoolArg("-avatar", (cUnit == 'S'))) // ppcoin: not avatar mode; nu: avatar mode enabled by default only on Share wallet to avoid change being sent to hidden address
                     {
                         // Reserve a new key pair from key pool
                         vector<unsigned char> vchPubKey = reservekey.GetReservedKey();
@@ -2201,6 +2224,9 @@ void CWallet::GetAllReserveAddresses(set<CBitcoinAddress>& setAddress)
 
 void CWallet::ExportPeercoinKeys(int &nExportedCount, int &nErrorCount)
 {
+    if (cUnit != 'S')
+        throw runtime_error("Currency wallets will not receive dividends. Refusing to export keys to Peercoin.");
+
     nExportedCount = 0;
     nErrorCount = 0;
 

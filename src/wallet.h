@@ -12,10 +12,9 @@
 #include "script.h"
 #include "walletdb.h"
 
-extern bool fWalletUnlockMintOnly;
-
 class CWalletTx;
 class CReserveKey;
+class COutput;
 class CWalletDB;
 
 /** (client) version numbers for particular wallet features */
@@ -62,6 +61,8 @@ public:
  */
 class CWallet : public CCryptoKeyStore
 {
+public:
+    void AvailableCoins(std::vector<COutput>& vCoins, bool fOnlyConfirmed=true) const;
 private:
     bool SelectCoinsMinConf(int64 nTargetValue, unsigned int nSpendTime, int nConfMine, int nConfTheirs, std::set<std::pair<const CWalletTx*,unsigned int> >& setCoinsRet, int64& nValueRet) const;
     bool SelectCoins(int64 nTargetValue, unsigned int nSpendTime, std::set<std::pair<const CWalletTx*,unsigned int> >& setCoinsRet, int64& nValueRet) const;
@@ -90,6 +91,10 @@ public:
 
     CVote vote;
 
+    // ppcoin: optional setting to unlock wallet for block minting only;
+    //         serves to disable the trivial sendmoney when OS account compromised
+    // nubit: moved the setting into the wallet
+    bool fWalletUnlockMintOnly;
 
     typedef std::map<unsigned int, CMasterKey> MasterKeyMap;
     MasterKeyMap mapMasterKeys;
@@ -107,6 +112,7 @@ public:
         nLastTimeResendWalletTransactions = 0;
         nNextTimeCheckUnparkableOutputs = 0;
         nLastTimeCheckUnparkableOutputs = 0;
+        fWalletUnlockMintOnly = false;
     }
     CWallet(std::string strWalletFileIn)
     {
@@ -121,6 +127,7 @@ public:
         nLastTimeResendWalletTransactions = 0;
         nNextTimeCheckUnparkableOutputs = 0;
         nLastTimeCheckUnparkableOutputs = 0;
+        fWalletUnlockMintOnly = false;
     }
 
     std::map<uint256, CWalletTx> mapWallet;
@@ -676,6 +683,29 @@ public:
 
     void RelayWalletTransaction(CTxDB& txdb);
     void RelayWalletTransaction();
+};
+
+class COutput
+{
+public:
+    const CWalletTx *tx;
+    int i;
+    int nDepth;
+
+    COutput(const CWalletTx *txIn, int iIn, int nDepthIn)
+    {
+        tx = txIn; i = iIn; nDepth = nDepthIn;
+    }
+
+    std::string ToString() const
+    {
+        return strprintf("COutput(%s, %d, %d) [%s]", tx->GetHash().ToString().c_str(), i, nDepth, FormatMoney(tx->vout[i].nValue).c_str());
+    }
+
+    void print() const
+    {
+        printf("%s\n", ToString().c_str());
+    }
 };
 
 

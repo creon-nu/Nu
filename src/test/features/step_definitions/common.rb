@@ -16,19 +16,23 @@ Given(/^a network with nodes? (.+)(?: able to mint)?$/) do |node_names|
   @nodes = {}
 
   node_names.each_with_index do |name, i|
-    node = CoinContainer.new(image: "nunet/#{available_nodes[i]}", links: @nodes.values.map(&:name), args: {debug: true})
+    options = {
+      image: "nunet/#{available_nodes[i]}",
+      links: @nodes.values.map(&:name),
+      args: {
+        debug: true,
+        timetravel: 5*24*3600,
+      },
+    }
+    node = CoinContainer.new(options)
     @nodes[name] = node
     node.wait_for_boot
-  end
-
-  @nodes.values.each do |node|
-    node.rpc "timetravel", 5*24*3600
   end
 
   wait_for(10) do
     @nodes.values.all? do |node|
       count = node.connection_count
-      count >= @nodes.size - 1
+      count == @nodes.size - 1
     end
   end
   wait_for do
@@ -37,6 +41,22 @@ Given(/^a network with nodes? (.+)(?: able to mint)?$/) do |node_names|
       count
     end.uniq.size == 1
   end
+end
+
+Given(/^a node "(.*?)" with an empty wallet$/) do |arg1|
+  name = arg1
+  options = {
+    image: "nunet/a",
+    links: @nodes.values.map(&:name),
+    args: {
+      debug: true,
+      timetravel: 5*24*3600,
+    },
+    remove_wallet_before_startup: true,
+  }
+  node = CoinContainer.new(options)
+  @nodes[name] = node
+  node.wait_for_boot
 end
 
 After do
@@ -84,10 +104,6 @@ Given(/^all nodes reach the same height$/) do
   wait_for do
     expect(@nodes.values.map(&:block_count).uniq.size).to eq(1)
   end
-end
-
-When(/^node "(.*?)" generates a "(.*?)" address "(.*?)"$/) do |arg1, arg2, arg3|
-  @addresses[arg3] = @nodes[arg1].unit_rpc(unit(arg2), "getnewaddress")
 end
 
 When(/^node "(.*?)" votes an amount of "(.*?)" for custodian "(.*?)"$/) do |arg1, arg2, arg3|
@@ -164,6 +180,10 @@ When(/^node "(.*?)" sends "(.*?)" to "([^"]*?)"$/) do |arg1, arg2, arg3|
   @nodes[arg1].rpc "sendtoaddress", @addresses[arg3], parse_number(arg2)
 end
 
+When(/^node "(.*?)" sends "(.*?)" (NuBits|NuShares) to "(.*?)"$/) do |arg1, arg2, unit_name, arg3|
+  @nodes[arg1].unit_rpc unit(unit_name), "sendtoaddress", @addresses[arg3], parse_number(arg2)
+end
+
 When(/^node "(.*?)" finds a block received by all other nodes$/) do |arg1|
   node = @nodes[arg1]
   block = node.generate_stake
@@ -173,7 +193,7 @@ When(/^node "(.*?)" finds a block received by all other nodes$/) do |arg1|
   end
 end
 
-Then(/^node "(.*?)" (?:should reach|reaches) a balance of "(.*?)"( NuBits|)$/) do |arg1, arg2, unit_name|
+Then(/^node "(.*?)" (?:should reach|reaches) a balance of "([^"]*?)"( NuBits| NuShares|)$/) do |arg1, arg2, unit_name|
   node = @nodes[arg1]
   amount = parse_number(arg2)
   wait_for do
@@ -181,14 +201,38 @@ Then(/^node "(.*?)" (?:should reach|reaches) a balance of "(.*?)"( NuBits|)$/) d
   end
 end
 
-Given(/^node "(.*?)" generates a new address "(.*?)"$/) do |arg1, arg2|
-  @addresses[arg2] = @nodes[arg1].unit_rpc('S', "getnewaddress")
-  @unit[@addresses[arg2]] = 'S'
+Then(/^node "(.*?)" should have a balance of "([^"]*?)"( NuBits|)$/) do |arg1, arg2, unit_name|
+  node = @nodes[arg1]
+  amount = parse_number(arg2)
+  expect(node.unit_rpc(unit(unit_name), "getbalance")).to eq(amount)
 end
 
-Given(/^node "(.*?)" generates a new NuBit address "(.*?)"$/) do |arg1, arg2|
-  @addresses[arg2] = @nodes[arg1].unit_rpc('B', "getnewaddress")
-  @unit[@addresses[arg2]] = 'B'
+Then(/^node "(.*?)" should reach an unconfirmed balance of "([^"]*?)"( NuBits|)$/) do |arg1, arg2, unit_name|
+  node = @nodes[arg1]
+  amount = parse_number(arg2)
+  wait_for do
+    expect(node.unit_rpc(unit(unit_name), "getbalance", "*", 0)).to eq(amount)
+  end
+end
+
+Then(/^node "(.*?)" should have an unconfirmed balance of "([^"]*?)"( NuBits|)$/) do |arg1, arg2, unit_name|
+  node = @nodes[arg1]
+  amount = parse_number(arg2)
+  expect(node.unit_rpc(unit(unit_name), "getbalance", "*", 0)).to eq(amount)
+end
+
+Then(/^node "(.*?)" should reach a balance of "([^"]*?)"( NuBits|) on account "([^"]*?)"$/) do |arg1, arg2, unit_name, account|
+  node = @nodes[arg1]
+  amount = parse_number(arg2)
+  wait_for do
+    expect(node.unit_rpc(unit(unit_name), "getbalance", account)).to eq(amount)
+  end
+end
+
+Given(/^node "(.*?)" generates a (\w+) address "(.*?)"$/) do |arg1, unit_name, arg2|
+  unit_name = "NuShares" if unit_name == "new"
+  @addresses[arg2] = @nodes[arg1].unit_rpc(unit(unit_name), "getnewaddress")
+  @unit[@addresses[arg2]] = unit(unit_name)
 end
 
 When(/^node "(.*?)" sends "(.*?)" shares to "(.*?)" through transaction "(.*?)"$/) do |arg1, arg2, arg3, arg4|
@@ -220,3 +264,30 @@ When(/^node "(.*?)" unparks$/) do |arg1|
   node.unit_rpc('B', 'unpark')
 end
 
+When(/^some time pass$/) do
+  @nodes.values.each do |node|
+    node.rpc "timetravel", 5
+  end
+end
+
+When(/^node "(.*?)" finds enough blocks to mature a Proof of Stake block$/) do |arg1|
+  node = @nodes[arg1]
+  3.times do
+    node.generate_stake
+  end
+end
+
+When(/^node "(.*?)" parks "(.*?)" NuBits for (\d+) blocks$/) do |arg1, arg2, arg3|
+  node = @nodes[arg1]
+  amount = parse_number(arg2)
+  blocks = arg3.to_i
+
+  node.unit_rpc('B', 'park', amount, blocks)
+end
+
+Then(/^"(.*?)" should have "(.*?)" NuBits parked$/) do |arg1, arg2|
+  node = @nodes[arg1]
+  amount = parse_number(arg2)
+  info = node.unit_rpc("B", "getinfo")
+  expect(info["parked"]).to eq(amount)
+end

@@ -1066,9 +1066,8 @@ void ThreadDNSAddressSeed2(void* parg)
 // Physical IP seeds: 32-bit IPv4 addresses: e.g. 178.33.22.32 = 0x201621b2
 unsigned int pnSeed[] =
 {
-    0x36a3b545, 0x3c1c26d8, 0x4031eb6d, 0x4d3463d1, 0x586a6854, 0x5da9ae65,
-    0x6deb7318, 0x9083fb63, 0x961bf618, 0xcabd2e4e, 0xcb766dd5, 0xdd514518,
-    0xdff010b8, 0xe9bb6044, 0xedb24a4c,
+    0x47a034c6, 0x04d934c6, 0x4bc734c6, 0x2ec734c6, 0x2bd0f2a2, 0x92c8edc0,
+    0x0bd4b977, 0x003fc977,
 };
 
 void DumpAddresses()
@@ -1165,7 +1164,8 @@ void ThreadOpenConnections2(void* parg)
 
         // Add seed nodes if IRC isn't working
         bool fTOR = (fUseProxy && addrProxy.GetPort() == 9050);
-        if (addrman.size()==0 && (GetTime() - nStart > 60 || fTOR) && !fTestNet)
+        // nubit: do not wait 60s because IRC is disabled
+        if (addrman.size()==0 && (GetTime() - nStart > 0 || fTOR) && !fTestNet)
         {
             std::vector<CAddress> vAdd;
             for (unsigned int i = 0; i < ARRAYLEN(pnSeed); i++)
