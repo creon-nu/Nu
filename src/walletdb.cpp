@@ -112,6 +112,7 @@ int CWalletDB::LoadWallet(CWallet* pwallet)
     pwallet->vchDefaultKey.clear();
     int nFileVersion = 0;
     vector<uint256> vWalletUpgrade;
+    unsigned char cUnit = '?';
 
     //// todo: shouldn't we catch exceptions and try to recover and continue?
     {
@@ -312,8 +313,23 @@ int CWalletDB::LoadWallet(CWallet* pwallet)
             {
                 ssValue >> pwallet->vote;
             }
+            else if (strType == "unit")
+            {
+                ssValue >> cUnit;
+            }
         }
         pcursor->close();
+    }
+
+    if (cUnit != pwallet->Unit())
+    {
+        if (cUnit == '?') // unit was never set
+            WriteUnit(pwallet->Unit());
+        else
+        {
+            printf("Error reading wallet database: Unit is '%c' (should be '%c')\n", cUnit, pwallet->Unit());
+            return DB_LOAD_FAIL;
+        }
     }
 
     BOOST_FOREACH(uint256 hash, vWalletUpgrade)

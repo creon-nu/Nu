@@ -216,13 +216,28 @@ void ScriptPubKeyToJSON(const CScript& scriptPubKey, Object& out, unsigned char 
         return;
     }
 
-    out.push_back(Pair("reqSigs", nRequired));
     out.push_back(Pair("type", GetTxnOutputType(type)));
+    if (type == TX_PARK)
+    {
+        uint64 nDuration;
+        CBitcoinAddress unparkAddress;
+        Object park;
+        if (ExtractPark(scriptPubKey, cUnit, nDuration, unparkAddress))
+        {
+            park.push_back(Pair("duration", (boost::uint64_t)nDuration));
+            park.push_back(Pair("unparkaddress", unparkAddress.ToString()));
+        }
+        out.push_back(Pair("park", park));
+    }
+    else
+    {
+        out.push_back(Pair("reqSigs", nRequired));
 
-    Array a;
-    BOOST_FOREACH(const CBitcoinAddress& addr, addresses)
-        a.push_back(CBitcoinAddress(addr).ToString());
-    out.push_back(Pair("addresses", a));
+        Array a;
+        BOOST_FOREACH(const CBitcoinAddress& addr, addresses)
+            a.push_back(CBitcoinAddress(addr).ToString());
+        out.push_back(Pair("addresses", a));
+    }
 }
 
 void TxToJSON(const CTransaction& tx, const uint256 hashBlock, Object& entry)
@@ -709,7 +724,7 @@ Value getinfo(const Array& params, bool fHelp)
     obj.push_back(Pair("connections",   (int)vNodes.size()));
     obj.push_back(Pair("proxy",         (fUseProxy ? addrProxy.ToStringIPPort() : string())));
     obj.push_back(Pair("ip",            addrSeenByPeer.ToStringIP()));
-    obj.push_back(Pair("difficulty",    (double)GetDifficulty()));
+    obj.push_back(Pair("difficulty",    (double)GetDifficulty(GetLastBlockIndex(pindexBest, true))));
     obj.push_back(Pair("testnet",       fTestNet));
     obj.push_back(Pair("keypoololdest", (boost::int64_t)pwalletMain->GetOldestKeyPoolTime()));
     obj.push_back(Pair("keypoolsize",   pwalletMain->GetKeyPoolSize()));
@@ -1469,7 +1484,7 @@ Value sendmany(const Array& params, bool fHelp)
 
     if (pwalletMain->IsLocked())
         throw JSONRPCError(-13, "Error: Please enter the portfolio passphrase with walletpassphrase first.");
-    if (fWalletUnlockMintOnly)
+    if (pwalletMain->fWalletUnlockMintOnly)
         throw JSONRPCError(-13, "Error: portfolio unlocked for block minting only.");
 
     // Check funds
@@ -2179,9 +2194,9 @@ Value walletpassphrase(const Array& params, bool fHelp)
 
     // ppcoin: if user OS account compromised prevent trivial sendmoney commands
     if (params.size() > 2)
-        fWalletUnlockMintOnly = params[2].get_bool();
+        pwalletMain->fWalletUnlockMintOnly = params[2].get_bool();
     else
-        fWalletUnlockMintOnly = false;
+        pwalletMain->fWalletUnlockMintOnly = false;
 
     return Value::null;
 }
@@ -3234,6 +3249,120 @@ Value getelectedcustodians(const Array& params, bool fHelp)
 }
 
 
+typedef map<uint64, uint64> RateWeightMap;
+typedef RateWeightMap::value_type RateWeight;
+
+typedef map<unsigned char, RateWeightMap> DurationRateWeightMap;
+typedef DurationRateWeightMap::value_type DurationRateWeight;
+
+Value getparkvotes(const Array& params, bool fHelp)
+{
+    if (fHelp || params.size() > 2)
+        throw runtime_error(
+            "getparkvotes [<block height>] [<block quantity>]\n"
+            "Returns an object containing a summary of the park rate votes.");
+
+    Object obj;
+
+    CBlockIndex *pindex = pindexBest;
+
+    if (params.size() > 0)
+    {
+        int nHeight = params[0].get_int();
+
+        if (nHeight < 0 || nHeight > nBestHeight)
+            throw runtime_error("Invalid height\n");
+
+        for (int i = nBestHeight; i > nHeight; i--)
+            pindex = pindex->pprev;
+    }
+
+    int nQuantity;
+    if (params.size() > 1)
+        nQuantity = params[1].get_int();
+    else
+        nQuantity = PARK_RATE_VOTES;
+
+    if (nQuantity <= 0)
+        throw runtime_error("Invalid quantity\n");
+
+    DurationRateWeightMap durationRateWeights;
+    uint64 totalVoteWeight = 0;
+    map<unsigned char, uint64> coinAgeDestroyedPerDuration;
+
+    for (int i = 0; i < nQuantity && pindex; i++, pindex = pindex->pprev)
+    {
+        if (!pindex->IsProofOfStake())
+            continue;
+
+        const CVote& vote = pindex->vote;
+
+        totalVoteWeight += vote.nCoinAgeDestroyed;
+
+        BOOST_FOREACH(const CParkRateVote& parkRateVote, vote.vParkRateVote)
+        {
+            BOOST_FOREACH(const CParkRate& parkRate, parkRateVote.vParkRate)
+            {
+                RateWeightMap &rateWeights = durationRateWeights[parkRate.nCompactDuration];
+                rateWeights[parkRate.nRate] += vote.nCoinAgeDestroyed;
+                coinAgeDestroyedPerDuration[parkRate.nCompactDuration] += vote.nCoinAgeDestroyed;
+            }
+        }
+    }
+
+    Object unitResult;
+    BOOST_FOREACH(const DurationRateWeight& durationRateWeight, durationRateWeights)
+    {
+        unsigned char nCompactDuration = durationRateWeight.first;
+        const RateWeightMap &rateWeights = durationRateWeight.second;
+
+        Object durationObject;
+        boost::int64_t blocks = (int64)1<<nCompactDuration;
+        durationObject.push_back(Pair("blocks", blocks));
+        durationObject.push_back(Pair("estimated_duration", BlocksToTime(blocks)));
+
+        uint64 abstainedCoinAge = totalVoteWeight - coinAgeDestroyedPerDuration[nCompactDuration];
+        if (abstainedCoinAge > 0)
+        {
+            RateWeightMap &rateWeights = durationRateWeights[nCompactDuration];
+            rateWeights[0] += abstainedCoinAge;
+        }
+
+        uint64 accumulatedWeight = 0;
+
+        Array votes;
+        BOOST_FOREACH(const RateWeight& rateWeight, rateWeights)
+        {
+            Object rateVoteObject;
+            boost::uint64_t rate = rateWeight.first;
+            boost::uint64_t weight = rateWeight.second;
+
+            double shareDays = (double)weight / (24 * 60 * 60);
+            double shareDayPercentage = (double)weight / (double)totalVoteWeight * 100;
+
+            accumulatedWeight += weight;
+            double accumulatedPercentage = (double)accumulatedWeight / (double)totalVoteWeight * 100;
+
+            rateVoteObject.push_back(Pair("rate", ValueFromParkRate(rate)));
+            rateVoteObject.push_back(Pair("annual_percentage", AnnualInterestRatePercentage(rate, blocks)));
+            rateVoteObject.push_back(Pair("sharedays", shareDays));
+            rateVoteObject.push_back(Pair("shareday_percentage", shareDayPercentage));
+            rateVoteObject.push_back(Pair("accumulated_percentage", accumulatedPercentage));
+
+            votes.push_back(rateVoteObject);
+        }
+        durationObject.push_back(Pair("votes", votes));
+
+
+        string durationLabel = boost::lexical_cast<std::string>((int)nCompactDuration);
+        unitResult.push_back(Pair(durationLabel, durationObject));
+    }
+    obj.push_back(Pair("B", unitResult));
+
+    return obj;
+}
+
+
 Value liquidityinfo(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 4)
@@ -3741,6 +3870,7 @@ Value signrawtransaction(const Array& params, bool fHelp)
     if (params.size() > 2 && params[2].type() != null_type)
     {
         fGivenKeys = true;
+        tempKeystore.SetUnit(pwalletMain->Unit());
         Array keys = params[2].get_array();
         BOOST_FOREACH(Value k, keys)
         {
@@ -3755,7 +3885,7 @@ Value signrawtransaction(const Array& params, bool fHelp)
             tempKeystore.AddKey(key);
         }
     }
-    else if(pwalletMain->IsCrypted())
+    else if(pwalletMain->IsLocked())
       throw runtime_error("The wallet must be unlocked with walletpassphrase first");
 
     // Add previous txouts given in the RPC call:
@@ -4318,6 +4448,7 @@ static const CRPCCommand vRPCCommands[] =
     { "getmotions",             &getmotions,             true },
     { "getcustodianvotes",      &getcustodianvotes,      true },
     { "getelectedcustodians",   &getelectedcustodians,   true },
+    { "getparkvotes",           &getparkvotes,           true },
     { "listunspent",            &listunspent,            false},
     { "getrawtransaction",      &getrawtransaction,      false},
     { "createrawtransaction",   &createrawtransaction,   false},
@@ -5110,6 +5241,8 @@ Array RPCConvertValues(const std::string &strMethod, const std::vector<std::stri
     if (strMethod == "getparkrates"            && n > 0) ConvertTo<boost::int64_t>(params[0]);
     if (strMethod == "getcustodianvotes"       && n > 0) ConvertTo<boost::int64_t>(params[0]);
     if (strMethod == "getcustodianvotes"       && n > 1) ConvertTo<boost::int64_t>(params[1]);
+    if (strMethod == "getparkvotes"            && n > 0) ConvertTo<boost::int64_t>(params[0]);
+    if (strMethod == "getparkvotes"            && n > 1) ConvertTo<boost::int64_t>(params[1]);
 #ifdef TESTING
     if (strMethod == "timetravel"              && n > 0) ConvertTo<boost::int64_t>(params[0]);
 #endif
