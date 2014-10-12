@@ -826,7 +826,11 @@ int CMerkleTx::GetBlocksToMaturity() const
 {
     if (!(IsCoinBase() || IsCoinStake()))
         return 0;
+#ifdef TESTING
+    return max(0, (GetMaturity(IsCoinStake())   ) - GetDepthInMainChain());
+#else
     return max(0, (GetMaturity(IsCoinStake())+20) - GetDepthInMainChain());
+#endif
 }
 
 
@@ -2583,15 +2587,20 @@ bool LoadBlockIndex(bool fAllowNew)
     if (fTestNet)
     {
         hashGenesisBlock = hashGenesisBlockTestNet;
+#ifdef TESTING
+        bnProofOfWorkLimit = CBigNum(~uint256(0) >> 20);
+        nStakeMinAge = 300; // test net min age is 5 minutes
+        nCoinbaseMaturity = 60;
+        nCoinstakeMaturity = 3;
+        bnInitialHashTarget = CBigNum(~uint256(0) >> 20);
+        bnInitialProofOfStakeHashTarget = CBigNum(~uint256(0) >> 20);
+        nModifierInterval = 3;
+#else
         bnProofOfWorkLimit = CBigNum(~uint256(0) >> 20);
         nStakeMinAge = 300; // test net min age is 5 minutes
         nCoinbaseMaturity = 60;
         nCoinstakeMaturity = 60;
         bnInitialHashTarget = CBigNum(~uint256(0) >> 20);
-#ifdef TESTING
-        bnInitialProofOfStakeHashTarget = CBigNum(~uint256(0) >> 20);
-        nModifierInterval = 3;
-#else
         bnInitialProofOfStakeHashTarget = CBigNum(~uint256(0) >> 28);
         nModifierInterval = 60 * 20; // test net modifier interval is 20 minutes
 #endif

@@ -46,20 +46,12 @@
          <property name="text">
           <string>Add a shorter interval</string>
          </property>
-         <property name="icon">
-          <iconset resource="../bitcoin.qrc">
-           <normaloff>:/icons/add</normaloff>:/icons/add</iconset>
-         </property>
         </widget>
        </item>
        <item>
         <widget class="QPushButton" name="addLonger">
          <property name="text">
           <string>Add a longer interval</string>
-         </property>
-         <property name="icon">
-          <iconset resource="../bitcoin.qrc">
-           <normaloff>:/icons/add</normaloff>:/icons/add</iconset>
          </property>
         </widget>
        </item>
