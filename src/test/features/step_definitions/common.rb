@@ -251,19 +251,6 @@ Then(/^all nodes should (?:have|reach) (\d+) transactions? in memory pool$/) do 
   end
 end
 
-When(/^node "(.*?)" parks "(.*?)" NuBits for (\d+) blocks$/) do |arg1, arg2, arg3|
-  node = @nodes[arg1]
-  amount = parse_number(arg2)
-  blocks = arg3.to_i
-
-  node.unit_rpc('B', 'park', amount, blocks)
-end
-
-When(/^node "(.*?)" unparks$/) do |arg1|
-  node = @nodes[arg1]
-  node.unit_rpc('B', 'unpark')
-end
-
 When(/^some time pass$/) do
   @nodes.values.each do |node|
     node.rpc "timetravel", 5
@@ -283,6 +270,11 @@ When(/^node "(.*?)" parks "(.*?)" NuBits for (\d+) blocks$/) do |arg1, arg2, arg
   blocks = arg3.to_i
 
   node.unit_rpc('B', 'park', amount, blocks)
+end
+
+When(/^node "(.*?)" unparks$/) do |arg1|
+  node = @nodes[arg1]
+  node.unit_rpc('B', 'unpark')
 end
 
 Then(/^"(.*?)" should have "(.*?)" NuBits parked$/) do |arg1, arg2|

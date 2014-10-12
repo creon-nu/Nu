@@ -23,7 +23,7 @@ Feature: Split money supply
     Given a network with nodes "Alice" and "Bob" able to mint
     Then the total parked NuBits should reach "0"
 
-    When node "Bob" generates a "NuBit" address "cust"
+    When node "Bob" generates a NuBit address "cust"
     And node "Alice" votes an amount of "1,000,000" for custodian "cust"
     And node "Alice" votes a park rate of "0.00000001" NuBits per Nubit parked during 4 blocks
     And node "Alice" finds blocks until custodian "cust" is elected
