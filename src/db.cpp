@@ -592,6 +592,7 @@ bool CTxDB::LoadBlockIndex()
             pindexNew->nHeight        = diskindex.nHeight;
             pindexNew->nMint          = diskindex.nMint;
             pindexNew->mapMoneySupply = diskindex.mapMoneySupply;
+            pindexNew->mapTotalParked = diskindex.mapTotalParked;
             pindexNew->nFlags         = diskindex.nFlags;
             pindexNew->nStakeModifier = diskindex.nStakeModifier;
             pindexNew->prevoutStake   = diskindex.prevoutStake;
@@ -651,10 +652,11 @@ bool CTxDB::LoadBlockIndex()
         if (!CheckStakeModifierCheckpoints(pindex->nHeight, pindex->nStakeModifierChecksum))
             return error("CTxDB::LoadBlockIndex() : Failed stake modifier checkpoint height=%d, modifier=0x%016"PRI64x, pindex->nHeight, pindex->nStakeModifier);
         // nubit: rebuild per unit money supply for version <= 0.3.0
-        if (pindex->mapMoneySupply.empty())
+        if (pindex->mapMoneySupply.empty() || pindex->mapTotalParked.empty() || GetBoolArg("-rebuildsupply", false))
         {
             map<unsigned char, int64> mapValueIn;
             map<unsigned char, int64> mapValueOut;
+            map<unsigned char, int64> mapParked;
 
             CTxDB txdb;
             CBlock block;
@@ -676,11 +678,23 @@ bool CTxDB::LoadBlockIndex()
                     int64 nTxValueOut = tx.GetValueOut();
                     mapValueIn[tx.cUnit] += nTxValueIn;
                     mapValueOut[tx.cUnit] += nTxValueOut;
+
+                    for (int i = 0; i < tx.vout.size(); i++)
+                    {
+                        if (tx.IsParked(i))
+                            mapParked[tx.cUnit] += tx.vout[i].nValue;
+                    }
+                    if (tx.IsUnpark())
+                        mapParked[tx.cUnit] -= nTxValueIn;
+
                 }
             }
 
             BOOST_FOREACH(unsigned char cUnit, sAvailableUnits)
+            {
                 pindex->mapMoneySupply[cUnit] = (pindex->pprev? pindex->pprev->mapMoneySupply[cUnit] : 0) + mapValueOut[cUnit] - mapValueIn[cUnit];
+                pindex->mapTotalParked[cUnit] = (pindex->pprev? pindex->pprev->mapTotalParked[cUnit] : 0) + mapParked[cUnit];
+            }
 
             if (!txdb.WriteBlockIndex(CDiskBlockIndex(pindex)))
                 return error("CTxDB::LoadBlockIndex() : Rebuilding money supply: Failed write new block index");
