@@ -80,6 +80,7 @@ private:
     QProgressBar *progressBar;
 
     QMenuBar *appMenuBar;
+    QMenu *sharesMenu;
     QAction *overviewAction;
     QAction *historyAction;
     QAction *quitAction;
@@ -101,6 +102,7 @@ private:
     QAction *distributeDividendsAction;
     QAction *parkAction;
     QAction *voteAction;
+    QAction *switchUnitAction;
     QVector<QAction*> changeUnitActions;
 
     QMenu *unitMenu;
@@ -111,6 +113,8 @@ private:
     RPCConsole *rpcConsole;
 
     QMovie *syncIconMovie;
+
+    QString switchUnitTarget;
 
     /** Create the main UI actions. */
     void createActions();
@@ -200,6 +204,9 @@ private slots:
 
     /** Switch to another unit */
     void changeUnit(const QString &unit);
+
+    /** Switch wallet units button**/
+    void switchUnitButtonClicked();
 };
 
 #endif

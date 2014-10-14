@@ -1,0 +1,12 @@
+Feature: The balance is correctly reported when shares have been used to mint
+
+  Scenario: A shareholder finds a block and gets the balance
+    Given a network with nodes "Alice" and "Bob"
+    Then node "Alice" should reach a balance of "10,000,000" on account ""
+
+    When node "Alice" finds a block
+    And all nodes reach the same height
+    And node "Bob" finds enough blocks to mature a Proof of Stake block
+    Then node "Alice" should reach a balance of "10,000,040" on account ""
+
+

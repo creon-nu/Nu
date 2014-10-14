@@ -88,6 +88,9 @@ void ThreadSafeHandleURI(const std::string& strURI)
 
 void MainFrameRepaint()
 {
+    if(!guiref)
+        return;
+
     if(clientmodel)
         QMetaObject::invokeMethod(clientmodel, "update", Qt::QueuedConnection);
     if(walletmodel)
@@ -104,7 +107,7 @@ void InitMessage(const std::string &message)
 {
     if(splashref)
     {
-        splashref->showMessage(QString::fromStdString(message), Qt::AlignBottom|Qt::AlignHCenter, QColor(255,255,200));
+        splashref->showMessage(QString::fromStdString(message), Qt::AlignBottom|Qt::AlignHCenter, QColor(255,255,255));
         QApplication::instance()->processEvents();
     }
 }
@@ -218,6 +221,7 @@ int main(int argc, char *argv[])
         app.installTranslator(&translator);
 
     QSplashScreen splash(QPixmap(":/images/splash"), 0);
+    splash.setStyleSheet("background-color:transparent;");
     if (GetBoolArg("-splash", true) && !GetBoolArg("-min"))
     {
         splash.show();
@@ -245,7 +249,7 @@ int main(int argc, char *argv[])
                     splash.finish(&window);
 
                 ClientModel clientModel(&optionsModel);
-                WalletModel *walletModel = new WalletModel(*setpwalletRegistered.begin(), &optionsModel);
+                WalletModel *walletModel = new WalletModel(GetWallet('B'), &optionsModel);
 
                 window.setClientModel(&clientModel);
                 window.setWalletModel(walletModel);

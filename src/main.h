@@ -52,11 +52,13 @@ static const int STAKE_MIN_AGE = 60 * 60 * 24 * 7; // changed to 7 days so only 
 static const int STAKE_MAX_AGE = STAKE_MIN_AGE + 1; // changed to same as minimum to incentivize minting as soon as possible
 static const int64 IPO_SHARES = 1000000000 * COIN; // Total number of shares to create using proof of work (intented for IPO)
 static const int64 PROOF_OF_WORK_BLOCKS = 400; // Block height of the last proof of work block
-static const int64 PARK_RATE_VOTES = 2000; // Number of blocks used in park rate median vote calculation
-static const int64 PARK_RATE_PREVIOUS_VOTES = 1440; // Number of blocks used in the park rate increase limitation
 #ifdef TESTING
+static const int64 PARK_RATE_VOTES = 5; // Number of blocks used in park rate median vote calculation
+static const int64 PARK_RATE_PREVIOUS_VOTES = 1; // Number of blocks used in the park rate increase limitation
 static const unsigned int CUSTODIAN_VOTES = 5;
 #else
+static const int64 PARK_RATE_VOTES = 2000; // Number of blocks used in park rate median vote calculation
+static const int64 PARK_RATE_PREVIOUS_VOTES = 1440; // Number of blocks used in the park rate increase limitation
 static const unsigned int CUSTODIAN_VOTES = 10000;
 #endif
 static const int64 MOTION_VOTES = 10000;
@@ -1267,6 +1269,7 @@ public:
     int nHeight;
     int64 nMint;
     std::map<unsigned char, int64> mapMoneySupply;
+    std::map<unsigned char, int64> mapTotalParked;
 
     unsigned int nFlags;  // ppcoin: block index flags
     enum  
@@ -1311,6 +1314,7 @@ public:
         bnChainTrust = 0;
         nMint = 0;
         mapMoneySupply.clear();
+        mapTotalParked.clear();
         nFlags = 0;
         nStakeModifier = 0;
         nStakeModifierChecksum = 0;
@@ -1340,6 +1344,7 @@ public:
         bnChainTrust = 0;
         nMint = 0;
         mapMoneySupply.clear();
+        mapTotalParked.clear();
         nFlags = 0;
         nStakeModifier = 0;
         nStakeModifierChecksum = 0;
@@ -1506,6 +1511,15 @@ public:
             return -1;
     }
 
+    int64 GetTotalParked(unsigned char cUnit) const
+    {
+        std::map<unsigned char, int64>::const_iterator it = mapTotalParked.find(cUnit);
+        if (it != mapTotalParked.end())
+            return it->second;
+        else
+            return -1;
+    }
+
     std::string ToString() const
     {
         return strprintf("CBlockIndex(nprev=%08x, pnext=%08x, nFile=%d, nBlockPos=%-6d nHeight=%d, nMint=%s, nMoneySupply(S)=%s, nMoneySupply(B)=%s, nFlags=(%s)(%d)(%s), nStakeModifier=%016"PRI64x", nStakeModifierChecksum=%08x, hashProofOfStake=%s, prevoutStake=(%s), nStakeTime=%d merkle=%s, hashBlock=%s)",
@@ -1558,15 +1572,15 @@ public:
         READWRITE(nBlockPos);
         READWRITE(nHeight);
         READWRITE(nMint);
-        if (nVersion <= 30000)
+        if (nVersion <= 30000) // v0.3.0
         {
             int64 nMoneySupply = 0;
             READWRITE(nMoneySupply);
         }
         else
-        {
             READWRITE(mapMoneySupply);
-        }
+        if (nVersion > 40400) // v0.4.4
+            READWRITE(mapTotalParked);
         READWRITE(nFlags);
         READWRITE(nStakeModifier);
         if (IsProofOfStake())

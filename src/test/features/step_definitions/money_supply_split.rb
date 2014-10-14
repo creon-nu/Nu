@@ -9,6 +9,20 @@ Then(/^the "(.*?)" supply should be "(.*?)"$/) do |arg1, arg2|
   expect(supply).to be == parse_number(arg2)
 end
 
+Then(/^the "(.*?)" supply for "(.*?)" should be "(.*?)"$/) do |arg1, node, arg2|
+  supply = money_supply(arg1, @nodes[node])
+  expect(supply).to be == parse_number(arg2)
+end
+
+When(/^the current NuShare supply on "(.*?)" is recorded$/) do |arg1|
+  @nushare_supply = @nodes[arg1].unit_rpc('S', 'getinfo')["moneysupply"]
+end
+
+Then(/^the "(.*?)" supply for "(.*?)" should have increased by "(.*?)"$/) do |arg1, arg2, arg3|
+  expect(@nodes[arg2].unit_rpc(unit(arg1), 'getinfo')["moneysupply"]).to eq(@nushare_supply + parse_number(arg3))
+end
+
+
 Then(/^"(.*?)" money supply on node "(.*?)" should increase by "(.*?)" when node "(.*?)" finds a block$/) do |arg1, arg2, arg3, arg4|
   unit_name = arg1
   checked_node = @nodes[arg2]
@@ -24,3 +38,10 @@ Then(/^"(.*?)" money supply on node "(.*?)" should increase by "(.*?)" when node
   end
 end
 
+Then(/^the amount minted on the last block on "(.*?)" should be "(.*?)"$/) do |arg1, arg2|
+  node = @nodes[arg1]
+  expected = parse_number(arg2)
+  height = node.rpc("getblockcount")
+  block = node.rpc("getblockhash", height)
+  expect(node.rpc("getblock", block)["mint"]).to eq(expected)
+end
