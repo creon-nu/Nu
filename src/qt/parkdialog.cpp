@@ -52,7 +52,7 @@ void ParkDialog::setModel(WalletModel *model)
     }
     ui->rates->setColumnCount(2);
     ui->rates->setRowCount(parkRates.size());
-    ui->rates->setHorizontalHeaderLabels(QStringList() << tr("Duration") << tr("Interest rate"));
+    ui->rates->setHorizontalHeaderLabels(QStringList() << tr("Duration") << tr("Annual nterest rate"));
     for (int i = 0; i < parkRates.size(); i++)
     {
         const CParkRate& parkRate = parkRates[i];
