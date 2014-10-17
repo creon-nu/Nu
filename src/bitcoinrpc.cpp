@@ -3365,11 +3365,14 @@ Value getparkvotes(const Array& params, bool fHelp)
 }
 
 
+static map<string, CLiquidityInfo> mapLiquidity;
+static CCriticalSection cs_mapLiquidity;
+
 Value liquidityinfo(const Array& params, bool fHelp)
 {
-    if (fHelp || params.size() != 4)
+    if (fHelp || params.size() < 4 || params.size() > 5)
         throw runtime_error(
-            "liquidityinfo <currency> <buyamount> <sellamount> <grantaddress>\n"
+            "liquidityinfo <currency> <buyamount> <sellamount> <grantaddress> [<indentifier>]\n"
             "Broadcast liquidity information.\n"
             "currency is the single letter of the currency (currently only 'B')\n"
             "grantaddress is the custodian address that was granted. The private key of this address must be in the wallet."
@@ -3409,6 +3412,24 @@ Value liquidityinfo(const Array& params, bool fHelp)
     info.nTime = GetAdjustedTime();
     info.nBuyAmount = roundint64(params[1].get_real() * COIN);
     info.nSellAmount = roundint64(params[2].get_real() * COIN);
+
+    string sIdentifier;
+    if (params.size() > 4)
+        sIdentifier = params[4].get_str();
+
+    LOCK(cs_mapLiquidity);
+    mapLiquidity[sIdentifier] = info;
+
+    BOOST_FOREACH(const PAIRTYPE(string, CLiquidityInfo)& otherInfoPair, mapLiquidity)
+    {
+        const string& otherIdentifier = otherInfoPair.first;
+        if (otherIdentifier != sIdentifier)
+        {
+            const CLiquidityInfo& otherInfo = otherInfoPair.second;
+            info.nBuyAmount += otherInfo.nBuyAmount;
+            info.nSellAmount += otherInfo.nSellAmount;
+        }
+    }
 
     if (info.nBuyAmount < 0 || info.nSellAmount < 0)
         throw JSONRPCError(-3, "Invalid amount");

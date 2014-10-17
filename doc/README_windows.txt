@@ -1,4 +1,4 @@
-Nu 0.4.4 BETA
+Nu 0.4.5 BETA
 Copyright (c) 2014 Nu Developers
 
 ## End-User License Agreement
