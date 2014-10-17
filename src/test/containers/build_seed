@@ -2,12 +2,18 @@
 
 require File.expand_path('../boot', __FILE__)
 
+genesis_time = Time.at(1407023435)
+
+start_time = genesis_time + 10 * 24 * 3600
+start_time_shift = (start_time - Time.now).to_i
+
 puts "Creating seed"
 seed = CoinContainer.new(
   image: 'nubit/base',
   args: {
     gen: true,
     splitshareoutputs: 100000,
+    timetravel: start_time_shift,
   },
   delete_at_exit: true,
 )
@@ -18,6 +24,9 @@ node = CoinContainer.new(
   links: [seed],
   remove_wallet_after_shutdown: true,
   delete_at_exit: true,
+  args: {
+    timetravel: start_time_shift,
+  }
 )
 
 puts "Waiting for node to boot"
