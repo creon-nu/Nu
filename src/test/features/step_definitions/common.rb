@@ -302,3 +302,11 @@ Then(/^"(.*?)" should have "(.*?)" NuBits parked$/) do |arg1, arg2|
   info = node.unit_rpc("B", "getinfo")
   expect(info["parked"]).to eq(amount)
 end
+
+When(/^the nodes travel to the Nu protocol v(\d+) switch time$/) do |arg1|
+  switch_time = Time.at(1414195200)
+  @nodes.values.each do |node|
+    time = Time.parse(node.info["time"])
+    node.rpc("timetravel", (switch_time - time).round)
+  end
+end

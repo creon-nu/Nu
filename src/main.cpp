@@ -20,6 +20,14 @@
 using namespace std;
 using namespace boost;
 
+unsigned int nNuProtocolV05SwitchTime     = 1414800000; // 2014-11-01 00:00:00 UTC
+unsigned int nNuProtocolV05TestSwitchTime = 1414195200; // 2014-10-25 00:00:00 UTC
+
+bool IsNuProtocolV05(int64 nTimeBlock)
+{
+    return (nTimeBlock >= (fTestNet? nNuProtocolV05TestSwitchTime : nNuProtocolV05SwitchTime));
+}
+
 CCriticalSection cs_setpwalletRegistered;
 set<CWallet*> setpwalletRegistered;
 
@@ -1040,7 +1048,7 @@ unsigned int static GetNextTargetRequired(const CBlockIndex* pindexLast, bool fP
     bnNew *= ((nInterval - 1) * nTargetSpacing + nActualSpacing + nActualSpacing);
     bnNew /= ((nInterval + 1) * nTargetSpacing);
 
-    if (bnNew > bnProofOfWorkLimit)
+    if (bnNew > bnProofOfWorkLimit && !IsNuProtocolV05(pindexPrev->GetBlockTime()))
         bnNew = bnProofOfWorkLimit;
 
     return bnNew.GetCompact();
