@@ -1675,7 +1675,7 @@ bool CWallet::CreateUnparkTransaction(CWalletTx& wtxParked, unsigned int nOut, c
     return true;
 }
 
-bool CWallet::SendUnparkTransactions(vector<CWalletTx> vtxRet)
+bool CWallet::SendUnparkTransactions(vector<CWalletTx>& vtxRet)
 {
     for (map<uint256, CWalletTx>::iterator it = mapWallet.begin(); it != mapWallet.end(); ++it)
     {
