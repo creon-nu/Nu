@@ -7,6 +7,18 @@ Before do
   @raw_tx_complete = {}
   @pubkeys = {}
   @unit = {}
+  @time = Time.utc(2014, 9, 1, 0, 0, 0)
+end
+
+def timeshift
+  (@time - Time.now).to_i
+end
+
+def time_travel(seconds)
+  @time += seconds
+  @nodes.values.each do |node|
+    node.rpc "timetravel", seconds
+  end
 end
 
 Given(/^a network with nodes? (.+)(?: able to mint)?$/) do |node_names|
@@ -21,7 +33,7 @@ Given(/^a network with nodes? (.+)(?: able to mint)?$/) do |node_names|
       links: @nodes.values.map(&:name),
       args: {
         debug: true,
-        timetravel: 5*24*3600,
+        timetravel: timeshift,
       },
     }
     node = CoinContainer.new(options)
@@ -50,7 +62,7 @@ Given(/^a node "(.*?)" with an empty wallet$/) do |arg1|
     links: @nodes.values.map(&:name),
     args: {
       debug: true,
-      timetravel: 5*24*3600,
+      timetravel: timeshift,
     },
     remove_wallet_before_startup: true,
   }
@@ -76,6 +88,49 @@ Given(/^a node "(.*?)" with an empty wallet and with avatar mode disabled$/) do 
   node.wait_for_boot
 end
 
+Given(/^a node "(.*?)" running version "(.*?)"$/) do |arg1, arg2|
+  name = arg1
+  options = {
+    image: "nunet/#{arg2}",
+    bind_code: false,
+    links: @nodes.values.map(&:name),
+    args: {
+      debug: true,
+      timetravel: timeshift,
+    },
+    remove_wallet_before_startup: true,
+  }
+  begin
+    node = CoinContainer.new(options)
+  rescue Docker::Error::NotFoundError
+    puts "Image for version #{arg2.inspect} may be missing."
+    raise
+  end
+  @nodes[name] = node
+  node.wait_for_boot
+end
+
+Given(/^a node "(.*?)" running version "(.*?)" and able to mint$/) do |arg1, arg2|
+  name = arg1
+  options = {
+    image: "nunet/#{arg2}",
+    bind_code: false,
+    links: @nodes.values.map(&:name),
+    args: {
+      debug: true,
+      timetravel: timeshift,
+    },
+  }
+  begin
+    node = CoinContainer.new(options)
+  rescue Docker::Error::NotFoundError
+    puts "Image for version #{arg2.inspect} may be missing."
+    raise
+  end
+  @nodes[name] = node
+  node.wait_for_boot
+end
+
 After do
   if @nodes
     require 'thread'
@@ -93,34 +148,47 @@ After do
 end
 
 When(/^node "(.*?)" finds a block "([^"]*?)"$/) do |node, block|
+  time_travel(5)
   @blocks[block] = @nodes[node].generate_stake
 end
 
 When(/^node "(.*?)" finds a block$/) do |node|
+  time_travel(5)
   @nodes[node].generate_stake
 end
 
 When(/^node "(.*?)" finds (\d+) blocks$/) do |arg1, arg2|
+  time_travel(5)
   arg2.to_i.times do
     @nodes[arg1].generate_stake
+    time_travel(60)
   end
 end
 
-Then(/^all nodes should be at block "(.*?)"$/) do |block|
+When(/^node "(.*?)" finds (\d+) blocks received by all nodes$/) do |arg1, arg2|
+  step "node \"#{arg1}\" finds #{arg2} blocks"
+  step "all nodes reach the same height"
+end
+
+Then(/^all nodes should (?:be at|reach) block "(.*?)"$/) do |block|
   begin
     wait_for do
       main = @nodes.values.map(&:top_hash)
       main.all? { |hash| hash == @blocks[block] }
     end
   rescue
-    raise "Not at block #{block}: #{@nodes.values.map(&:top_hash).map { |hash| @blocks.key(hash) }.inspect}"
+    raise "Not at block #{block}: #{@nodes.values.map(&:top_hash).map { |hash| @blocks.key(hash) || hash }.inspect}"
   end
 end
 
-Given(/^all nodes reach the same height$/) do
+Given(/^all nodes (?:should )?reach the same height$/) do
   wait_for do
     expect(@nodes.values.map(&:block_count).uniq.size).to eq(1)
   end
+end
+
+Given(/^all nodes reach block "(.*?)"$/) do |arg1|
+  step "all nodes should be at block \"#{arg1}\""
 end
 
 When(/^node "(.*?)" votes an amount of "(.*?)" for custodian "(.*?)"$/) do |arg1, arg2, arg3|
@@ -155,6 +223,7 @@ When(/^node "(.*?)" finds blocks until custodian "(.*?)" is elected$/) do |arg1,
   node = @nodes[arg1]
   loop do
     block = node.generate_stake
+    time_travel(60)
     info = node.rpc("getblock", block)
     if elected_custodians = info["electedcustodians"]
       if elected_custodians.has_key?(@addresses[arg2])
@@ -168,6 +237,7 @@ When(/^node "(.*?)" finds blocks until the NuBit park rate for (\d+) blocks is "
   node = @nodes[arg1]
   wait_for do
     block = node.generate_stake
+    time_travel(60)
     info = node.rpc("getblock", block)
     park_rates = info["parkrates"].detect { |r| r["unit"] == "B" }
     expect(park_rates).not_to be_nil
@@ -183,6 +253,7 @@ When(/^node "(.*?)" finds blocks until custodian "(.*?)" is elected in transacti
   address = @addresses[arg2]
   loop do
     block = node.generate_stake
+    time_travel(60)
     info = node.rpc("getblock", block)
     if elected_custodians = info["electedcustodians"]
       if elected_custodians.has_key?(address)
@@ -234,7 +305,9 @@ end
 Then(/^node "(.*?)" should have a balance of "([^"]*?)"( NuBits|)$/) do |arg1, arg2, unit_name|
   node = @nodes[arg1]
   amount = parse_number(arg2)
-  expect(node.unit_rpc(unit(unit_name), "getbalance")).to eq(amount)
+  wait_for do
+    expect(node.unit_rpc(unit(unit_name), "getbalance")).to eq(amount)
+  end
 end
 
 Then(/^node "(.*?)" should reach an unconfirmed balance of "([^"]*?)"( NuBits|)$/) do |arg1, arg2, unit_name|
@@ -281,6 +354,13 @@ Then(/^all nodes should (?:have|reach) (\d+) transactions? in memory pool$/) do 
   end
 end
 
+Then(/^node "(.*?)" should (?:have|reach) (\d+) transactions? in memory pool$/) do |arg1, arg2|
+  node = @nodes[arg1]
+  wait_for do
+    expect(node.rpc("getmininginfo")["pooledtx"]).to eq(arg2.to_i)
+  end
+end
+
 Then(/^the NuBit balance of node "(.*?)" should reach "(.*?)"$/) do |arg1, arg2|
   wait_for do
     expect(@nodes[arg1].unit_rpc('B', 'getbalance')).to eq(parse_number(arg2))
@@ -288,15 +368,14 @@ Then(/^the NuBit balance of node "(.*?)" should reach "(.*?)"$/) do |arg1, arg2|
 end
 
 When(/^some time pass$/) do
-  @nodes.values.each do |node|
-    node.rpc "timetravel", 5
-  end
+  time_travel(5)
 end
 
 When(/^node "(.*?)" finds enough blocks to mature a Proof of Stake block$/) do |arg1|
   node = @nodes[arg1]
   3.times do
     node.generate_stake
+    time_travel(60)
   end
 end
 
@@ -326,6 +405,7 @@ When(/^the nodes travel to the Nu protocol v(\d+) switch time$/) do |arg1|
     time = Time.parse(node.info["time"])
     node.rpc("timetravel", (switch_time - time).round)
   end
+  @time = switch_time
 end
 
 Then(/^node "(.*?)" should have (\d+) (\w+) transactions?$/) do |arg1, arg2, unit_name|
@@ -351,4 +431,16 @@ Then(/^the (\d+)\S+ transaction should be a receive of "(.*?)" to "(.*?)"$/) do 
   expect(tx["category"]).to eq("receive")
   expect(tx["amount"]).to eq(parse_number(arg2))
   expect(tx["address"]).to eq(@addresses[arg3])
+end
+
+Then(/^block "(.*?)" should contain transaction "(.*?)"$/) do |arg1, arg2|
+  node = @nodes.values.first
+  block = node.rpc("getblock", @blocks[arg1])
+  expect(block["tx"]).to include(@tx[arg2])
+end
+
+Then(/^node "(.*?)" prints the last block$/) do |arg1|
+  node = @nodes[arg1]
+  require 'pp'
+  pp node.top_block
 end

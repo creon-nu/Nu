@@ -1078,6 +1078,9 @@ int GetNumBlocksOfPeers()
 
 bool IsInitialBlockDownload()
 {
+#ifdef TESTING
+    return false;
+#else
     if (pindexBest == NULL || nBestHeight < Checkpoints::GetTotalBlocksEstimate())
         return true;
     static int64 nLastUpdate;
@@ -1089,6 +1092,7 @@ bool IsInitialBlockDownload()
     }
     return (GetTime() - nLastUpdate < 10 &&
             pindexBest->GetBlockTime() < GetTime() - 24 * 60 * 60);
+#endif
 }
 
 void static InvalidChainFound(CBlockIndex* pindexNew)
@@ -3790,7 +3794,8 @@ bool SendMessages(CNode* pto, bool fSendTrickle)
         ResendWalletTransactions();
 
         // nubit: Send unpark transaction
-        CheckUnparkableOutputs();
+        if (GetBoolArg("-unpark", true))
+            CheckUnparkableOutputs();
 
         // Address refresh broadcast
         static int64 nLastRebroadcast;
