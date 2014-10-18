@@ -392,6 +392,14 @@ When(/^node "(.*?)" unparks$/) do |arg1|
   node.unit_rpc('B', 'unpark')
 end
 
+When(/^node "(.*?)" unparks to transaction "(.*?)"$/) do |arg1, arg2|
+  node = @nodes[arg1]
+  txs = node.unit_rpc('B', 'unpark')
+  raise "No unpark transaction received" if txs.empty?
+  raise "multiple unparks" if txs.size > 1
+  @tx[arg2] = txs.first
+end
+
 Then(/^"(.*?)" should have "(.*?)" NuBits parked$/) do |arg1, arg2|
   node = @nodes[arg1]
   amount = parse_number(arg2)
