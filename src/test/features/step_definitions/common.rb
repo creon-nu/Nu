@@ -302,3 +302,29 @@ Then(/^"(.*?)" should have "(.*?)" NuBits parked$/) do |arg1, arg2|
   info = node.unit_rpc("B", "getinfo")
   expect(info["parked"]).to eq(amount)
 end
+
+Then(/^node "(.*?)" should have (\d+) (\w+) transactions?$/) do |arg1, arg2, unit_name|
+  @listtransactions = @nodes[arg1].unit_rpc(unit(unit_name), "listtransactions")
+  begin
+    expect(@listtransactions.size).to eq(arg2.to_i)
+  rescue RSpec::Expectations::ExpectationNotMetError
+    require 'pp'
+    pp @listtransactions
+    raise
+  end
+end
+
+Then(/^the (\d+)\S+ transaction should be a send of "(.*?)" to "(.*?)"$/) do |arg1, arg2, arg3|
+  tx = @listtransactions[arg1.to_i - 1]
+  expect(tx["category"]).to eq("send")
+  expect(tx["amount"]).to eq(-parse_number(arg2))
+  expect(tx["address"]).to eq(@addresses[arg3])
+end
+
+Then(/^the (\d+)\S+ transaction should be a receive of "(.*?)" to "(.*?)"$/) do |arg1, arg2, arg3|
+  tx = @listtransactions[arg1.to_i - 1]
+  expect(tx["category"]).to eq("receive")
+  expect(tx["amount"]).to eq(parse_number(arg2))
+  expect(tx["address"]).to eq(@addresses[arg3])
+end
+
