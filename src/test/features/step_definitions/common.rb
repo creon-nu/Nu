@@ -59,6 +59,23 @@ Given(/^a node "(.*?)" with an empty wallet$/) do |arg1|
   node.wait_for_boot
 end
 
+Given(/^a node "(.*?)" with an empty wallet and with avatar mode disabled$/) do |arg1|
+  name = arg1
+  options = {
+    image: "nunet/a",
+    links: @nodes.values.map(&:name),
+    args: {
+      debug: true,
+      timetravel: 5*24*3600,
+      avatar: false,
+    },
+    remove_wallet_before_startup: true,
+  }
+  node = CoinContainer.new(options)
+  @nodes[name] = node
+  node.wait_for_boot
+end
+
 After do
   if @nodes
     require 'thread'
@@ -193,7 +210,7 @@ When(/^node "(.*?)" sends "(.*?)" to "([^"]*?)"$/) do |arg1, arg2, arg3|
   @nodes[arg1].rpc "sendtoaddress", @addresses[arg3], parse_number(arg2)
 end
 
-When(/^node "(.*?)" sends "(.*?)" (NuBits|NuShares) to "(.*?)"$/) do |arg1, arg2, unit_name, arg3|
+When(/^node "(.*?)" sends "(.*?)" (NuBits|NBT|NuShares|NSR) to "(.*?)"$/) do |arg1, arg2, unit_name, arg3|
   @nodes[arg1].unit_rpc unit(unit_name), "sendtoaddress", @addresses[arg3], parse_number(arg2)
 end
 
@@ -302,3 +319,29 @@ Then(/^"(.*?)" should have "(.*?)" NuBits parked$/) do |arg1, arg2|
   info = node.unit_rpc("B", "getinfo")
   expect(info["parked"]).to eq(amount)
 end
+
+Then(/^node "(.*?)" should have (\d+) (\w+) transactions?$/) do |arg1, arg2, unit_name|
+  @listtransactions = @nodes[arg1].unit_rpc(unit(unit_name), "listtransactions")
+  begin
+    expect(@listtransactions.size).to eq(arg2.to_i)
+  rescue RSpec::Expectations::ExpectationNotMetError
+    require 'pp'
+    pp @listtransactions
+    raise
+  end
+end
+
+Then(/^the (\d+)\S+ transaction should be a send of "(.*?)" to "(.*?)"$/) do |arg1, arg2, arg3|
+  tx = @listtransactions[arg1.to_i - 1]
+  expect(tx["category"]).to eq("send")
+  expect(tx["amount"]).to eq(-parse_number(arg2))
+  expect(tx["address"]).to eq(@addresses[arg3])
+end
+
+Then(/^the (\d+)\S+ transaction should be a receive of "(.*?)" to "(.*?)"$/) do |arg1, arg2, arg3|
+  tx = @listtransactions[arg1.to_i - 1]
+  expect(tx["category"]).to eq("receive")
+  expect(tx["amount"]).to eq(parse_number(arg2))
+  expect(tx["address"]).to eq(@addresses[arg3])
+end
+
