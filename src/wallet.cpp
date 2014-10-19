@@ -566,6 +566,9 @@ void CWalletTx::GetAmounts(int64& nGeneratedImmature, int64& nGeneratedMature, l
     listReceived.clear();
     listSent.clear();
     strSentAccount = strFromAccount;
+    const bool fCombine = (cUnit == 'S');
+    map<CBitcoinAddress, int64> mapReceived;
+    map<CBitcoinAddress, int64> mapSent;
 
     if (IsCoinBase() || IsCoinStake())
     {
@@ -603,14 +606,32 @@ void CWalletTx::GetAmounts(int64& nGeneratedImmature, int64& nGeneratedMature, l
             continue;
 
         if (nDebit > 0)
-            listSent.push_back(make_pair(address, txout.nValue));
+        {
+            if (fCombine)
+                mapSent[address] += txout.nValue;
+            else
+                listSent.push_back(make_pair(address, txout.nValue));
+        }
 
         // Do not count parked amount as received unless it was unparked
         if (IsParked(i) && !IsSpent(i))
             continue;
 
         if (pwallet->IsMine(txout))
-            listReceived.push_back(make_pair(address, txout.nValue));
+        {
+            if (fCombine)
+                mapReceived[address] += txout.nValue;
+            else
+                listReceived.push_back(make_pair(address, txout.nValue));
+        }
+    }
+
+    if (fCombine)
+    {
+        BOOST_FOREACH(const PAIRTYPE(CBitcoinAddress, int64)& pair, mapReceived)
+            listReceived.push_back(make_pair(pair.first, pair.second));
+        BOOST_FOREACH(const PAIRTYPE(CBitcoinAddress, int64)& pair, mapSent)
+            listSent.push_back(make_pair(pair.first, pair.second));
     }
 
 }
