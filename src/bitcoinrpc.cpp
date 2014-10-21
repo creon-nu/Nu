@@ -393,7 +393,12 @@ Object voteToJSON(const CVote& vote)
     }
     result.push_back(Pair("parkrates", parkRateVotes));
 
-    result.push_back(Pair("motionhash", vote.hashMotion.GetHex()));
+    Array motionVotes;
+    BOOST_FOREACH(const uint160& motionVote, vote.vMotion)
+    {
+        motionVotes.push_back(motionVote.GetHex());
+    }
+    result.push_back(Pair("motions", motionVotes));
 
     return result;
 }
@@ -2900,20 +2905,6 @@ Value getvote(const Array& params, bool fHelp)
 }
 
 
-Value setmotionvote(const Array& params, bool fHelp)
-{
-    if (fHelp || params.size() != 1)
-        throw runtime_error(
-            "setmotionvote <motion hash>\n"
-            "<motionhash> is the hash of the motion to vote for.");
-
-    string encodedHash = params[0].get_str();
-    pwalletMain->vote.hashMotion.SetHex(encodedHash);
-    pwalletMain->SaveVote();
-
-    return Value::null;
-}
-
 CVote SampleVote()
 {
     CVote sample;
@@ -2939,7 +2930,8 @@ CVote SampleVote()
     parkRateVote.vParkRate.push_back(CParkRate(15, 13 * COIN_PARK_RATE / COIN));
     sample.vParkRateVote.push_back(parkRateVote);
 
-    sample.hashMotion.SetHex("8151325dcdbae9e0ff95f9f9658432dbedfdb209");
+    sample.vMotion.push_back(uint160("8151325dcdbae9e0ff95f9f9658432dbedfdb209"));
+    sample.vMotion.push_back(uint160("3f786850e387550fdab836ed7e6dc881de23001b"));
 
     return sample;
 }
@@ -2958,8 +2950,11 @@ Value setvote(const Array& params, bool fHelp)
 
     BOOST_FOREACH(const Pair& voteAttribute, objVote)
     {
-        if (voteAttribute.name_ == "motionhash")
-            vote.hashMotion.SetHex(voteAttribute.value_.get_str());
+        if (voteAttribute.name_ == "motions")
+        {
+            BOOST_FOREACH(const Value& motionVoteObject, voteAttribute.value_.get_array())
+                vote.vMotion.push_back(uint160(motionVoteObject.get_str()));
+        }
         else if (voteAttribute.name_ == "custodians")
         {
             BOOST_FOREACH(const Value& custodianVoteObject, voteAttribute.value_.get_array())
@@ -3100,10 +3095,14 @@ Value getmotions(const Array& params, bool fHelp)
 
         const CVote& vote = pindex->vote;
 
-        MotionResult& result = mapMotion[vote.hashMotion];
-        result.nBlocks++;
+        BOOST_FOREACH(const uint160& hashMotion, vote.vMotion)
+        {
+            MotionResult& result = mapMotion[hashMotion];
+            result.nBlocks++;
+            result.nShareDaysDestroyed += vote.nCoinAgeDestroyed;
+        }
+
         total.nBlocks++;
-        result.nShareDaysDestroyed += vote.nCoinAgeDestroyed;
         total.nShareDaysDestroyed += vote.nCoinAgeDestroyed;
     }
 
@@ -4465,7 +4464,6 @@ static const CRPCCommand vRPCCommands[] =
     { "sendalert",              &sendalert,              false},
     { "getvote",                &getvote,                true },
     { "setvote",                &setvote,                true },
-    { "setmotionvote",          &setmotionvote,          true },
     { "liquidityinfo",          &liquidityinfo,          false},
     { "getliquidityinfo",       &getliquidityinfo,       false},
     { "getmotions",             &getmotions,             true },

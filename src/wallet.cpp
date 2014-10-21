@@ -1588,7 +1588,12 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
     }
 
     // nubit: Add current vote
-    txNew.vout.push_back(CTxOut(0, vote.ToScript()));
+    int nVersion;
+    if (IsNuProtocolV05(txNew.nTime))
+        nVersion = PROTOCOL_VERSION;
+    else
+        nVersion = 40500;
+    txNew.vout.push_back(CTxOut(0, vote.ToScript(nVersion)));
 
     // nubit: The result of the vote is stored in the CoinStake transaction
     CParkRateVote parkRateResult;
