@@ -83,7 +83,7 @@ class CoinContainer
     end
 
     if options[:remove_wallet_after_shutdown]
-      bash_cmds = ["rm /.nu/testnet/wallet*.dat"]
+      bash_cmds += ["rm /.nu/testnet/wallet*.dat"]
     end
 
     command = [

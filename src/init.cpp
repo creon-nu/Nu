@@ -268,6 +268,11 @@ bool AppInit2(int argc, char* argv[])
         return false;
     }
 
+#ifdef TESTING
+    if (mapArgs.count("-timetravel"))
+        nTimeShift = GetArg("-timetravel", 0);
+#endif
+
     fTestNet = GetBoolArg("-testnet");
     if (fTestNet)
     {
@@ -622,11 +627,6 @@ bool AppInit2(int argc, char* argv[])
 
     if (!CreateThread(StartNode, NULL))
         ThreadSafeMessageBox(_("Error: CreateThread(StartNode) failed"), _("Nu"), wxOK | wxMODAL);
-
-#ifdef TESTING
-    if (mapArgs.count("-timetravel"))
-        nTimeShift = GetArg("-timetravel", 0);
-#endif
 
     if (fServer)
     {
