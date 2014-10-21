@@ -352,3 +352,9 @@ Then(/^the (\d+)\S+ transaction should be a receive of "(.*?)" to "(.*?)"$/) do 
   expect(tx["amount"]).to eq(parse_number(arg2))
   expect(tx["address"]).to eq(@addresses[arg3])
 end
+
+Then(/^the (\d+)st transaction should be the initial distribution of shares$/) do |arg1|
+  tx = @listtransactions[arg1.to_i - 1]
+  expect(tx["category"]).to eq("receive")
+  expect(tx["amount"]).to eq(parse_number("10,000,000"))
+end
