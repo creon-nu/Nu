@@ -1787,13 +1787,13 @@ string CWallet::SendMoney(CScript scriptPubKey, int64 nValue, CWalletTx& wtxNew,
     if (IsLocked())
     {
         string strError = _("Error: Portfolio locked, unable to create transaction  ");
-        printf("SendMoney() : %s", strError.c_str());
+        printf("SendMoney() : %s\n", strError.c_str());
         return strError;
     }
     if (fWalletUnlockMintOnly)
     {
         string strError = _("Error: Portfolio unlocked for block minting only, unable to create transaction.");
-        printf("SendMoney() : %s", strError.c_str());
+        printf("SendMoney() : %s\n", strError.c_str());
         return strError;
     }
     if (!CreateTransaction(scriptPubKey, nValue, wtxNew, reservekey, nFeeRequired))
@@ -1803,7 +1803,7 @@ string CWallet::SendMoney(CScript scriptPubKey, int64 nValue, CWalletTx& wtxNew,
             strError = strprintf(_("Error: This transaction requires a transaction fee of at least %s because of its amount, complexity, or use of recently received funds  "), FormatMoney(nFeeRequired).c_str());
         else
             strError = _("Error: Transaction creation failed  ");
-        printf("SendMoney() : %s", strError.c_str());
+        printf("SendMoney() : %s\n", strError.c_str());
         return strError;
     }
 
