@@ -268,6 +268,11 @@ bool AppInit2(int argc, char* argv[])
         return false;
     }
 
+#ifdef TESTING
+    if (mapArgs.count("-timetravel"))
+        nTimeShift = GetArg("-timetravel", 0);
+#endif
+
     fTestNet = GetBoolArg("-testnet");
     if (fTestNet)
     {
@@ -405,18 +410,18 @@ bool AppInit2(int argc, char* argv[])
         if (nLoadWalletRet != DB_LOAD_OK)
         {
             if (nLoadWalletRet == DB_CORRUPT)
-                strErrors << _("Error loading wallet.dat: Wallet corrupted") << "\n";
+                strErrors << format(_("Error loading %s: Wallet corrupted")) % walletFilename << "\n";
             else if (nLoadWalletRet == DB_TOO_NEW)
-                strErrors << _("Error loading wallet.dat: Wallet requires newer version of PPCoin") << "\n";
+                strErrors << format(_("Error loading %s: Wallet requires newer version of Nu")) % walletFilename << "\n";
             else if (nLoadWalletRet == DB_NEED_REWRITE)
             {
-                strErrors << _("Wallet needed to be rewritten: restart PPCoin to complete") << "\n";
+                strErrors << _("Wallet needed to be rewritten: restart Nu to complete") << "\n";
                 printf("%s", strErrors.str().c_str());
-                ThreadSafeMessageBox(strErrors.str(), _("PPCoin"), wxOK | wxICON_ERROR | wxMODAL);
+                ThreadSafeMessageBox(strErrors.str(), _("Nu"), wxOK | wxICON_ERROR | wxMODAL);
                 return false;
             }
             else
-                strErrors << _("Error loading wallet.dat") << "\n";
+                strErrors << format(_("Error loading %s")) % walletFilename << "\n";
         }
 
         if (GetBoolArg("-upgradewallet", fFirstRun))
@@ -622,11 +627,6 @@ bool AppInit2(int argc, char* argv[])
 
     if (!CreateThread(StartNode, NULL))
         ThreadSafeMessageBox(_("Error: CreateThread(StartNode) failed"), _("Nu"), wxOK | wxMODAL);
-
-#ifdef TESTING
-    if (mapArgs.count("-timetravel"))
-        nTimeShift = GetArg("-timetravel", 0);
-#endif
 
     if (fServer)
     {

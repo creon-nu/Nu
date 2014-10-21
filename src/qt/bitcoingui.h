@@ -80,6 +80,7 @@ private:
     QProgressBar *progressBar;
 
     QMenuBar *appMenuBar;
+    QMenu *sharesMenu;
     QAction *overviewAction;
     QAction *historyAction;
     QAction *quitAction;
@@ -112,6 +113,8 @@ private:
     RPCConsole *rpcConsole;
 
     QMovie *syncIconMovie;
+
+    QString switchUnitTarget;
 
     /** Create the main UI actions. */
     void createActions();

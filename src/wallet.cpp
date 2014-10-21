@@ -75,10 +75,6 @@ bool CWallet::AddCScript(const CScript& redeemScript)
     return CWalletDB(strWalletFile).WriteCScript(Hash160(redeemScript), redeemScript);
 }
 
-// ppcoin: optional setting to unlock wallet for block minting only;
-//         serves to disable the trivial sendmoney when OS account compromised
-bool fWalletUnlockMintOnly = false;
-
 bool CWallet::Unlock(const SecureString& strWalletPassphrase)
 {
     if (!IsLocked())
@@ -590,13 +586,16 @@ void CWalletTx::GetAmounts(int64& nGeneratedImmature, int64& nGeneratedMature, l
     listReceived.clear();
     listSent.clear();
     strSentAccount = strFromAccount;
+    const bool fCombine = (cUnit == 'S');
+    map<CBitcoinAddress, int64> mapReceived;
+    map<CBitcoinAddress, int64> mapSent;
 
     if (IsCoinBase() || IsCoinStake())
     {
         if (GetBlocksToMaturity() > 0)
-            nGeneratedImmature = pwallet->GetCredit(*this);
+            nGeneratedImmature = pwallet->GetCredit(*this) - pwallet->GetDebit(*this);
         else
-            nGeneratedMature = GetCredit();
+            nGeneratedMature = GetCredit() - GetDebit();
         return;
     }
 
@@ -627,14 +626,32 @@ void CWalletTx::GetAmounts(int64& nGeneratedImmature, int64& nGeneratedMature, l
             continue;
 
         if (nDebit > 0)
-            listSent.push_back(make_pair(address, txout.nValue));
+        {
+            if (fCombine)
+                mapSent[address] += txout.nValue;
+            else
+                listSent.push_back(make_pair(address, txout.nValue));
+        }
 
         // Do not count parked amount as received unless it was unparked
         if (IsParked(i) && !IsSpent(i))
             continue;
 
         if (pwallet->IsMine(txout))
-            listReceived.push_back(make_pair(address, txout.nValue));
+        {
+            if (fCombine)
+                mapReceived[address] += txout.nValue;
+            else
+                listReceived.push_back(make_pair(address, txout.nValue));
+        }
+    }
+
+    if (fCombine)
+    {
+        BOOST_FOREACH(const PAIRTYPE(CBitcoinAddress, int64)& pair, mapReceived)
+            listReceived.push_back(make_pair(pair.first, pair.second));
+        BOOST_FOREACH(const PAIRTYPE(CBitcoinAddress, int64)& pair, mapSent)
+            listSent.push_back(make_pair(pair.first, pair.second));
     }
 
 }
@@ -2248,6 +2265,9 @@ void CWallet::GetAllReserveAddresses(set<CBitcoinAddress>& setAddress)
 
 void CWallet::ExportPeercoinKeys(int &nExportedCount, int &nErrorCount)
 {
+    if (cUnit != 'S')
+        throw runtime_error("Currency wallets will not receive dividends. Refusing to export keys to Peercoin.");
+
     nExportedCount = 0;
     nErrorCount = 0;
 

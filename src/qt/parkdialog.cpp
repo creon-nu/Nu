@@ -10,6 +10,7 @@
 #include "walletmodel.h"
 #include "optionsmodel.h"
 #include "bitcoinunits.h"
+#include "askpassphrasedialog.h"
 
 using namespace std;
 
@@ -158,7 +159,23 @@ void ParkDialog::accept()
         if (!confirmPark())
             return;
 
+        bool fMustLock = false;
+        if (model->getEncryptionStatus() == WalletModel::Locked)
+        {
+            AskPassphraseDialog dlg(AskPassphraseDialog::Unlock, this);
+            dlg.setModel(model);
+            dlg.exec();
+
+            if(model->getEncryptionStatus() != WalletModel::Unlocked)
+                return;
+
+            fMustLock = true;
+        }
+
         QString result = model->park(getAmount(), getBlocks(), getUnparkAddress());
+
+        if (fMustLock)
+            model->setWalletLocked(true);
 
         if (result == "")
             QDialog::accept();

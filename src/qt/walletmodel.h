@@ -65,6 +65,8 @@ public:
     unsigned char getUnit() const;
     qint64 getMinTxFee() const;
     qint64 getMinTxOutAmount() const;
+    bool isUnlockedForMintingOnly() const;
+    void setUnlockedForMintingOnly(bool fUnlockedForMintingOnly);
 
     // Check address for validity
     bool validateAddress(const QString &address);
@@ -148,6 +150,8 @@ private:
     qint64 cachedNumTransactions;
     EncryptionStatus cachedEncryptionStatus;
 
+    bool pendingUpdate;
+
 signals:
     // Signal that balance in wallet changed
     void balanceChanged(qint64 balance, qint64 stake, qint64 unconfirmedBalance, qint64 parked);
@@ -169,6 +173,9 @@ signals:
 public slots:
     void update();
     void updateAddressList();
+
+private slots:
+    void processPendingUpdate();
 };
 
 

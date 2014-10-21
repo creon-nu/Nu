@@ -249,8 +249,8 @@ void BitcoinGUI::createActions()
     voteAction->setShortcut(QKeySequence(Qt::ALT + Qt::Key_7));
     tabGroup->addAction(voteAction);
 
-    switchUnitAction = new QAction(tr("NuBits"), this);
-    switchUnitAction->setToolTip(tr("Switch Units"));
+    switchUnitAction = new QAction(tr(""), this);
+    switchUnitAction->setToolTip(tr("Switch unit"));
     switchUnitAction->setCheckable(true);
     switchUnitAction->setShortcut(QKeySequence(Qt::ALT + Qt::Key_8));
     tabGroup->addAction(switchUnitAction);
@@ -301,9 +301,9 @@ void BitcoinGUI::createActions()
     changePassphraseAction->setToolTip(tr("Change the passphrase used for portfolio encryption"));
     openRPCConsoleAction = new QAction(tr("&Debug window"), this);
     openRPCConsoleAction->setToolTip(tr("Open debugging and diagnostic console"));
-    exportPeercoinKeysAction = new QAction(QIcon(":/icons/export"), tr("&Export Peercoin keys"), this);
+    exportPeercoinKeysAction = new QAction(QIcon(":/icons/export"), tr("&Export Peercoin keys..."), this);
     exportPeercoinKeysAction->setToolTip(tr("Export the Peercoin keys associated with the NuShares addresses to Peercoin via RPC"));
-    distributeDividendsAction = new QAction(tr("&Distribute dividends"), this);
+    distributeDividendsAction = new QAction(tr("&Distribute dividends..."), this);
     distributeDividendsAction->setToolTip(tr("Distribute dividends to share holders"));
 
     connect(quitAction, SIGNAL(triggered()), qApp, SLOT(quit()));
@@ -340,9 +340,9 @@ void BitcoinGUI::createMenuBar()
     file->addSeparator();
     file->addAction(quitAction);
 
-    QMenu *shares = appMenuBar->addMenu(tr("S&hares"));
-    shares->addAction(exportPeercoinKeysAction);
-	shares->addAction(distributeDividendsAction);
+    sharesMenu = appMenuBar->addMenu(tr("S&hares"));
+    sharesMenu->addAction(exportPeercoinKeysAction);
+    sharesMenu->addAction(distributeDividendsAction);
 
     unitMenu = appMenuBar->addMenu(tr("&Unit"));
 
@@ -457,6 +457,14 @@ void BitcoinGUI::setWalletModel(WalletModel *walletModel)
 
         voteAction->setVisible(walletModel->getUnit() == 'S');
 
+        if (walletModel->getUnit() != 'S' && centralWidget->currentWidget() == votePage)
+            gotoOverviewPage();
+
+        if (walletModel->getUnit() == 'S' && centralWidget->currentWidget() == parkPage)
+            gotoOverviewPage();
+
+        sharesMenu->setEnabled(walletModel->getUnit() == 'S');
+
         setEncryptionStatus(walletModel->getEncryptionStatus());
         connect(walletModel, SIGNAL(encryptionStatusChanged(int)), this, SLOT(setEncryptionStatus(int)));
 
@@ -508,6 +516,16 @@ void BitcoinGUI::setWalletModel(WalletModel *walletModel)
         for (int i=0; i < changeUnitActions.size(); ++i)
             unitMenu->addAction(changeUnitActions[i]);
 
+        if (walletModel->getUnit() == 'S')
+        {
+            switchUnitTarget = "B";
+            switchUnitAction->setText(tr("NuBits"));
+        }
+        else
+        {
+            switchUnitTarget = "S";
+            switchUnitAction->setText(tr("NuShares"));
+        }
     }
 }
 
@@ -946,6 +964,7 @@ void BitcoinGUI::handleURI(QString strURI)
 
 void BitcoinGUI::setEncryptionStatus(int status)
 {
+    bool fShares = (walletModel->getUnit() == 'S');
     switch(status)
     {
     case WalletModel::Unencrypted:
@@ -959,12 +978,12 @@ void BitcoinGUI::setEncryptionStatus(int status)
     case WalletModel::Unlocked:
         labelEncryptionIcon->show();
         labelEncryptionIcon->setPixmap(QIcon(":/icons/lock_open").pixmap(STATUSBAR_ICONSIZE,STATUSBAR_ICONSIZE));
-        labelEncryptionIcon->setToolTip(fWalletUnlockMintOnly? tr("Wallet is <b>encrypted</b> and currently <b>unlocked for block minting only</b>") : tr("Wallet is <b>encrypted</b> and currently <b>unlocked</b>"));
+        labelEncryptionIcon->setToolTip(walletModel->isUnlockedForMintingOnly()? tr("Wallet is <b>encrypted</b> and currently <b>unlocked for block minting only</b>") : tr("Wallet is <b>encrypted</b> and currently <b>unlocked</b>"));
         encryptWalletAction->setChecked(true);
         changePassphraseAction->setEnabled(true);
         encryptWalletAction->setEnabled(false); // TODO: decrypt currently not supported
-        unlockForMintingAction->setEnabled(fWalletUnlockMintOnly);
-        unlockForMintingAction->setChecked(fWalletUnlockMintOnly);
+        unlockForMintingAction->setEnabled(fShares && walletModel->isUnlockedForMintingOnly());
+        unlockForMintingAction->setChecked(fShares && walletModel->isUnlockedForMintingOnly());
         break;
     case WalletModel::Locked:
         labelEncryptionIcon->show();
@@ -973,7 +992,7 @@ void BitcoinGUI::setEncryptionStatus(int status)
         encryptWalletAction->setChecked(true);
         changePassphraseAction->setEnabled(true);
         encryptWalletAction->setEnabled(false); // TODO: decrypt currently not supported
-        unlockForMintingAction->setEnabled(true);
+        unlockForMintingAction->setEnabled(fShares);
         unlockForMintingAction->setChecked(false);
         break;
     }
@@ -1008,18 +1027,18 @@ void BitcoinGUI::unlockForMinting(bool status)
         if(walletModel->getEncryptionStatus() != WalletModel::Unlocked)
             return;
 
-        fWalletUnlockMintOnly = true;
+        walletModel->setUnlockedForMintingOnly(true);
     }
     else
     {
         if(walletModel->getEncryptionStatus() != WalletModel::Unlocked)
             return;
 
-        if (!fWalletUnlockMintOnly)
+        if (!walletModel->isUnlockedForMintingOnly())
             return;
 
         walletModel->setWalletLocked(true);
-        fWalletUnlockMintOnly = false;
+        walletModel->setUnlockedForMintingOnly(false);
     }
 }
 
@@ -1056,9 +1075,31 @@ void BitcoinGUI::unlockWallet()
 
 void BitcoinGUI::exportPeercoinKeys()
 {
+    QMessageBox::StandardButton reply;
+
+    QString sQuestion = tr("All your NuShares private keys will be converted to Peercoin private keys and imported into your Peercoin wallet.\n\nThe Peercoin wallet must be running, unlocked (if it was encrypted) and accept RPC commands.\n\nThis process may take several minutes because Peercoin will scan the blockchain for transactions on all the imported keys.\n\nDo you want to proceed?");
+    reply = QMessageBox::warning(this, tr("Peercoin keys export confirmation"), sQuestion, QMessageBox::Yes | QMessageBox::No);
+    if (reply != QMessageBox::Yes)
+        return;
+
+    bool fMustLock = false;
+    if (walletModel->getEncryptionStatus() == WalletModel::Locked)
+    {
+        AskPassphraseDialog dlg(AskPassphraseDialog::Unlock, this);
+        dlg.setModel(walletModel);
+        dlg.exec();
+
+        if(walletModel->getEncryptionStatus() != WalletModel::Unlocked)
+            return;
+
+        fMustLock = true;
+    }
+
     try {
         int iExportedCount, iErrorCount;
         walletModel->ExportPeercoinKeys(iExportedCount, iErrorCount);
+        if (fMustLock)
+            walletModel->setWalletLocked(true);
         QMessageBox::information(this,
                 tr("Peercoin keys export"),
                 tr("%1 key(s) were exported to Peercoin.\n%2 key(s) were either already known or invalid.")
@@ -1067,6 +1108,8 @@ void BitcoinGUI::exportPeercoinKeys()
                 );
     }
     catch (std::runtime_error &e) {
+        if (fMustLock)
+            walletModel->setWalletLocked(true);
         QMessageBox::critical(this,
                 tr("Peercoin keys export"),
                 tr("Error: %1").arg(e.what()));
@@ -1091,14 +1134,5 @@ void BitcoinGUI::switchUnitButtonClicked()
 {
     gotoOverviewPage();
 
-    if (walletModel->getUnit() == 'S')
-    {
-        switchUnitAction->setText(tr("NuShares"));
-        changeUnit("B");
-    }
-    else
-    {
-        switchUnitAction->setText(tr("NuBits"));
-        changeUnit("S");
-    }
+    changeUnit(switchUnitTarget);
 }

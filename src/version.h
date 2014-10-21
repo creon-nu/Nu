@@ -19,7 +19,7 @@
 // nu version
 #define CLIENT_VERSION_MAJOR       0
 #define CLIENT_VERSION_MINOR       4
-#define CLIENT_VERSION_REVISION    1
+#define CLIENT_VERSION_REVISION    6
 
 static const int CLIENT_VERSION =
                            1000000 * CLIENT_VERSION_MAJOR
