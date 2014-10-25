@@ -62,8 +62,6 @@ public:
  */
 class CWallet : public CCryptoKeyStore
 {
-public:
-    void AvailableCoins(std::vector<COutput>& vCoins, bool fOnlyConfirmed=true) const;
 private:
     bool SelectCoins(int64 nTargetValue, unsigned int nSpendTime, std::set<std::pair<const CWalletTx*,unsigned int> >& setCoinsRet, int64& nValueRet, const CCoinControl *coinControl=NULL) const;
 

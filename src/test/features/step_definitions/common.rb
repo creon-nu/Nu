@@ -195,10 +195,11 @@ When(/^node "(.*?)" votes an amount of "(.*?)" for custodian "(.*?)"$/) do |arg1
   node = @nodes[arg1]
   vote = node.rpc("getvote")
   vote["custodians"] << {
-    "amount" => parse_number(arg2),
     "address" => @addresses[arg3],
+    "amount" => parse_number(arg2),
   }
-  node.rpc("setvote", vote)
+  result = node.rpc("setvote", vote)
+  expect(result).to eq(vote)
 end
 
 When(/^node "(.*?)" votes a park rate of "(.*?)" NuBits per Nubit parked during (\d+) blocks$/) do |arg1, arg2, arg3|
@@ -221,15 +222,17 @@ end
 
 When(/^node "(.*?)" finds blocks until custodian "(.*?)" is elected$/) do |arg1, arg2|
   node = @nodes[arg1]
-  loop do
+  wait_for do
+    done = false
     block = node.generate_stake
     time_travel(60)
     info = node.rpc("getblock", block)
     if elected_custodians = info["electedcustodians"]
       if elected_custodians.has_key?(@addresses[arg2])
-        break
+        done = true
       end
     end
+    done
   end
 end
 
@@ -251,7 +254,8 @@ end
 When(/^node "(.*?)" finds blocks until custodian "(.*?)" is elected in transaction "(.*?)"$/) do |arg1, arg2, arg3|
   node = @nodes[arg1]
   address = @addresses[arg2]
-  loop do
+  wait_for do
+    done = false
     block = node.generate_stake
     time_travel(60)
     info = node.rpc("getblock", block)
@@ -262,6 +266,7 @@ When(/^node "(.*?)" finds blocks until custodian "(.*?)" is elected in transacti
           tx["vout"].each do |out|
             if out["scriptPubKey"]["addresses"] == [address]
               @tx[arg3] = txid
+              done = true
               break
             end
           end
@@ -270,6 +275,7 @@ When(/^node "(.*?)" finds blocks until custodian "(.*?)" is elected in transacti
         break
       end
     end
+    done
   end
 end
 

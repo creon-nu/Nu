@@ -206,13 +206,13 @@ Object parkRateVoteToJSON(const CParkRateVote& parkRateVote)
 void ScriptPubKeyToJSON(const CScript& scriptPubKey, Object& out, unsigned char cUnit)
 {
     txnouttype type;
-    vector<CBitcoinAddress> addresses;
+    vector<CTxDestination> addresses;
     int nRequired;
 
     out.push_back(Pair("asm", scriptPubKey.ToString()));
     out.push_back(Pair("hex", HexStr(scriptPubKey.begin(), scriptPubKey.end())));
 
-    if (!ExtractAddresses(scriptPubKey, type, addresses, nRequired, cUnit))
+    if (!ExtractDestinations(scriptPubKey, type, addresses, nRequired))
     {
         out.push_back(Pair("type", GetTxnOutputType(TX_NONSTANDARD)));
         return;
@@ -222,12 +222,12 @@ void ScriptPubKeyToJSON(const CScript& scriptPubKey, Object& out, unsigned char 
     if (type == TX_PARK)
     {
         uint64 nDuration;
-        CBitcoinAddress unparkAddress;
+        CTxDestination unparkAddress;
         Object park;
-        if (ExtractPark(scriptPubKey, cUnit, nDuration, unparkAddress))
+        if (ExtractPark(scriptPubKey, nDuration, unparkAddress))
         {
             park.push_back(Pair("duration", (boost::uint64_t)nDuration));
-            park.push_back(Pair("unparkaddress", unparkAddress.ToString()));
+            park.push_back(Pair("unparkaddress", CBitcoinAddress(unparkAddress, cUnit).ToString()));
         }
         out.push_back(Pair("park", park));
     }
@@ -236,8 +236,8 @@ void ScriptPubKeyToJSON(const CScript& scriptPubKey, Object& out, unsigned char 
         out.push_back(Pair("reqSigs", nRequired));
 
         Array a;
-        BOOST_FOREACH(const CBitcoinAddress& addr, addresses)
-            a.push_back(CBitcoinAddress(addr).ToString());
+        BOOST_FOREACH(const CTxDestination& addr, addresses)
+            a.push_back(CBitcoinAddress(addr, cUnit).ToString());
         out.push_back(Pair("addresses", a));
     }
 }
@@ -338,7 +338,7 @@ void TxToJSON(const CTransaction& tx, Object& txdata)
     {
         Object vout;
 
-        std::vector<CBitcoinAddress> addresses;
+        std::vector<CTxDestination> addresses;
         txnouttype txtype;
         int nRequired;
 
@@ -350,14 +350,14 @@ void TxToJSON(const CTransaction& tx, Object& txdata)
         scriptpubkey.push_back(Pair("asm", txout.scriptPubKey.ToString()));
         scriptpubkey.push_back(Pair("hex", HexStr(txout.scriptPubKey.begin(), txout.scriptPubKey.end())));
 
-        if (ExtractAddresses(txout.scriptPubKey, txtype, addresses, nRequired, tx.cUnit))
+        if (ExtractDestinations(txout.scriptPubKey, txtype, addresses, nRequired))
         {
             scriptpubkey.push_back(Pair("type", GetTxnOutputType(txtype)));
             scriptpubkey.push_back(Pair("reqSig", nRequired));
 
             Array addrs;
-            BOOST_FOREACH(const CBitcoinAddress& addr, addresses)
-                addrs.push_back(CBitcoinAddress(addr).ToString());
+            BOOST_FOREACH(const CTxDestination& addr, addresses)
+                addrs.push_back(CBitcoinAddress(addr, tx.cUnit).ToString());
             scriptpubkey.push_back(Pair("addresses", addrs));
         }
         else
@@ -429,81 +429,7 @@ void ScriptPubKeyToJSON(const CScript& scriptPubKey, Object& out)
     out.push_back(Pair("addresses", a));
 }
 
-void TxToJSON(const CTransaction& tx, Object& txdata)
-{
-    // tx data
-    txdata.push_back(Pair("txid", tx.GetHash().ToString().c_str()));
-    txdata.push_back(Pair("version", (int)tx.nVersion));
-    txdata.push_back(Pair("locktime", (int)tx.nLockTime));
-    txdata.push_back(Pair("is_coinbase", tx.IsCoinBase()));
-    txdata.push_back(Pair("is_coinstake", tx.IsCoinStake()));
-
-    // add inputs
-    Array vins;
-    BOOST_FOREACH(const CTxIn& txin, tx.vin)
-    {
-        Object vin;
-
-        if (txin.prevout.IsNull()) 
-        {
-            vin.push_back(Pair("coinbase", HexStr(txin.scriptSig).c_str()));
-        }
-        else 
-        {
-            vin.push_back(Pair("txid", txin.prevout.hash.ToString().c_str()));
-            vin.push_back(Pair("vout", (int)txin.prevout.n));
-        }
-
-        vin.push_back(Pair("sequence", (boost::uint64_t)txin.nSequence));
-
-        vins.push_back(vin);
-    }
-    txdata.push_back(Pair("vin", vins));
-
-    // add outputs
-    Array vouts;
-    int n = 0;
-    BOOST_FOREACH(const CTxOut& txout, tx.vout)
-    {
-        Object vout;
-
-        std::vector<CTxDestination> addresses;
-        txnouttype txtype;
-        int nRequired;
-
-        vout.push_back(Pair("value", ValueFromAmount(txout.nValue)));
-        vout.push_back(Pair("n", n));
-
-        Object scriptpubkey;
-
-        scriptpubkey.push_back(Pair("asm", txout.scriptPubKey.ToString()));
-        scriptpubkey.push_back(Pair("hex", HexStr(txout.scriptPubKey.begin(), txout.scriptPubKey.end())));
-
-        if (ExtractDestinations(txout.scriptPubKey, txtype, addresses, nRequired))
-        {
-            scriptpubkey.push_back(Pair("type", GetTxnOutputType(txtype)));
-            scriptpubkey.push_back(Pair("reqSig", nRequired));
-
-            Array addrs;
-            BOOST_FOREACH(const CTxDestination& addr, addresses)
-                addrs.push_back(CBitcoinAddress(addr, tx.cUnit).ToString());
-            scriptpubkey.push_back(Pair("addresses", addrs));
-        }
-        else
-        {
-            scriptpubkey.push_back(Pair("type", GetTxnOutputType(TX_NONSTANDARD)));
-        }
-
-        vout.push_back(Pair("scriptPubKey",scriptpubkey));
-
-        vouts.push_back(vout);   
-        n++;             
-    }
-    txdata.push_back(Pair("vout", vouts));
-}
-
 Object blockToJSON(const CBlock& block, const CBlockIndex* blockindex, bool fTxInfo, bool fTxDetails)
-
 {
     Object result;
     result.push_back(Pair("hash", block.GetHash().GetHex()));
@@ -3639,11 +3565,15 @@ Value liquidityinfo(const Array& params, bool fHelp)
 
     CWallet* wallet = GetWallet(cCustodianUnit);
 
+    CKeyID keyID;
+    if (!address.GetKeyID(keyID))
+        throw JSONRPCError(-3, "Address does not refer to key");
+
     CKey key;
     {
         LOCK(wallet->cs_wallet);
 
-        if (!wallet->GetKey(address, key))
+        if (!wallet->GetKey(keyID, key))
             throw JSONRPCError(-4, "Private key not available");
     }
 
@@ -3676,7 +3606,7 @@ Value liquidityinfo(const Array& params, bool fHelp)
         throw JSONRPCError(-3, "Invalid amount");
 
     info.cCustodianUnit = address.GetUnit();
-    info.vchCustodianPubKey = key.GetPubKey();
+    info.vchCustodianPubKey = key.GetPubKey().Raw();
 
     CDataStream sMsg(SER_NETWORK, PROTOCOL_VERSION);
     sMsg << (CUnsignedLiquidityInfo)info;
@@ -3744,130 +3674,6 @@ Value getliquidityinfo(const Array& params, bool fHelp)
     return result;
 }
 
-//
-// Used by addmultisigaddress / createmultisig:
-//
-CScript _createmultisig(const Array& params)
-{
-    int nRequired = params[0].get_int();
-    const Array& keys = params[1].get_array();
-
-    // Gather public keys
-    if (nRequired < 1)
-        throw runtime_error("a multisignature address must require at least one key to redeem");
-    if ((int)keys.size() < nRequired)
-        throw runtime_error(strprintf("not enough keys supplied (got %u keys, but need at least %d to redeem)", keys.size(), nRequired));
-    std::vector<CKey> pubkeys;
-    pubkeys.resize(keys.size());
-    for (unsigned int i = 0; i < keys.size(); i++)
-    {
-        const std::string& ks = keys[i].get_str();
-
-        // Case 1: Bitcoin address and we have full public key:
-        CBitcoinAddress address(ks);
-        if (pwalletMain->IsAddressValid(address))
-        {
-            if (pwalletMain->IsAddressScript(address))
-                throw runtime_error(
-                    strprintf("%s is a pay-to-script address",ks.c_str()));
-            std::vector<unsigned char> vchPubKey;
-            if (!pwalletMain->GetPubKey(address, vchPubKey))
-                throw runtime_error(
-                    strprintf("no full public key for address %s",ks.c_str()));
-            if (vchPubKey.empty() || !pubkeys[i].SetPubKey(vchPubKey))
-                throw runtime_error(" Invalid public key: "+ks);
-        }
-
-        // Case 2: hex public key
-        else if (IsHex(ks))
-        {
-            vector<unsigned char> vchPubKey = ParseHex(ks);
-            if (vchPubKey.empty() || !pubkeys[i].SetPubKey(vchPubKey))
-                throw runtime_error(" Invalid public key: "+ks);
-        }
-        else
-        {
-            throw runtime_error(" Invalid public key: "+ks);
-        }
-    }
-    CScript result;
-    result.SetMultisig(nRequired, pubkeys);
-    return result;
-}
-
-Value addmultisigaddress(const Array& params, bool fHelp)
-{
-    if (fHelp || params.size() < 2 || params.size() > 3)
-    {
-        string msg = "addmultisigaddress <nrequired> <'[\"key\",\"key\"]'> [account]\n"
-            "Add a nrequired-to-sign multisignature address to the wallet\n"
-            "each key is a peercoin address or hex-encoded public key\n"
-            "If [account] is specified, assign address to [account].";
-        throw runtime_error(msg);
-    }
-
-    string strAccount;
-    if (params.size() > 2)
-        strAccount = AccountFromValue(params[2]);
-
-    // Construct using pay-to-script-hash:
-    CScript inner = _createmultisig(params);
-    uint160 scriptHash = Hash160(inner);
-    CScript scriptPubKey;
-    scriptPubKey.SetPayToScriptHash(inner);
-    pwalletMain->AddCScript(inner);
-    CBitcoinAddress address;
-    address.SetScriptHash160(scriptHash, pwalletMain->Unit());
-
-    pwalletMain->SetAddressBookName(address, strAccount);
-    return address.ToString();
-}
-
-Value createmultisig(const Array& params, bool fHelp)
-{
-    if (fHelp || params.size() < 2 || params.size() > 2)
-    {
-        string msg = "createmultisig nrequired [\"key\",...]\n"
-            "\nCreates a multi-signature address with n signature of m keys required.\n"
-            "It returns a json object with the address and redeemScript.\n"
-
-            "\nArguments:\n"
-            "1. nrequired (numeric, required) The number of required signatures out of the n keys or addresses.\n"
-            "2. \"keys\" (string, required) A json array of keys which are peercoin addresses or hex-encoded public keys\n"
-            " [\n"
-            " \"key\" (string) peercoin address or hex-encoded public key\n"
-            " ,...\n"
-            " ]\n"
-
-            "\nResult:\n"
-            "{\n"
-            " \"address\":\"multisigaddress\", (string) The value of the new multisig address.\n"
-            " \"redeemScript\":\"script\" (string) The string value of the hex-encoded redemption script.\n"
-            "}\n"
-
-            "\nExamples:\n"
-            "\nCreate a multisig address from 2 addresses\n"
-            "ppcoind createmultisig 2 \"[\\\"PCHAhUGKiFKDHKW8Pgw3qrp2vMfhwWjuCo\\\",\\\"PJrhyo8CUvFZQT8j67Expre2PYLhavnHXb\\\"]\""
-            "\nAs a json rpc call\n"
-            "curl --user myusername --data-binary '{\"jsonrpc\": \"1.0\", \"id\": \"curltest\", \"method\": \"icreatemultisig\", \"params\": [2, \"[\\\"PCHAhUGKiFKDHKW8Pgw3qrp2vMfhwWjuCo\\\",\\\"PJrhyo8CUvFZQT8j67Expre2PYLhavnHXb\\\"]\"]} -H 'content-type: text/plain;' http://127.0.0.1:9902"
-        ;
-        throw runtime_error(msg);
-    }
-
-    // Construct using pay-to-script-hash:
-    CScript inner = _createmultisig(params);
-    uint160 scriptHash = Hash160(inner);
-    CScript scriptPubKey;
-    scriptPubKey.SetPayToScriptHash(inner);
-    CBitcoinAddress address;
-    address.SetScriptHash160(scriptHash, pwalletMain->Unit());
-
-    Object result;
-    result.push_back(Pair("address", address.ToString()));
-    result.push_back(Pair("redeemScript", HexStr(inner.begin(), inner.end())));
-
-    return result;
-}
 
 //
 // Raw transactions
@@ -3926,7 +3732,7 @@ Value listunspent(const Array& params, bool fHelp)
     if (params.size() > 1)
         nMaxDepth = params[1].get_int();
 
-    set<CBitcoinAddress> setAddress;
+    set<CTxDestination> setAddress;
     if (params.size() > 2)
     {
         Array inputs = params[2].get_array();
@@ -3935,9 +3741,9 @@ Value listunspent(const Array& params, bool fHelp)
             CBitcoinAddress address(input.get_str());
             if (!address.IsValid())
                 throw JSONRPCError(-5, string("Invalid Bitcoin address: ")+input.get_str());
-            if (setAddress.count(address))
+            if (setAddress.count(address.Get()))
                 throw JSONRPCError(-8, string("Invalid parameter, duplicated address: ")+input.get_str());
-           setAddress.insert(address);
+           setAddress.insert(address.Get());
         }
     }
 
@@ -3951,8 +3757,8 @@ Value listunspent(const Array& params, bool fHelp)
 
         if(setAddress.size())
         {
-            CBitcoinAddress address;
-            if(!ExtractAddress(out.tx->vout[out.i].scriptPubKey, address, out.tx->cUnit))
+            CTxDestination address;
+            if(!ExtractDestination(out.tx->vout[out.i].scriptPubKey, address))
                 continue;
 
             if (!setAddress.count(address))
@@ -3961,13 +3767,13 @@ Value listunspent(const Array& params, bool fHelp)
 
         int64 nValue = out.tx->vout[out.i].nValue;
         const CScript& pk = out.tx->vout[out.i].scriptPubKey;
-        CBitcoinAddress address;
+        CTxDestination address;
         Object entry;
         entry.push_back(Pair("txid", out.tx->GetHash().GetHex()));
         entry.push_back(Pair("vout", out.i));
-        if (ExtractAddress(pk, address, out.tx->cUnit))
+        if (ExtractDestination(pk, address))
         {
-            entry.push_back(Pair("address", CBitcoinAddress(address).ToString()));
+            entry.push_back(Pair("address", CBitcoinAddress(address, out.tx->cUnit).ToString()));
             if (pwalletMain->mapAddressBook.count(address))
                 entry.push_back(Pair("account", pwalletMain->mapAddressBook[address]));
         }
@@ -4025,14 +3831,14 @@ Value createrawtransaction(const Array& params, bool fHelp)
     {
         CBitcoinAddress address(s.name_);
         if (!address.IsValid())
-            throw JSONRPCError(-5, string("Invalid Bitcoin address: ")+s.name_);
+            throw JSONRPCError(-5, string("Invalid address: ")+s.name_);
 
         if (setAddress.count(address))
             throw JSONRPCError(-8, string("Invalid parameter, duplicated address: ")+s.name_);
         setAddress.insert(address);
 
         CScript scriptPubKey;
-        scriptPubKey.SetBitcoinAddress(address, rawTx.cUnit);
+        scriptPubKey.SetDestination(address.Get());
         int64 nAmount = AmountFromValue(s.value_);
 
         CTxOut out(nAmount, scriptPubKey);
@@ -4682,6 +4488,7 @@ static const CRPCCommand vRPCCommands[] =
     { "unpark",                 &unpark,                 false },
     { "distribute",             &distribute,             true },
     { "addmultisigaddress",     &addmultisigaddress,     false },
+    { "createmultisig",         &createmultisig,         true },
     { "getblock",               &getblock,               false },
     { "getblockhash",           &getblockhash,           false },
     { "gettransaction",         &gettransaction,         false },

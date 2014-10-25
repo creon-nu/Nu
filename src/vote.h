@@ -32,13 +32,37 @@ public:
         READWRITE(nAmount);
     )
 
+    class CDestinationVisitor : public boost::static_visitor<bool>
+    {
+        private:
+            CCustodianVote *custodianVote;
+        public:
+            CDestinationVisitor(CCustodianVote *custodianVote) : custodianVote(custodianVote) { }
+
+            bool operator()(const CNoDestination &dest) const {
+                custodianVote->fScript = false;
+                custodianVote->hashAddress = 0;
+                return false;
+            }
+
+            bool operator()(const CKeyID &keyID) const {
+                custodianVote->fScript = false;
+                custodianVote->hashAddress = keyID;
+                return true;
+            }
+
+            bool operator()(const CScriptID &scriptID) const {
+                custodianVote->fScript = true;
+                custodianVote->hashAddress = scriptID;
+                return true;
+            }
+    };
+
     void SetAddress(const CBitcoinAddress& address)
     {
         cUnit = address.GetUnit();
-        fScript = address.IsScript(cUnit);
-        CKeyID keyID;
-        address.GetKeyID(keyID);
-        hashAddress = keyID;
+        CTxDestination destination = address.Get();
+        boost::apply_visitor(CDestinationVisitor(this), destination);
     }
 
     CBitcoinAddress GetAddress() const

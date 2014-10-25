@@ -568,8 +568,8 @@ void CWalletTx::GetAmounts(int64& nGeneratedImmature, int64& nGeneratedMature, l
     listSent.clear();
     strSentAccount = strFromAccount;
     const bool fCombine = (cUnit == 'S');
-    map<CBitcoinAddress, int64> mapReceived;
-    map<CBitcoinAddress, int64> mapSent;
+    map<CTxDestination, int64> mapReceived;
+    map<CTxDestination, int64> mapSent;
 
     if (IsCoinBase() || IsCoinStake())
     {
@@ -628,9 +628,9 @@ void CWalletTx::GetAmounts(int64& nGeneratedImmature, int64& nGeneratedMature, l
 
     if (fCombine)
     {
-        BOOST_FOREACH(const PAIRTYPE(CBitcoinAddress, int64)& pair, mapReceived)
+        BOOST_FOREACH(const PAIRTYPE(CTxDestination, int64)& pair, mapReceived)
             listReceived.push_back(make_pair(pair.first, pair.second));
-        BOOST_FOREACH(const PAIRTYPE(CBitcoinAddress, int64)& pair, mapSent)
+        BOOST_FOREACH(const PAIRTYPE(CTxDestination, int64)& pair, mapSent)
             listSent.push_back(make_pair(pair.first, pair.second));
     }
 
@@ -998,33 +998,6 @@ void CWallet::AvailableCoins(vector<COutput>& vCoins, bool fOnlyConfirmed, const
     }
 }
 
-// populate vCoins with vector of spendable COutputs
-void CWallet::AvailableCoins(vector<COutput>& vCoins, bool fOnlyConfirmed) const
-{
-    vCoins.clear();
-
-    {
-        LOCK(cs_wallet);
-        for (map<uint256, CWalletTx>::const_iterator it = mapWallet.begin(); it != mapWallet.end(); ++it)
-        {
-            const CWalletTx* pcoin = &(*it).second;
-
-            if (!pcoin->IsFinal())
-                continue;
-
-            if (fOnlyConfirmed && !pcoin->IsConfirmed())
-                continue;
-
-            if (pcoin->IsCoinBase() && pcoin->GetBlocksToMaturity() > 0)
-                continue;
-
-            for (unsigned int i = 0; i < pcoin->vout.size(); i++)
-                if (!(pcoin->IsSpent(i)) && IsMine(pcoin->vout[i]) && pcoin->vout[i].nValue > 0)
-                    vCoins.push_back(COutput(pcoin, i, pcoin->GetDepthInMainChain()));
-        }
-    }
-}
-
 // ppcoin: total coins staked (non-spendable until maturity)
 int64 CWallet::GetStake() const
 {
@@ -1297,10 +1270,12 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, int64> >& vecSend, CW
                 int64 nValueIn = 0;
                 if (!SelectCoins(nTotalValue, wtxNew.nTime, setCoins, nValueIn, coinControl))
                     return false;
+                CScript scriptChange;
                 BOOST_FOREACH(PAIRTYPE(const CWalletTx*, unsigned int) pcoin, setCoins)
                 {
                     int64 nCredit = pcoin.first->vout[pcoin.second].nValue;
                     dPriority += (double)nCredit * pcoin.first->GetDepthInMainChain();
+                    scriptChange = pcoin.first->vout[pcoin.second].scriptPubKey;
                 }
 
                 int64 nChange = nValueIn - nValue - nFeeRet;

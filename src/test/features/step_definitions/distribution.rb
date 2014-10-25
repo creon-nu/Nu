@@ -10,7 +10,7 @@ Then(/^the distribution should send "(.*?)" Peercoins to "(.*?)", adjusted by th
   address_distribution = @distribution["distributions"].find { |d| d["nu_address"] == @addresses[arg2] }
   raise "No distribution found for address #{arg2.inspect} (#{@addresses[arg2]})" unless address_distribution
   adjusted = parse_number(arg1) / @supply * 1e9
-  expect(address_distribution["dividends"]).to be_within(0.00001).of(adjusted)
+  expect(address_distribution["dividends"]).to be_within(0.001).of(adjusted)
 end
 
 Then(/^the distribution should not send anything to "(.*?)"$/) do |arg1|
