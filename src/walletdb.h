@@ -190,6 +190,11 @@ public:
         return Write(std::string("parked"), setParked);
     }
 
+    bool WriteUnit(unsigned char cUnit)
+    {
+        return Write(std::string("unit"), cUnit);
+    }
+
     int LoadWallet(CWallet* pwallet);
 };
 

@@ -77,10 +77,6 @@ bool CWallet::AddCScript(const CScript& redeemScript)
     return CWalletDB(strWalletFile).WriteCScript(Hash160(redeemScript), redeemScript);
 }
 
-// ppcoin: optional setting to unlock wallet for block minting only;
-//         serves to disable the trivial sendmoney when OS account compromised
-bool fWalletUnlockMintOnly = false;
-
 bool CWallet::Unlock(const SecureString& strWalletPassphrase)
 {
     if (!IsLocked())
@@ -571,13 +567,16 @@ void CWalletTx::GetAmounts(int64& nGeneratedImmature, int64& nGeneratedMature, l
     listReceived.clear();
     listSent.clear();
     strSentAccount = strFromAccount;
+    const bool fCombine = (cUnit == 'S');
+    map<CBitcoinAddress, int64> mapReceived;
+    map<CBitcoinAddress, int64> mapSent;
 
     if (IsCoinBase() || IsCoinStake())
     {
         if (GetBlocksToMaturity() > 0)
-            nGeneratedImmature = pwallet->GetCredit(*this);
+            nGeneratedImmature = pwallet->GetCredit(*this) - pwallet->GetDebit(*this);
         else
-            nGeneratedMature = GetCredit();
+            nGeneratedMature = GetCredit() - GetDebit();
         return;
     }
 
@@ -607,14 +606,32 @@ void CWalletTx::GetAmounts(int64& nGeneratedImmature, int64& nGeneratedMature, l
             continue;
 
         if (nDebit > 0)
-            listSent.push_back(make_pair(address, txout.nValue));
+        {
+            if (fCombine)
+                mapSent[address] += txout.nValue;
+            else
+                listSent.push_back(make_pair(address, txout.nValue));
+        }
 
         // Do not count parked amount as received unless it was unparked
         if (IsParked(i) && !IsSpent(i))
             continue;
 
         if (pwallet->IsMine(txout))
-            listReceived.push_back(make_pair(address, txout.nValue));
+        {
+            if (fCombine)
+                mapReceived[address] += txout.nValue;
+            else
+                listReceived.push_back(make_pair(address, txout.nValue));
+        }
+    }
+
+    if (fCombine)
+    {
+        BOOST_FOREACH(const PAIRTYPE(CBitcoinAddress, int64)& pair, mapReceived)
+            listReceived.push_back(make_pair(pair.first, pair.second));
+        BOOST_FOREACH(const PAIRTYPE(CBitcoinAddress, int64)& pair, mapSent)
+            listSent.push_back(make_pair(pair.first, pair.second));
     }
 
 }
@@ -981,6 +998,33 @@ void CWallet::AvailableCoins(vector<COutput>& vCoins, bool fOnlyConfirmed, const
     }
 }
 
+// populate vCoins with vector of spendable COutputs
+void CWallet::AvailableCoins(vector<COutput>& vCoins, bool fOnlyConfirmed) const
+{
+    vCoins.clear();
+
+    {
+        LOCK(cs_wallet);
+        for (map<uint256, CWalletTx>::const_iterator it = mapWallet.begin(); it != mapWallet.end(); ++it)
+        {
+            const CWalletTx* pcoin = &(*it).second;
+
+            if (!pcoin->IsFinal())
+                continue;
+
+            if (fOnlyConfirmed && !pcoin->IsConfirmed())
+                continue;
+
+            if (pcoin->IsCoinBase() && pcoin->GetBlocksToMaturity() > 0)
+                continue;
+
+            for (unsigned int i = 0; i < pcoin->vout.size(); i++)
+                if (!(pcoin->IsSpent(i)) && IsMine(pcoin->vout[i]) && pcoin->vout[i].nValue > 0)
+                    vCoins.push_back(COutput(pcoin, i, pcoin->GetDepthInMainChain()));
+        }
+    }
+}
+
 // ppcoin: total coins staked (non-spendable until maturity)
 int64 CWallet::GetStake() const
 {
@@ -1279,8 +1323,7 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, int64> >& vecSend, CW
 
                 if (nChange > 0)
                 {
-                    CScript scriptChange;
-                    if (!GetBoolArg("-avatar", true)) // ppcoin: not avatar mode; peershares: avatar mode enabled by default to avoid change being sent to hidden address
+                    if (!GetBoolArg("-avatar", (cUnit == 'S'))) // ppcoin: not avatar mode; nu: avatar mode enabled by default only on Share wallet to avoid change being sent to hidden address
                     {
                         // Fill a vout to ourself
                         // TODO: pass in scriptChange instead of reservekey so
@@ -1591,7 +1634,12 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
     }
 
     // nubit: Add current vote
-    txNew.vout.push_back(CTxOut(0, vote.ToScript()));
+    int nVersion;
+    if (IsNuProtocolV05(txNew.nTime))
+        nVersion = PROTOCOL_VERSION;
+    else
+        nVersion = 40500;
+    txNew.vout.push_back(CTxOut(0, vote.ToScript(nVersion)));
 
     // nubit: The result of the vote is stored in the CoinStake transaction
     CParkRateVote parkRateResult;
@@ -1678,7 +1726,7 @@ bool CWallet::CreateUnparkTransaction(CWalletTx& wtxParked, unsigned int nOut, c
     return true;
 }
 
-bool CWallet::SendUnparkTransactions(vector<CWalletTx> vtxRet)
+bool CWallet::SendUnparkTransactions(vector<CWalletTx>& vtxRet)
 {
     for (map<uint256, CWalletTx>::iterator it = mapWallet.begin(); it != mapWallet.end(); ++it)
     {
@@ -1791,13 +1839,13 @@ string CWallet::SendMoney(CScript scriptPubKey, int64 nValue, CWalletTx& wtxNew,
     if (IsLocked())
     {
         string strError = _("Error: Portfolio locked, unable to create transaction  ");
-        printf("SendMoney() : %s", strError.c_str());
+        printf("SendMoney() : %s\n", strError.c_str());
         return strError;
     }
     if (fWalletUnlockMintOnly)
     {
         string strError = _("Error: Portfolio unlocked for block minting only, unable to create transaction.");
-        printf("SendMoney() : %s", strError.c_str());
+        printf("SendMoney() : %s\n", strError.c_str());
         return strError;
     }
     if (!CreateTransaction(scriptPubKey, nValue, wtxNew, reservekey, nFeeRequired))
@@ -1807,7 +1855,7 @@ string CWallet::SendMoney(CScript scriptPubKey, int64 nValue, CWalletTx& wtxNew,
             strError = strprintf(_("Error: This transaction requires a transaction fee of at least %s because of its amount, complexity, or use of recently received funds  "), FormatMoney(nFeeRequired).c_str());
         else
             strError = _("Error: Transaction creation failed  ");
-        printf("SendMoney() : %s", strError.c_str());
+        printf("SendMoney() : %s\n", strError.c_str());
         return strError;
     }
 
@@ -2252,6 +2300,9 @@ void CWallet::GetAllReserveKeys(set<CKeyID>& setAddress)
 
 void CWallet::ExportPeercoinKeys(int &nExportedCount, int &nErrorCount)
 {
+    if (cUnit != 'S')
+        throw runtime_error("Currency wallets will not receive dividends. Refusing to export keys to Peercoin.");
+
     nExportedCount = 0;
     nErrorCount = 0;
 

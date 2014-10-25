@@ -12,12 +12,11 @@
 #include "script.h"
 #include "walletdb.h"
 
-extern bool fWalletUnlockMintOnly;
-
 class CWalletTx;
 class CReserveKey;
 class COutput;
 class CCoinControl;
+class CWalletDB;
 
 /** (client) version numbers for particular wallet features */
 enum WalletFeature
@@ -63,6 +62,8 @@ public:
  */
 class CWallet : public CCryptoKeyStore
 {
+public:
+    void AvailableCoins(std::vector<COutput>& vCoins, bool fOnlyConfirmed=true) const;
 private:
     bool SelectCoins(int64 nTargetValue, unsigned int nSpendTime, std::set<std::pair<const CWalletTx*,unsigned int> >& setCoinsRet, int64& nValueRet, const CCoinControl *coinControl=NULL) const;
 
@@ -90,6 +91,10 @@ public:
 
     CVote vote;
 
+    // ppcoin: optional setting to unlock wallet for block minting only;
+    //         serves to disable the trivial sendmoney when OS account compromised
+    // nubit: moved the setting into the wallet
+    bool fWalletUnlockMintOnly;
 
     typedef std::map<unsigned int, CMasterKey> MasterKeyMap;
     MasterKeyMap mapMasterKeys;
@@ -107,6 +112,7 @@ public:
         nLastTimeResendWalletTransactions = 0;
         nNextTimeCheckUnparkableOutputs = 0;
         nLastTimeCheckUnparkableOutputs = 0;
+        fWalletUnlockMintOnly = false;
     }
     CWallet(std::string strWalletFileIn)
     {
@@ -121,6 +127,7 @@ public:
         nLastTimeResendWalletTransactions = 0;
         nNextTimeCheckUnparkableOutputs = 0;
         nLastTimeCheckUnparkableOutputs = 0;
+        fWalletUnlockMintOnly = false;
     }
 
     std::map<uint256, CWalletTx> mapWallet;
@@ -183,7 +190,7 @@ public:
     std::string SendMoney(CScript scriptPubKey, int64 nValue, CWalletTx& wtxNew, bool fAskFee=false);
     std::string SendMoneyToDestination(const CTxDestination &address, int64 nValue, CWalletTx& wtxNew, bool fAskFee=false);
     std::string Park(int64 nValue, int64 nDuration, const CBitcoinAddress& unparkAddress, CWalletTx& wtxNew, bool fAskFee=false);
-    bool SendUnparkTransactions(std::vector<CWalletTx> vtxRet);
+    bool SendUnparkTransactions(std::vector<CWalletTx>& vtxRet);
     bool SendUnparkTransactions() { std::vector<CWalletTx> vtxRet; return SendUnparkTransactions(vtxRet); }
     void CheckUnparkableOutputs();
 
@@ -702,6 +709,7 @@ public:
         printf("%s\n", ToString().c_str());
     }
 };
+
 
 /** Private key that includes an expiration date in case it never gets used. */
 class CWalletKey

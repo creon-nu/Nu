@@ -95,7 +95,6 @@ public:
 
     bool updateNeeded()
     {
-        LOCK(cs_main);
         return nBestHeight != lastUpdateBestHeight;
     }
 
@@ -303,6 +302,16 @@ ParkTableModel::~ParkTableModel()
 
 void ParkTableModel::update()
 {
+    // Get required locks upfront. This avoids the GUI from getting stuck on
+    // periodical polls if the core is holding the locks for a longer time -
+    // for example, during a wallet rescan.
+    TRY_LOCK(cs_main, lockMain);
+    if(!lockMain)
+        return;
+    TRY_LOCK(wallet->cs_wallet, lockWallet);
+    if(!lockWallet)
+        return;
+
     QList<uint256> updated;
 
     // Check if there are changes to wallet map
@@ -325,7 +334,6 @@ void ParkTableModel::update()
 
     bool updateNeeded;
     {
-        LOCK(cs_main);
         if (nBestHeight != lastUpdateBestHeight)
         {
             lastUpdateBestHeight = nBestHeight;

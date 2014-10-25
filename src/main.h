@@ -52,9 +52,16 @@ static const int STAKE_MIN_AGE = 60 * 60 * 24 * 7; // changed to 7 days so only 
 static const int STAKE_MAX_AGE = STAKE_MIN_AGE + 1; // changed to same as minimum to incentivize minting as soon as possible
 static const int64 IPO_SHARES = 1000000000 * COIN; // Total number of shares to create using proof of work (intented for IPO)
 static const int64 PROOF_OF_WORK_BLOCKS = 400; // Block height of the last proof of work block
+#ifdef TESTING
+static const int64 PARK_RATE_VOTES = 5; // Number of blocks used in park rate median vote calculation
+static const int64 PARK_RATE_PREVIOUS_VOTES = 1; // Number of blocks used in the park rate increase limitation
+static const unsigned int CUSTODIAN_VOTES = 5;
+#else
 static const int64 PARK_RATE_VOTES = 2000; // Number of blocks used in park rate median vote calculation
 static const int64 PARK_RATE_PREVIOUS_VOTES = 1440; // Number of blocks used in the park rate increase limitation
 static const unsigned int CUSTODIAN_VOTES = 10000;
+#endif
+static const int64 MOTION_VOTES = 10000;
 static const int64 PROOF_OF_STAKE_REWARD = 40 * COIN; // Constant reward of Proof of Stake blocks
 static const int64 MIN_COINSTAKE_VALUE = 10000 * COIN; // Minimum value allowed as input in a CoinStake
 static const int64 COIN_PARK_RATE = 100000 * COIN; // Park rate internal encoding precision. The minimum possible rate is (1.0 / COIN_PARK_RATE) coins per parked coin
@@ -109,6 +116,9 @@ extern std::set<CWallet*> setpwalletRegistered;
 extern std::map<uint256, CBlock*> mapOrphanBlocks;
 extern std::map<CBitcoinAddress, CBlockIndex*> mapElectedCustodian;
 extern CCriticalSection cs_mapElectedCustodian;
+#ifdef TESTING
+extern uint256 hashSingleStakeBlock;
+#endif
 
 // Settings
 extern int64 nSplitShareOutputs;
@@ -125,6 +135,7 @@ CWallet *GetWallet(unsigned char cUnit);
 void RegisterWallet(CWallet* pwalletIn);
 void UnregisterWallet(CWallet* pwalletIn);
 void UnregisterAndDeleteAllWallets();
+void SyncWithWallets(const CTransaction& tx, const CBlock* pblock = NULL, bool fUpdate = false, bool fConnect = true);
 bool ProcessBlock(CNode* pfrom, CBlock* pblock);
 bool CheckDiskSpace(uint64 nAdditionalBytes=0);
 FILE* OpenBlockFile(unsigned int nFile, unsigned int nBlockPos, const char* pszMode="rb");
@@ -147,7 +158,13 @@ bool IsInitialBlockDownload();
 std::string GetWarnings(std::string strFor);
 uint256 WantedByOrphan(const CBlock* pblockOrphan);
 const CBlockIndex* GetLastBlockIndex(const CBlockIndex* pindex, bool fProofOfStake);
+#ifdef TESTING
+void BitcoinMiner(CWallet *pwallet, bool fProofOfStake, bool fGenerateSingleBlock = false, CBlockIndex* parent = NULL);
+#else
 void BitcoinMiner(CWallet *pwallet, bool fProofOfStake);
+#endif
+bool GetTransaction(const uint256 &hash, CTransaction &tx, uint256 &hashBlock);
+bool IsNuProtocolV05(int64 nTimeBlock);
 
 
 inline int GetMaturity(bool fProofOfStake)
@@ -513,7 +530,7 @@ public:
         vin.clear();
         vout.clear();
         nLockTime = 0;
-        cUnit = 0;
+        cUnit = '?';
         nDoS = 0;  // Denial-of-service prevention
     }
 
@@ -1206,7 +1223,8 @@ public:
     CBigNum bnChainTrust; // ppcoin: trust score of block chain
     int nHeight;
     int64 nMint;
-    int64 nMoneySupply;
+    std::map<unsigned char, int64> mapMoneySupply;
+    std::map<unsigned char, int64> mapTotalParked;
 
     unsigned int nFlags;  // ppcoin: block index flags
     enum  
@@ -1250,7 +1268,8 @@ public:
         nHeight = 0;
         bnChainTrust = 0;
         nMint = 0;
-        nMoneySupply = 0;
+        mapMoneySupply.clear();
+        mapTotalParked.clear();
         nFlags = 0;
         nStakeModifier = 0;
         nStakeModifierChecksum = 0;
@@ -1279,7 +1298,8 @@ public:
         nHeight = 0;
         bnChainTrust = 0;
         nMint = 0;
-        nMoneySupply = 0;
+        mapMoneySupply.clear();
+        mapTotalParked.clear();
         nFlags = 0;
         nStakeModifier = 0;
         nStakeModifierChecksum = 0;
@@ -1437,11 +1457,31 @@ public:
         return ::GetPremium(nValue, nDuration, cUnit, vParkRateResult);
     }
 
+    int64 GetMoneySupply(unsigned char cUnit) const
+    {
+        std::map<unsigned char, int64>::const_iterator it = mapMoneySupply.find(cUnit);
+        if (it != mapMoneySupply.end())
+            return it->second;
+        else
+            return -1;
+    }
+
+    int64 GetTotalParked(unsigned char cUnit) const
+    {
+        std::map<unsigned char, int64>::const_iterator it = mapTotalParked.find(cUnit);
+        if (it != mapTotalParked.end())
+            return it->second;
+        else
+            return -1;
+    }
+
     std::string ToString() const
     {
-        return strprintf("CBlockIndex(nprev=%08x, pnext=%08x, nFile=%d, nBlockPos=%-6d nHeight=%d, nMint=%s, nMoneySupply=%s, nFlags=(%s)(%d)(%s), nStakeModifier=%016"PRI64x", nStakeModifierChecksum=%08x, hashProofOfStake=%s, prevoutStake=(%s), nStakeTime=%d merkle=%s, hashBlock=%s)",
+        return strprintf("CBlockIndex(nprev=%08x, pnext=%08x, nFile=%d, nBlockPos=%-6d nHeight=%d, nMint=%s, nMoneySupply(S)=%s, nMoneySupply(B)=%s, nFlags=(%s)(%d)(%s), nStakeModifier=%016"PRI64x", nStakeModifierChecksum=%08x, hashProofOfStake=%s, prevoutStake=(%s), nStakeTime=%d merkle=%s, hashBlock=%s)",
             pprev, pnext, nFile, nBlockPos, nHeight,
-            FormatMoney(nMint).c_str(), FormatMoney(nMoneySupply).c_str(),
+            FormatMoney(nMint).c_str(),
+            FormatMoney(GetMoneySupply('S')).c_str(),
+            FormatMoney(GetMoneySupply('B')).c_str(),
             GeneratedStakeModifier() ? "MOD" : "-", GetStakeEntropyBit(), IsProofOfStake()? "PoS" : "PoW",
             nStakeModifier, nStakeModifierChecksum, 
             hashProofOfStake.ToString().c_str(),
@@ -1487,7 +1527,15 @@ public:
         READWRITE(nBlockPos);
         READWRITE(nHeight);
         READWRITE(nMint);
-        READWRITE(nMoneySupply);
+        if (nVersion <= 30000) // v0.3.0
+        {
+            int64 nMoneySupply = 0;
+            READWRITE(nMoneySupply);
+        }
+        else
+            READWRITE(mapMoneySupply);
+        if (nVersion > 40400) // v0.4.4
+            READWRITE(mapTotalParked);
         READWRITE(nFlags);
         READWRITE(nStakeModifier);
         if (IsProofOfStake())
@@ -1878,7 +1926,7 @@ public:
     bool CheckSignature()
     {
         CKey key;
-        if (!key.SetPubKey(ParseHex("04a0a849dd49b113d3179a332dd77715c43be4d0076e2f19e66de23dd707e56630f792f298dfd209bf042bb3561f4af6983f3d81e439737ab0bf7f898fecd21aab")))
+        if (!key.SetPubKey(ParseHex("")))
             return error("CAlert::CheckSignature() : SetPubKey failed");
         if (!key.Verify(Hash(vchMsg.begin(), vchMsg.end()), vchSig))
             return error("CAlert::CheckSignature() : verify signature failed");
@@ -1903,6 +1951,7 @@ public:
                 bool fCheckInputs, bool* pfMissingInputs);
     bool addUnchecked(CTransaction &tx);
     bool remove(CTransaction &tx);
+    void queryHashes(std::vector<uint256>& vtxid);
 
     unsigned long size()
     {

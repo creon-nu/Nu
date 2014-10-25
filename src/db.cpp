@@ -591,7 +591,8 @@ bool CTxDB::LoadBlockIndex()
             pindexNew->nBlockPos      = diskindex.nBlockPos;
             pindexNew->nHeight        = diskindex.nHeight;
             pindexNew->nMint          = diskindex.nMint;
-            pindexNew->nMoneySupply   = diskindex.nMoneySupply;
+            pindexNew->mapMoneySupply = diskindex.mapMoneySupply;
+            pindexNew->mapTotalParked = diskindex.mapTotalParked;
             pindexNew->nFlags         = diskindex.nFlags;
             pindexNew->nStakeModifier = diskindex.nStakeModifier;
             pindexNew->prevoutStake   = diskindex.prevoutStake;
@@ -650,6 +651,54 @@ bool CTxDB::LoadBlockIndex()
         pindex->nStakeModifierChecksum = GetStakeModifierChecksum(pindex);
         if (!CheckStakeModifierCheckpoints(pindex->nHeight, pindex->nStakeModifierChecksum))
             return error("CTxDB::LoadBlockIndex() : Failed stake modifier checkpoint height=%d, modifier=0x%016"PRI64x, pindex->nHeight, pindex->nStakeModifier);
+        // nubit: rebuild per unit money supply for version <= 0.3.0
+        if (pindex->mapMoneySupply.empty() || pindex->mapTotalParked.empty() || GetBoolArg("-rebuildsupply", false))
+        {
+            map<unsigned char, int64> mapValueIn;
+            map<unsigned char, int64> mapValueOut;
+            map<unsigned char, int64> mapParked;
+
+            CTxDB txdb;
+            CBlock block;
+            block.ReadFromDisk(pindex);
+
+            BOOST_FOREACH(CTransaction& tx, block.vtx)
+            {
+                if (tx.IsCoinBase() || tx.IsCurrencyCoinBase())
+                    mapValueOut[tx.cUnit] += tx.GetValueOut();
+                else
+                {
+                    bool fInvalid;
+                    map<uint256, CTxIndex> mapQueuedChanges;
+                    MapPrevTx mapInputs;
+                    if (!tx.FetchInputs(txdb, mapQueuedChanges, true, false, mapInputs, fInvalid))
+                        return error("CTxDB::LoadBlockIndex() : Rebuilding money supply: Failed to load tx inputs");
+
+                    int64 nTxValueIn = tx.GetValueIn(mapInputs);
+                    int64 nTxValueOut = tx.GetValueOut();
+                    mapValueIn[tx.cUnit] += nTxValueIn;
+                    mapValueOut[tx.cUnit] += nTxValueOut;
+
+                    for (int i = 0; i < tx.vout.size(); i++)
+                    {
+                        if (tx.IsParked(i))
+                            mapParked[tx.cUnit] += tx.vout[i].nValue;
+                    }
+                    if (tx.IsUnpark())
+                        mapParked[tx.cUnit] -= nTxValueIn;
+
+                }
+            }
+
+            BOOST_FOREACH(unsigned char cUnit, sAvailableUnits)
+            {
+                pindex->mapMoneySupply[cUnit] = (pindex->pprev? pindex->pprev->mapMoneySupply[cUnit] : 0) + mapValueOut[cUnit] - mapValueIn[cUnit];
+                pindex->mapTotalParked[cUnit] = (pindex->pprev? pindex->pprev->mapTotalParked[cUnit] : 0) + mapParked[cUnit];
+            }
+
+            if (!txdb.WriteBlockIndex(CDiskBlockIndex(pindex)))
+                return error("CTxDB::LoadBlockIndex() : Rebuilding money supply: Failed write new block index");
+        }
     }
 
     // Load hashBestChain pointer to end of best chain

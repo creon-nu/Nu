@@ -227,12 +227,21 @@ TransactionTableModel::~TransactionTableModel()
 
 void TransactionTableModel::update()
 {
+    // Get required locks upfront. This avoids the GUI from getting stuck on
+    // periodical polls if the core is holding the locks for a longer time -
+    // for example, during a wallet rescan.
+    TRY_LOCK(cs_main, lockMain);
+    if(!lockMain)
+        return;
+    TRY_LOCK(wallet->cs_wallet, lockWallet);
+    if(!lockWallet)
+        return;
+
     QList<uint256> updated;
 
     // Check if there are changes to wallet map
     {
-        TRY_LOCK(wallet->cs_wallet, lockWallet);
-        if (lockWallet && !wallet->vWalletUpdated.empty())
+        if (!wallet->vWalletUpdated.empty())
         {
             BOOST_FOREACH(uint256 hash, wallet->vWalletUpdated)
             {
