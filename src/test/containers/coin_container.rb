@@ -132,6 +132,8 @@ class CoinContainer
       start_options['Binds'] = ["#{File.expand_path('../../..', __FILE__)}:/code"]
     end
 
+    sleep 0.01
+
     node_container.start(start_options)
 
     @container = node_container
