@@ -1623,7 +1623,10 @@ bool ExtractPark(const CScript& scriptPubKey, unsigned char cUnit, uint64& nDura
         return false;
     }
 
-    int64 nDuration = CBigNum(vSolutions[0]).getint();
+    printf("vsol 0: %s\n", HexStr(vSolutions[0]).c_str());
+    printf("vsol 1: %s\n", HexStr(vSolutions[1]).c_str());
+
+    int64 nDuration = CastToBigNum(vSolutions[0]).getint();
     if (nDuration <= 0)
         return false;
     nDurationRet = nDuration;
