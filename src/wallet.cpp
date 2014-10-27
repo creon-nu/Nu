@@ -1705,22 +1705,28 @@ bool CWallet::SendUnparkTransactions(vector<CWalletTx>& vtxRet)
                     wtx.GetHash().GetHex().c_str(), i, wtx.cUnit, txo.nValue, nDuration, unparkAddress.ToString().c_str());
 
             CBlockIndex *pindex = NULL;
-            uint64 nDepth = wtx.GetDepthInMainChain(pindex);
+            uint64 nPremium;
+            uint64 nAmount;
+            {
+                LOCK(cs_main);
 
-            printf("Park: hash=%s output=%d unit=%c value=%d duration=%d unparkAddress=%s depth=%d\n",
-                    wtx.GetHash().GetHex().c_str(), i, wtx.cUnit, txo.nValue, nDuration, unparkAddress.ToString().c_str(), nDepth);
+                uint64 nDepth = wtx.GetDepthInMainChain(pindex);
 
-            if (nDepth < nDuration)
-                continue;
+                printf("Park: hash=%s output=%d unit=%c value=%d duration=%d unparkAddress=%s depth=%d\n",
+                        wtx.GetHash().GetHex().c_str(), i, wtx.cUnit, txo.nValue, nDuration, unparkAddress.ToString().c_str(), nDepth);
 
-            if (!pindex)
-                continue;
+                if (nDepth < nDuration)
+                    continue;
 
-            printf("Park: hash=%s output=%d unit=%c value=%d duration=%d unparkAddress=%s depth=%d\n",
-                    wtx.GetHash().GetHex().c_str(), i, wtx.cUnit, txo.nValue, nDuration, unparkAddress.ToString().c_str(), nDepth);
+                if (!pindex)
+                    continue;
 
-            uint64 nPremium = pindex->GetPremium(txo.nValue, nDuration, wtx.cUnit);
-            uint64 nAmount = txo.nValue + nPremium;
+                printf("Park: hash=%s output=%d unit=%c value=%d duration=%d unparkAddress=%s depth=%d\n",
+                        wtx.GetHash().GetHex().c_str(), i, wtx.cUnit, txo.nValue, nDuration, unparkAddress.ToString().c_str(), nDepth);
+
+                nPremium = pindex->GetPremium(txo.nValue, nDuration, wtx.cUnit);
+                nAmount = txo.nValue + nPremium;
+            }
 
             printf("Found unparkable output: hash=%s output=%d unit=%c value=%d duration=%d unparkAddress=%s premium=%d\n",
                     wtx.GetHash().GetHex().c_str(), i, wtx.cUnit, txo.nValue, nDuration, unparkAddress.ToString().c_str(), nPremium);
