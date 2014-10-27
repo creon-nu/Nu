@@ -1611,8 +1611,17 @@ bool ExtractPark(const CScript& scriptPubKey, unsigned char cUnit, uint64& nDura
     if (!Solver(scriptPubKey, whichType, vSolutions))
         return false;
 
+    printf("vsolutions: %d\n", vSolutions.size());
+    printf("type: %d\n", whichType);
+
     if (whichType != TX_PARK)
         return false;
+
+    if (vSolutions.size() != 2)
+    {
+        printf("Invalid solutions (%d) in park output %s\n", vSolutions.size(), scriptPubKey.ToString().c_str());
+        return false;
+    }
 
     int64 nDuration = CBigNum(vSolutions[0]).getint();
     if (nDuration <= 0)
