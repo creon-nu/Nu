@@ -1701,14 +1701,23 @@ bool CWallet::SendUnparkTransactions(vector<CWalletTx>& vtxRet)
             if (!ExtractPark(txo.scriptPubKey, wtx.cUnit, nDuration, unparkAddress))
                 continue;
 
+            printf("Park: hash=%s output=%d unit=%c value=%d duration=%d unparkAddress=%s\n",
+                    wtx.GetHash().GetHex().c_str(), i, wtx.cUnit, txo.nValue, nDuration, unparkAddress.ToString().c_str());
+
             CBlockIndex *pindex = NULL;
             uint64 nDepth = wtx.GetDepthInMainChain(pindex);
+
+            printf("Park: hash=%s output=%d unit=%c value=%d duration=%d unparkAddress=%s depth=%d\n",
+                    wtx.GetHash().GetHex().c_str(), i, wtx.cUnit, txo.nValue, nDuration, unparkAddress.ToString().c_str(), nDepth);
 
             if (nDepth < nDuration)
                 continue;
 
             if (!pindex)
                 continue;
+
+            printf("Park: hash=%s output=%d unit=%c value=%d duration=%d unparkAddress=%s depth=%d\n",
+                    wtx.GetHash().GetHex().c_str(), i, wtx.cUnit, txo.nValue, nDuration, unparkAddress.ToString().c_str(), nDepth);
 
             uint64 nPremium = pindex->GetPremium(txo.nValue, nDuration, wtx.cUnit);
             uint64 nAmount = txo.nValue + nPremium;
