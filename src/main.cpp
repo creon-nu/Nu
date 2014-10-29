@@ -20,6 +20,14 @@
 using namespace std;
 using namespace boost;
 
+unsigned int nNuProtocolV05SwitchTime     = 1415368800; // 2014-11-07 14:00:00 UTC
+unsigned int nNuProtocolV05TestSwitchTime = 1414195200; // 2014-10-25 00:00:00 UTC
+
+bool IsNuProtocolV05(int64 nTimeBlock)
+{
+    return (nTimeBlock >= (fTestNet? nNuProtocolV05TestSwitchTime : nNuProtocolV05SwitchTime));
+}
+
 CCriticalSection cs_setpwalletRegistered;
 set<CWallet*> setpwalletRegistered;
 
@@ -673,7 +681,7 @@ bool CTxMemPool::accept(CTxDB& txdb, CTransaction &tx, bool fCheckInputs,
             return error("CTxMemPool::accept() : cross unit transaction");
 
         // Check for non-standard pay-to-script-hash in inputs
-        if (!tx.AreInputsStandard(mapInputs) && !fTestNet)
+        if (!tx.AreInputsStandard(mapInputs))
             return error("CTxMemPool::accept() : nonstandard transaction input");
 
         // Note: if you modify this code to accept non-standard transactions, then
@@ -827,7 +835,7 @@ int CMerkleTx::GetBlocksToMaturity() const
     if (!(IsCoinBase() || IsCoinStake()))
         return 0;
 #ifdef TESTING
-    return max(0, (GetMaturity(IsCoinStake())   ) - GetDepthInMainChain());
+    return max(0, (GetMaturity(IsCoinStake())+1 ) - GetDepthInMainChain());
 #else
     return max(0, (GetMaturity(IsCoinStake())+20) - GetDepthInMainChain());
 #endif
@@ -1040,7 +1048,7 @@ unsigned int static GetNextTargetRequired(const CBlockIndex* pindexLast, bool fP
     bnNew *= ((nInterval - 1) * nTargetSpacing + nActualSpacing + nActualSpacing);
     bnNew /= ((nInterval + 1) * nTargetSpacing);
 
-    if (bnNew > bnProofOfWorkLimit)
+    if (bnNew > bnProofOfWorkLimit && !IsNuProtocolV05(pindexPrev->GetBlockTime()))
         bnNew = bnProofOfWorkLimit;
 
     return bnNew.GetCompact();
@@ -1070,6 +1078,9 @@ int GetNumBlocksOfPeers()
 
 bool IsInitialBlockDownload()
 {
+#ifdef TESTING
+    return false;
+#else
     if (pindexBest == NULL || nBestHeight < Checkpoints::GetTotalBlocksEstimate())
         return true;
     static int64 nLastUpdate;
@@ -1081,6 +1092,7 @@ bool IsInitialBlockDownload()
     }
     return (GetTime() - nLastUpdate < 10 &&
             pindexBest->GetBlockTime() < GetTime() - 24 * 60 * 60);
+#endif
 }
 
 void static InvalidChainFound(CBlockIndex* pindexNew)
@@ -1563,9 +1575,10 @@ bool CBlock::ConnectBlock(CTxDB& txdb, CBlockIndex* pindex)
     unsigned int nTxPos = pindex->nBlockPos + ::GetSerializeSize(CBlock(), SER_DISK, CLIENT_VERSION) - (2 * GetSizeOfCompactSize(0)) + GetSizeOfCompactSize(vtx.size());
 
     map<uint256, CTxIndex> mapQueuedChanges;
-    int64 nFees = 0;
+    map<unsigned char, int64> mapFees;
     map<unsigned char, int64> mapValueIn;
     map<unsigned char, int64> mapValueOut;
+    map<unsigned char, int64> mapParked;
     unsigned int nSigOps = 0;
     BOOST_FOREACH(CTransaction& tx, vtx)
     {
@@ -1600,7 +1613,15 @@ bool CBlock::ConnectBlock(CTxDB& txdb, CBlockIndex* pindex)
             mapValueIn[tx.cUnit] += nTxValueIn;
             mapValueOut[tx.cUnit] += nTxValueOut;
             if (!tx.IsCoinStake())
-                nFees += nTxValueIn - nTxValueOut;
+                mapFees[tx.cUnit] += nTxValueIn - nTxValueOut;
+
+            for (int i = 0; i < tx.vout.size(); i++)
+            {
+                if (tx.IsParked(i))
+                    mapParked[tx.cUnit] += tx.vout[i].nValue;
+            }
+            if (tx.IsUnpark())
+                mapParked[tx.cUnit] -= nTxValueIn;
 
             if (!tx.ConnectInputs(txdb, mapInputs, mapQueuedChanges, posThisTx, pindex, true, false, fStrictPayToScriptHash))
                 return false;
@@ -1610,9 +1631,15 @@ bool CBlock::ConnectBlock(CTxDB& txdb, CBlockIndex* pindex)
     }
 
     // ppcoin: track money supply and mint amount info
-    pindex->nMint = mapValueOut['S'] - mapValueIn['S'] + nFees;
+    // nubit: per unit tracking
+    pindex->nMint = mapValueOut['S'] - mapValueIn['S'] + mapFees['S'];
     BOOST_FOREACH(unsigned char cUnit, sAvailableUnits)
+    {
         pindex->mapMoneySupply[cUnit] = (pindex->pprev? pindex->pprev->mapMoneySupply[cUnit] : 0) + mapValueOut[cUnit] - mapValueIn[cUnit];
+        // nubit: track amount parked
+        pindex->mapTotalParked[cUnit] = (pindex->pprev? pindex->pprev->mapTotalParked[cUnit] : 0) + mapParked[cUnit];
+    }
+
     if (!txdb.WriteBlockIndex(CDiskBlockIndex(pindex)))
         return error("Connect() : WriteBlockIndex for pindex failed");
 
@@ -1652,7 +1679,7 @@ bool CBlock::ConnectBlock(CTxDB& txdb, CBlockIndex* pindex)
     // ppcoin: fees are not collected by miners as in bitcoin
     // ppcoin: fees are destroyed to compensate the entire network
     if (fDebug && GetBoolArg("-printcreation"))
-        printf("ConnectBlock() : destroy=%s nFees=%"PRI64d"\n", FormatMoney(nFees).c_str(), nFees);
+        printf("ConnectBlock() : destroy=%s nFees=%"PRI64d"\n", FormatMoney(mapFees['S']).c_str(), mapFees['S']);
 
     // Update block index on disk without changing it in memory.
     // The memory index structure will be changed after the db commits.
@@ -3767,7 +3794,8 @@ bool SendMessages(CNode* pto, bool fSendTrickle)
         ResendWalletTransactions();
 
         // nubit: Send unpark transaction
-        CheckUnparkableOutputs();
+        if (GetBoolArg("-unpark", true))
+            CheckUnparkableOutputs();
 
         // Address refresh broadcast
         static int64 nLastRebroadcast;

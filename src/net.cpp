@@ -800,6 +800,7 @@ void ThreadSocketHandler2(void* parg)
             //
             if (pnode->vSend.empty())
                 pnode->nLastSendEmpty = GetTime();
+#ifndef TESTING // Timeout disabled in testing to permit time travels
             if (GetTime() - pnode->nTimeConnected > 60)
             {
                 if (pnode->nLastRecv == 0 || pnode->nLastSend == 0)
@@ -818,6 +819,7 @@ void ThreadSocketHandler2(void* parg)
                     pnode->fDisconnect = true;
                 }
             }
+#endif
         }
         {
             LOCK(cs_vNodes);

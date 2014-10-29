@@ -5,6 +5,7 @@ set -x
 
 cd $(dirname $0)
 ./build_base
+./make clean
 ./make "$@"
 cd ..
 bundle install
