@@ -1735,7 +1735,7 @@ bool CWallet::SendUnparkTransactions(vector<CWalletTx>& vtxRet)
             uint64 nPremium = pindex->GetPremium(txo.nValue, nDuration, wtx.cUnit);
             uint64 nAmount = txo.nValue + nPremium;
 
-            printf("Found unparkable output: hash=%s output=%d unit=%c value=%d duration=%d unparkAddress=%s premium=%d\n",
+            printf("Found unparkable output: hash=%s output=%d unit=%c value=%" PRI64u " duration=%" PRI64u " unparkAddress=%s premium=%" PRI64u "\n",
                     wtx.GetHash().GetHex().c_str(), i, wtx.cUnit, txo.nValue, nDuration, unparkAddress.ToString().c_str(), nPremium);
 
             CWalletTx wtxUnpark;

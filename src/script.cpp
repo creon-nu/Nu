@@ -1626,7 +1626,13 @@ bool ExtractPark(const CScript& scriptPubKey, uint64& nDurationRet, CTxDestinati
     if (whichType != TX_PARK)
         return false;
 
-    int64 nDuration = CBigNum(vSolutions[0]).getint();
+    if (vSolutions.size() != 2)
+    {
+        printf("Invalid solutions (%d) in park output %s\n", vSolutions.size(), scriptPubKey.ToString().c_str());
+        return false;
+    }
+
+    int64 nDuration = CastToBigNum(vSolutions[0]).getint();
     if (nDuration <= 0)
         return false;
     nDurationRet = nDuration;

@@ -138,10 +138,22 @@ class CoinContainer
     @json = @container.json
     @name = @json["Name"]
 
-    ports = node_container.json["NetworkSettings"]["Ports"]
-    if ports.nil?
-      raise "Unable to get port. Usualy this means the daemon process failed to start. Container was #{node_container.name}"
+    retries = 0
+    begin
+      ports = node_container.json["NetworkSettings"]["Ports"]
+      if ports.nil?
+        raise "Unable to get port. Usualy this means the daemon process failed to start. Container was #{@name}"
+      end
+    rescue
+      if retries >= 3
+        raise
+      else
+        sleep 0.1
+        retries += 1
+        retry
+      end
     end
+
     @rpc_ports = {
       'S' => ports["15001/tcp"].first["HostPort"].to_i,
       'B' => ports["15002/tcp"].first["HostPort"].to_i,
