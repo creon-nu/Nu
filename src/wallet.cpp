@@ -1588,7 +1588,12 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
     }
 
     // nubit: Add current vote
-    txNew.vout.push_back(CTxOut(0, vote.ToScript()));
+    int nVersion;
+    if (IsNuProtocolV05(txNew.nTime))
+        nVersion = PROTOCOL_VERSION;
+    else
+        nVersion = 40500;
+    txNew.vout.push_back(CTxOut(0, vote.ToScript(nVersion)));
 
     // nubit: The result of the vote is stored in the CoinStake transaction
     CParkRateVote parkRateResult;
@@ -1675,7 +1680,7 @@ bool CWallet::CreateUnparkTransaction(CWalletTx& wtxParked, unsigned int nOut, c
     return true;
 }
 
-bool CWallet::SendUnparkTransactions(vector<CWalletTx> vtxRet)
+bool CWallet::SendUnparkTransactions(vector<CWalletTx>& vtxRet)
 {
     for (map<uint256, CWalletTx>::iterator it = mapWallet.begin(); it != mapWallet.end(); ++it)
     {
@@ -1708,7 +1713,7 @@ bool CWallet::SendUnparkTransactions(vector<CWalletTx> vtxRet)
             uint64 nPremium = pindex->GetPremium(txo.nValue, nDuration, wtx.cUnit);
             uint64 nAmount = txo.nValue + nPremium;
 
-            printf("Found unparkable output: hash=%s output=%d unit=%c value=%d duration=%d unparkAddress=%s premium=%d\n",
+            printf("Found unparkable output: hash=%s output=%d unit=%c value=%" PRI64u " duration=%" PRI64u " unparkAddress=%s premium=%" PRI64u "\n",
                     wtx.GetHash().GetHex().c_str(), i, wtx.cUnit, txo.nValue, nDuration, unparkAddress.ToString().c_str(), nPremium);
 
             CWalletTx wtxUnpark;
@@ -1787,13 +1792,13 @@ string CWallet::SendMoney(CScript scriptPubKey, int64 nValue, CWalletTx& wtxNew,
     if (IsLocked())
     {
         string strError = _("Error: Portfolio locked, unable to create transaction  ");
-        printf("SendMoney() : %s", strError.c_str());
+        printf("SendMoney() : %s\n", strError.c_str());
         return strError;
     }
     if (fWalletUnlockMintOnly)
     {
         string strError = _("Error: Portfolio unlocked for block minting only, unable to create transaction.");
-        printf("SendMoney() : %s", strError.c_str());
+        printf("SendMoney() : %s\n", strError.c_str());
         return strError;
     }
     if (!CreateTransaction(scriptPubKey, nValue, wtxNew, reservekey, nFeeRequired))
@@ -1803,7 +1808,7 @@ string CWallet::SendMoney(CScript scriptPubKey, int64 nValue, CWalletTx& wtxNew,
             strError = strprintf(_("Error: This transaction requires a transaction fee of at least %s because of its amount, complexity, or use of recently received funds  "), FormatMoney(nFeeRequired).c_str());
         else
             strError = _("Error: Transaction creation failed  ");
-        printf("SendMoney() : %s", strError.c_str());
+        printf("SendMoney() : %s\n", strError.c_str());
         return strError;
     }
 

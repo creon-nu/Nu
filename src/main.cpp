@@ -20,7 +20,7 @@
 using namespace std;
 using namespace boost;
 
-unsigned int nNuProtocolV05SwitchTime     = 1414800000; // 2014-11-01 00:00:00 UTC
+unsigned int nNuProtocolV05SwitchTime     = 1415368800; // 2014-11-07 14:00:00 UTC
 unsigned int nNuProtocolV05TestSwitchTime = 1414195200; // 2014-10-25 00:00:00 UTC
 
 bool IsNuProtocolV05(int64 nTimeBlock)
@@ -1078,6 +1078,9 @@ int GetNumBlocksOfPeers()
 
 bool IsInitialBlockDownload()
 {
+#ifdef TESTING
+    return false;
+#else
     if (pindexBest == NULL || nBestHeight < Checkpoints::GetTotalBlocksEstimate())
         return true;
     static int64 nLastUpdate;
@@ -1089,6 +1092,7 @@ bool IsInitialBlockDownload()
     }
     return (GetTime() - nLastUpdate < 10 &&
             pindexBest->GetBlockTime() < GetTime() - 24 * 60 * 60);
+#endif
 }
 
 void static InvalidChainFound(CBlockIndex* pindexNew)
@@ -3790,7 +3794,8 @@ bool SendMessages(CNode* pto, bool fSendTrickle)
         ResendWalletTransactions();
 
         // nubit: Send unpark transaction
-        CheckUnparkableOutputs();
+        if (GetBoolArg("-unpark", true))
+            CheckUnparkableOutputs();
 
         // Address refresh broadcast
         static int64 nLastRebroadcast;

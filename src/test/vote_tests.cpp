@@ -33,7 +33,8 @@ BOOST_AUTO_TEST_CASE(reload_vote_from_script_tests)
     parkRateVote.vParkRate.push_back(CParkRate(15, 13));
     vote.vParkRateVote.push_back(parkRateVote);
 
-    vote.hashMotion = uint160(123456);
+    vote.vMotion.push_back(uint160(123456));
+    vote.vMotion.push_back(uint160(3333));
 
     CScript script = vote.ToScript();
 
@@ -65,7 +66,9 @@ BOOST_AUTO_TEST_CASE(reload_vote_from_script_tests)
         }
     }
 
-    CHECK_VOTE_EQUAL(hashMotion);
+    CHECK_VOTE_EQUAL(vMotion.size());
+    CHECK_VOTE_EQUAL(vMotion[0]);
+    CHECK_VOTE_EQUAL(vMotion[1]);
 #undef CHECK_VOTE_EQUAL
 }
 
@@ -598,6 +601,31 @@ BOOST_AUTO_TEST_CASE(vote_v1_unserialization)
     BOOST_CHECK(ExtractVote(voteV1Script, vote));
 
     BOOST_CHECK_EQUAL(CBitcoinAddress(uint160(123465), 'B').ToString(), vote.vCustodianVote[0].GetAddress().ToString());
+}
+
+BOOST_AUTO_TEST_CASE(vote_before_multi_motion_unserialization)
+{
+    // Serialized with v0.4.2 vote code:
+    /* {
+    CVote vote;
+    CCustodianVote custodianVote;
+    custodianVote.cUnit = 'B';
+    custodianVote.hashAddress = uint160(123465);
+    custodianVote.nAmount = 100 * COIN;
+    vote.vCustodianVote.push_back(custodianVote);
+    vote.hashMotion = uint160("3f786850e387550fdab836ed7e6dc881de23001b");
+    printf("%s\n", vote.ToScript().ToString().c_str());
+    printf("%s\n", HexStr(vote.ToScript()).c_str());
+    } */
+    vector<unsigned char> oldVoteString = ParseHex("6a5138089d000001420049e201000000000000000000000000000000000040420f0000000000001b0023de81c86d7eed36b8da0f5587e35068783f");
+
+    CScript oldVoteScript(oldVoteString.begin(), oldVoteString.end());
+
+    CVote vote;
+    BOOST_CHECK(ExtractVote(oldVoteScript, vote));
+
+    BOOST_CHECK_EQUAL(1, vote.vMotion.size());
+    BOOST_CHECK_EQUAL(uint160("3f786850e387550fdab836ed7e6dc881de23001b").ToString(), vote.vMotion[0].ToString());
 }
 
 BOOST_AUTO_TEST_SUITE_END()

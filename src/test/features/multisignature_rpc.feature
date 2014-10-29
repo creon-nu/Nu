@@ -12,7 +12,9 @@ Feature: Ability to sign multisignature transaction without all the keys
     Then node "Bob" should reach an unspent amount of "5,000" on address "multi"
 
   Scenario: Two nodes send coins from a multisignature output
-    Given a network with nodes "Alice", "Bob", "Carol", "Dan" and "Erin"
+    Given a network with node "Alice", "Bob" and "Carol" able to mint
+    And a node "Dan" with an empty wallet
+    And a node "Erin" with an empty wallet
 
     When node "Alice" generates a new address "alice"
     And the public key of address "alice" is retreived from node "Alice"
@@ -40,7 +42,7 @@ Feature: Ability to sign multisignature transaction without all the keys
     Then all nodes should reach 1 transaction in memory pool
 
     When node "Alice" finds a block
-    Then node "Erin" should reach a balance of "10,001,000"
+    Then node "Erin" should reach a balance of "1,000"
 
   Scenario: Multisignature custodian
     Given a network with nodes "Alice", "Cust1", "Cust2" and "Recipient"

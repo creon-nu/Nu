@@ -5,6 +5,7 @@ class CoinContainer
   def initialize(options = {})
     default_options = {
       image: "nubit/base",
+      bind_code: true,
       shutdown_at_exit: true,
       delete_at_exit: false,
       remove_addr_after_shutdown: true,
@@ -48,6 +49,7 @@ class CoinContainer
       logtimestamps: true,
       keypool: 1,
       stakegen: false,
+      unpark: false,
     }
 
     args = default_args.merge(options[:args] || {})
@@ -117,24 +119,41 @@ class CoinContainer
       end
     end
 
-    node_container.start(
-      'Binds' => ["#{File.expand_path('../../..', __FILE__)}:/code"],
+    start_options = {
       'PortBindings' => {
         "15001/tcp" => ['127.0.0.1'],
         "15002/tcp" => ['127.0.0.1'],
         "7895/tcp" => ['127.0.0.1'],
       },
       'Links' => links.map { |link_name, alias_name| "#{link_name}:#{alias_name}" },
-    )
+    }
+
+    if options[:bind_code]
+      start_options['Binds'] = ["#{File.expand_path('../../..', __FILE__)}:/code"]
+    end
+
+    node_container.start(start_options)
 
     @container = node_container
     @json = @container.json
     @name = @json["Name"]
 
-    ports = node_container.json["NetworkSettings"]["Ports"]
-    if ports.nil?
-      raise "Unable to get port. Usualy this means the daemon process failed to start."
+    retries = 0
+    begin
+      ports = node_container.json["NetworkSettings"]["Ports"]
+      if ports.nil?
+        raise "Unable to get port. Usualy this means the daemon process failed to start. Container was #{@name}"
+      end
+    rescue
+      if retries >= 3
+        raise
+      else
+        sleep 0.1
+        retries += 1
+        retry
+      end
     end
+
     @rpc_ports = {
       'S' => ports["15001/tcp"].first["HostPort"].to_i,
       'B' => ports["15002/tcp"].first["HostPort"].to_i,

@@ -26,6 +26,8 @@ private:
     WalletModel *model;
 
 private slots:
+    void on_add_clicked();
+    void on_remove_clicked();
     void accept();
 };
 
