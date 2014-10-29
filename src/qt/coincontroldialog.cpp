@@ -419,6 +419,7 @@ void CoinControlDialog::updateLabels(WalletModel *model, QDialog* dialog)
     bool fLowOutput = false;
     bool fDust = false;
     CTransaction txDummy;
+    txDummy.cUnit = model->getUnit();
 
     BOOST_FOREACH(const PAIRTYPE(QString, qint64) &payee, CoinControlDialog::payAddresses)
     {
@@ -448,7 +449,7 @@ void CoinControlDialog::updateLabels(WalletModel *model, QDialog* dialog)
     coinControl->ListSelected(vCoinControl);
     model->getOutputs(vCoinControl, vOutputs);
 
-    nPayFee = nTransactionFee;
+    nPayFee = txDummy.GetUnitMinFee();
     loop
     {
         txDummy.vin.clear();
@@ -490,18 +491,18 @@ void CoinControlDialog::updateLabels(WalletModel *model, QDialog* dialog)
         if (nQuantity > 0)
         {
             nChange = nAmount - nPayAmount - nPayFee;
-            // if sub-cent change is required, the fee must be raised to at least MIN_TX_FEE
+            // if sub-cent change is required, the fee must be raised to at least unit's min fee
             // or until nChange becomes zero
             // NOTE: this depends on the exact behaviour of GetMinFee
-            if (nPayFee < MIN_TX_FEE && nChange > 0 && nChange < CENT)
+            if (nPayFee < txDummy.GetUnitMinFee() && nChange > 0 && nChange < CENT)
             {
-                int64 nMoveToFee = min(nChange, MIN_TX_FEE - nPayFee);
+                int64 nMoveToFee = min(nChange, txDummy.GetUnitMinFee() - nPayFee);
                 nChange -= nMoveToFee;
                 nPayFee += nMoveToFee;
             }
 
             // ppcoin: sub-cent change is moved to fee
-            if (nChange > 0 && nChange < MIN_TXOUT_AMOUNT)
+            if (nChange > 0 && nChange < txDummy.GetMinTxOutAmount())
             {
                 nPayFee += nChange;
                 nChange = 0;
@@ -522,7 +523,7 @@ void CoinControlDialog::updateLabels(WalletModel *model, QDialog* dialog)
             sPriorityLabel = CoinControlDialog::getPriorityLabel(dPriority);
 
             // Fee
-            int64 nFee = nTransactionFee * (1 + (int64)nBytes / 1000);
+            int64 nFee = txDummy.GetUnitMinFee() * (1 + (int64)nBytes / 1000);
 
             // Min Fee
             int64 nMinFee = txDummy.GetMinFee(1, false, GMF_SEND, nBytes);
