@@ -72,7 +72,7 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
                             sub.type = TransactionRecord::Unpark;
                         else
                             sub.type = TransactionRecord::RecvWithAddress;
-                        sub.address = CBitcoinAddress(address).ToString();
+                        sub.address = CBitcoinAddress(address, wtx.cUnit).ToString();
                     }
                     else
                     {
@@ -118,15 +118,15 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
             BOOST_FOREACH(const CTxOut& txout, wtx.vout)
             {
                 uint64 nParkDuration;
-                CBitcoinAddress unparkAddress;
+                CTxDestination unparkAddress;
 
-                if (ExtractPark(txout.scriptPubKey, wtx.cUnit, nParkDuration, unparkAddress))
+                if (ExtractPark(txout.scriptPubKey, nParkDuration, unparkAddress))
                 {
                     fPark = true;
                     TransactionRecord sub(hash, nTime);
                     sub.idx = parts.size();
                     sub.type = TransactionRecord::Park;
-                    sub.address = unparkAddress.ToString();
+                    sub.address = CBitcoinAddress(unparkAddress, wtx.cUnit).ToString();
                     sub.debit = -txout.nValue;
                     if (parts.size() == 0)
                     {
@@ -175,7 +175,7 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
                     {
                         // Sent to Bitcoin Address
                         sub.type = TransactionRecord::SendToAddress;
-                        sub.address = CBitcoinAddress(address).ToString();
+                        sub.address = CBitcoinAddress(address, wtx.cUnit).ToString();
                     }
                     else
                     {
