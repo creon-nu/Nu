@@ -2,6 +2,7 @@
 #define OVERVIEWPAGE_H
 
 #include <QWidget>
+#include <QLabel>
 
 QT_BEGIN_NAMESPACE
 class QModelIndex;
@@ -40,6 +41,11 @@ private:
     qint64 currentParked;
 
     TxViewDelegate *txdelegate;
+
+    int stakeRow;
+
+    void removeLabels(QLabel* labelLabel, QLabel* label);
+    void insertLabels(QLabel* labelLabel, QLabel* label, int row);
 
 private slots:
     void displayUnitChanged();

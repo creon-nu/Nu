@@ -130,11 +130,35 @@ OverviewPage::OverviewPage(QWidget *parent) :
     ui->listTransactions->setAttribute(Qt::WA_MacShowFocusRect, false);
 
     connect(ui->listTransactions, SIGNAL(clicked(QModelIndex)), this, SIGNAL(transactionClicked(QModelIndex)));
+
+    // Hiding doesn't remove the margin so we have to remove the widgets
+    // See https://bugreports.qt-project.org/browse/QTBUG-6864
+    QFormLayout* formLayout = (QFormLayout*)ui->frame->layout();
+    formLayout->getWidgetPosition(ui->labelStake, &stakeRow, NULL);
+    removeLabels(ui->labelParkedLabel, ui->labelParked);
+    removeLabels(ui->labelStakeLabel, ui->labelStake);
 }
 
 OverviewPage::~OverviewPage()
 {
     delete ui;
+}
+
+void OverviewPage::removeLabels(QLabel* labelLabel, QLabel* label)
+{
+    labelLabel->hide();
+    label->hide();
+    ui->frame->layout()->removeWidget(labelLabel);
+    ui->frame->layout()->removeWidget(label);
+}
+
+void OverviewPage::insertLabels(QLabel* labelLabel, QLabel* label, int row)
+{
+    QFormLayout* formLayout = (QFormLayout*)ui->frame->layout();
+
+    formLayout->insertRow(row, labelLabel, label);
+    labelLabel->show();
+    label->show();
 }
 
 void OverviewPage::setBalance(qint64 balance, qint64 stake, qint64 unconfirmedBalance, qint64 parked)
@@ -148,34 +172,16 @@ void OverviewPage::setBalance(qint64 balance, qint64 stake, qint64 unconfirmedBa
     ui->labelStake->setText(BitcoinUnits::formatWithUnit(unit, stake));
     ui->labelUnconfirmed->setText(BitcoinUnits::formatWithUnit(unit, unconfirmedBalance));
     ui->labelParked->setText(BitcoinUnits::formatWithUnit(unit, parked));
-    // Hiding doesn't remove the margin so we have to remove the widgets
-    // See https://bugreports.qt-project.org/browse/QTBUG-6864
-    static int parkedRow = -1;
-    QFormLayout* formLayout = (QFormLayout*)ui->frame->layout();
-    if (parkedRow == -1)
-        formLayout->getWidgetPosition(ui->labelParked, &parkedRow, NULL);
 
     if (model->getUnit() == 'S')
     {
-        ui->labelParkedLabel->hide();
-        ui->labelParked->hide();
-        ui->frame->layout()->removeWidget(ui->labelParkedLabel);
-        ui->frame->layout()->removeWidget(ui->labelParked);
-        //show stake label in place of park label
-        formLayout->insertRow(parkedRow, ui->label_6, ui->labelStake);
-        ui->label_6->show();
-        ui->labelParked->show();
+        removeLabels(ui->labelParkedLabel, ui->labelParked);
+        insertLabels(ui->labelStakeLabel, ui->labelStake, stakeRow);
     }
     else
     {
-        formLayout->insertRow(parkedRow, ui->labelParkedLabel, ui->labelParked);
-        ui->labelParkedLabel->show();
-        ui->labelParked->show();
-        //hide stake label when on currency unit
-        ui->label_6->hide();
-        ui->labelStake->hide();
-        ui->frame->layout()->removeWidget(ui->label_6);
-        ui->frame->layout()->removeWidget(ui->labelStake);
+        removeLabels(ui->labelStakeLabel, ui->labelStake);
+        insertLabels(ui->labelParkedLabel, ui->labelParked, stakeRow);
     }
 }
 
