@@ -265,7 +265,7 @@ DisplayOptionsPage::DisplayOptionsPage(QWidget *parent):
     layout->addLayout(unit_hbox);
 
     display_addresses = new QCheckBox(tr("&Display addresses in transaction list"), this);
-    display_addresses->setToolTip(tr("Whether to show Nu addresses in the transaction list"));
+    display_addresses->setToolTip(tr("Whether to show addresses in the transaction list"));
     layout->addWidget(display_addresses);
 
     coin_control_features = new QCheckBox(tr("Display coin control features (experts only!)"), this);
