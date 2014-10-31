@@ -459,6 +459,7 @@ void CoinControlDialog::updateLabels(WalletModel *model, QDialog* dialog)
         nAmount = 0;
         dPriorityInputs = 0;
         nBytesInputs = 0;
+        CScript scriptChange = (CScript)vector<unsigned char>(24, 0);
 
         // Inputs
         BOOST_FOREACH(const COutput& out, vOutputs)
@@ -475,6 +476,9 @@ void CoinControlDialog::updateLabels(WalletModel *model, QDialog* dialog)
             // Bytes
             txDummy.vin.push_back(CTxIn(out.tx->vout[out.i].GetHash(), out.tx->vout[out.i].nValue));
             nBytesInputs += 73; // Future ECDSA signature in DER format
+
+            // Default change script for avatar mode
+            scriptChange = out.tx->vout[out.i].scriptPubKey;
         }
 
         // Outputs
@@ -511,7 +515,8 @@ void CoinControlDialog::updateLabels(WalletModel *model, QDialog* dialog)
             if (nChange > 0)
             {
                 // Add a change address in the outputs
-                txDummy.AddOutput((CScript)vector<unsigned char>(24, 0), nChange);
+                CDefaultKey reservekey = model->getDefaultKey();
+                txDummy.AddChange(nChange, scriptChange, coinControl, reservekey);
             }
 
             // Bytes

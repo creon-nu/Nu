@@ -150,6 +150,8 @@ public:
     void unlockCoin(COutPoint& output);
     void listLockedCoins(std::vector<COutPoint>& vOutpts); 
 
+    CDefaultKey getDefaultKey();
+
 private:
     CWallet *wallet;
 

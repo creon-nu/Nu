@@ -497,3 +497,8 @@ void WalletModel::setUnlockedForMintingOnly(bool fUnlockedForMintingOnly)
 {
     wallet->fWalletUnlockMintOnly = fUnlockedForMintingOnly;
 }
+
+CDefaultKey WalletModel::getDefaultKey()
+{
+    return CDefaultKey(wallet);
+}

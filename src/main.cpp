@@ -13,6 +13,7 @@
 #include "kernel.h"
 #include "wallet.h"
 #include "liquidityinfo.h"
+#include "coincontrol.h"
 #include <boost/algorithm/string/replace.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>
@@ -475,6 +476,49 @@ void CTransaction::AddOutput(const CScript script, int64 nAmount)
     }
     else
         vout.push_back(CTxOut(nAmount, script));
+}
+
+void CTransaction::AddChange(int64 nChange, CScript& scriptChange, const CCoinControl* coinControl, CReserveKey& reservekey)
+{
+    // coin control: send change to custom address
+    if (coinControl && !boost::get<CNoDestination>(&coinControl->destChange))
+        scriptChange.SetDestination(coinControl->destChange);
+    else if (!GetBoolArg("-avatar", (cUnit == 'S'))) // ppcoin: not avatar mode; nu: avatar mode enabled by default only on Share wallet to avoid change being sent to hidden address
+    {
+        // send change to newly generated address
+        //
+        // Note: We use a new key here to keep it from being obvious which side is the change.
+        //  The drawback is that by not reusing a previous key, the change may be lost if a
+        //  backup is restored, if the backup doesn't have the new private key for the change.
+        //  If we reused the old key, it would be possible to add code to look for and
+        //  rediscover unknown transactions that were written with keys of ours to recover
+        //  post-backup change.
+
+        // Reserve a new key pair from key pool
+        CPubKey vchPubKey = reservekey.GetReservedKey();
+
+        scriptChange.SetDestination(vchPubKey.GetID());
+    }
+
+    // nu: split change if appropriate
+    int nChangeOutputs;
+    if (cUnit == 'S' && nSplitShareOutputs > 0 && nChange >= nSplitShareOutputs * 2)
+        nChangeOutputs = nChange / nSplitShareOutputs;
+    else
+        nChangeOutputs = 1;
+
+    int64 nChangeRemaining = nChange;
+    for (int i = 0; i < nChangeOutputs - 1; i++)
+    {
+        // Insert split change txn at random position:
+        vector<CTxOut>::iterator position = vout.begin()+GetRandInt(vout.size());
+        int64 nAmount = nSplitShareOutputs;
+        vout.insert(position, CTxOut(nAmount, scriptChange));
+        nChangeRemaining -= nAmount;
+    }
+    // Insert remaining change txn at random position:
+    vector<CTxOut>::iterator position = vout.begin()+GetRandInt(vout.size());
+    vout.insert(position, CTxOut(nChangeRemaining, scriptChange));
 }
 
 int CMerkleTx::SetMerkleBranch(const CBlock* pblock)

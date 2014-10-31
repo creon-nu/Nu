@@ -30,6 +30,8 @@ class CInv;
 class CRequestTracker;
 class CNode;
 
+class CCoinControl;
+
 static const unsigned int MAX_BLOCK_SIZE = 1000000;
 static const unsigned int MAX_BLOCK_SIZE_GEN = MAX_BLOCK_SIZE/2;
 static const unsigned int MAX_BLOCK_SIGOPS = MAX_BLOCK_SIZE/50;
@@ -814,6 +816,10 @@ public:
 
     // Add an output, split if appropriate
     void AddOutput(const CScript script, int64 nAmount);
+
+    // Add the change output, split if appropriate, and back to scriptChange if avatar mode is enabled
+    void AddChange(int64 nChange, CScript& scriptChange, const CCoinControl* coinControl, CReserveKey& reservekey);
+
 protected:
     const CTxOut& GetOutputFor(const CTxIn& input, const MapPrevTx& inputs) const;
 };

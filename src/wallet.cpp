@@ -1283,54 +1283,7 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, int64> >& vecSend, CW
                 }
 
                 if (nChange > 0)
-                {
-                    if (!GetBoolArg("-avatar", (cUnit == 'S'))) // ppcoin: not avatar mode; nu: avatar mode enabled by default only on Share wallet to avoid change being sent to hidden address
-                    {
-                        // Fill a vout to ourself
-                        // TODO: pass in scriptChange instead of reservekey so
-                        // change transaction isn't always pay-to-bitcoin-address
-
-                        // coin control: send change to custom address
-                        if (coinControl && !boost::get<CNoDestination>(&coinControl->destChange))
-                            scriptChange.SetDestination(coinControl->destChange);
-                        
-                        // no coin control: send change to newly generated address
-                        else
-                        {
-                            // Note: We use a new key here to keep it from being obvious which side is the change.
-                            //  The drawback is that by not reusing a previous key, the change may be lost if a
-                            //  backup is restored, if the backup doesn't have the new private key for the change.
-                            //  If we reused the old key, it would be possible to add code to look for and
-                            //  rediscover unknown transactions that were written with keys of ours to recover
-                            //  post-backup change.
-
-                            // Reserve a new key pair from key pool
-                            CPubKey vchPubKey = reservekey.GetReservedKey();
-
-                            scriptChange.SetDestination(vchPubKey.GetID());
-                        }
-                    }
-
-                    // nu: split change if appropriate
-                    int nChangeOutputs;
-                    if (wtxNew.cUnit == 'S' && nSplitShareOutputs > 0 && nChange >= nSplitShareOutputs * 2)
-                        nChangeOutputs = nChange / nSplitShareOutputs;
-                    else
-                        nChangeOutputs = 1;
-
-                    int64 nChangeRemaining = nChange;
-                    for (int i = 0; i < nChangeOutputs - 1; i++)
-                    {
-                        // Insert split change txn at random position:
-                        vector<CTxOut>::iterator position = wtxNew.vout.begin()+GetRandInt(wtxNew.vout.size());
-                        int64 nAmount = nSplitShareOutputs;
-                        wtxNew.vout.insert(position, CTxOut(nAmount, scriptChange));
-                        nChangeRemaining -= nAmount;
-                    }
-                    // Insert remaining change txn at random position:
-                    vector<CTxOut>::iterator position = wtxNew.vout.begin()+GetRandInt(wtxNew.vout.size());
-                    wtxNew.vout.insert(position, CTxOut(nChangeRemaining, scriptChange));
-                }
+                    wtxNew.AddChange(nChange, scriptChange, coinControl, reservekey);
                 else
                     reservekey.ReturnKey();
 
