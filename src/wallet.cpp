@@ -1248,21 +1248,7 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, int64> >& vecSend, CW
                 BOOST_FOREACH (const PAIRTYPE(CScript, int64)& s, vecSend)
                 {
                     // nu: split shares if appropriate
-                    if (wtxNew.cUnit == 'S' && nSplitShareOutputs > 0 && s.second >= nSplitShareOutputs * 2)
-                    {
-                        int nOutputs = s.second / nSplitShareOutputs;
-                        int64 nRemainingAmount = s.second;
-
-                        for (int i = 0; i < nOutputs - 1; i++)
-                        {
-                            int64 nAmount = nSplitShareOutputs;
-                            wtxNew.vout.push_back(CTxOut(nAmount, s.first));
-                            nRemainingAmount -= nAmount;
-                        }
-                        wtxNew.vout.push_back(CTxOut(nRemainingAmount, s.first));
-                    }
-                    else
-                        wtxNew.vout.push_back(CTxOut(s.second, s.first));
+                    wtxNew.AddOutput(s.first, s.second);
                 }
 
                 // Choose coins to use

@@ -458,6 +458,24 @@ CTransaction::GetLegacySigOpCount() const
     return nSigOps;
 }
 
+void CTransaction::AddOutput(const CScript script, int64 nAmount)
+{
+    if (cUnit == 'S' && nSplitShareOutputs > 0 && nAmount >= nSplitShareOutputs * 2)
+    {
+        int nOutputs = nAmount / nSplitShareOutputs;
+        int64 nRemainingAmount = nAmount;
+
+        for (int i = 0; i < nOutputs - 1; i++)
+        {
+            int64 nAmount = nSplitShareOutputs;
+            vout.push_back(CTxOut(nAmount, script));
+            nRemainingAmount -= nAmount;
+        }
+        vout.push_back(CTxOut(nRemainingAmount, script));
+    }
+    else
+        vout.push_back(CTxOut(nAmount, script));
+}
 
 int CMerkleTx::SetMerkleBranch(const CBlock* pblock)
 {

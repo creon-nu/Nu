@@ -484,8 +484,7 @@ void CoinControlDialog::updateLabels(WalletModel *model, QDialog* dialog)
             qint64 amount = payee.second;
             CScript scriptPubKey;
             scriptPubKey.SetDestination(CBitcoinAddress(address.toStdString()).Get());
-            CTxOut txout(amount, scriptPubKey);
-            txDummy.vout.push_back(txout);
+            txDummy.AddOutput(scriptPubKey, amount);
         }
 
         // calculation
@@ -512,8 +511,7 @@ void CoinControlDialog::updateLabels(WalletModel *model, QDialog* dialog)
             if (nChange > 0)
             {
                 // Add a change address in the outputs
-                CTxOut txout(0, (CScript)vector<unsigned char>(24, 0));
-                txDummy.vout.push_back(txout);
+                txDummy.AddOutput((CScript)vector<unsigned char>(24, 0), nChange);
             }
 
             // Bytes
