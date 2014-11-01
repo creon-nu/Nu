@@ -78,7 +78,7 @@ Given(/^a node "(.*?)" with an empty wallet and with avatar mode disabled$/) do 
     links: @nodes.values.map(&:name),
     args: {
       debug: true,
-      timetravel: 5*24*3600,
+      timetravel: timeshift,
       avatar: false,
     },
     remove_wallet_before_startup: true,

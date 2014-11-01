@@ -86,7 +86,7 @@
           </column>
           <column>
            <property name="text">
-            <string>Interest rate</string>
+            <string>Annual interest rate</string>
            </property>
           </column>
          </widget>
