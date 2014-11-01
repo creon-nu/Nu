@@ -183,16 +183,20 @@ class CoinContainer
       params: params,
       id: 'jsonrpc',
     }
+    result = raw_rpc(unit, data.to_json)
+    raise result.inspect if result["error"]
+    result["result"]
+  end
+
+  def raw_rpc(unit, body)
     rpc_port = @rpc_ports.fetch(unit)
     url = "http://localhost:#{rpc_port}/"
     auth = {
       username: "bob",
       password: "bar",
     }
-    response = HTTParty.post url, body: data.to_json, headers: { 'Content-Type' => 'application/json' }, basic_auth: auth
-    result = JSON.parse(response.body)
-    raise result.inspect if result["error"]
-    result["result"]
+    response = HTTParty.post url, body: body, headers: { 'Content-Type' => 'application/json' }, basic_auth: auth
+    JSON.parse(response.body)
   end
 
   def wait_for_boot
