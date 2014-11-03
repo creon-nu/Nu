@@ -34,7 +34,7 @@
        </column>
        <column>
         <property name="text">
-         <string>Interest rate (annual percentage)</string>
+         <string>Annual interest rate</string>
         </property>
        </column>
       </widget>

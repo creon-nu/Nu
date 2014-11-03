@@ -4,5 +4,5 @@ Feature: There is no minimum difficulty when the network has not enough minting
   Scenario:
     Given a network with nodes "Alice" and "Bob" able to mint
     When the nodes travel to the Nu protocol v05 switch time
-    And node "Alice" finds 3 blocks at 50 days interval
+    And node "Alice" finds 3 blocks at 200 days interval
     Then the difficulty should be below 0.00023

@@ -60,7 +60,7 @@
           <item>
            <widget class="QValidatedLineEdit" name="unparkAddress">
             <property name="toolTip">
-             <string>Enter a NuBits address where unsparked coins will be sent</string>
+             <string>Enter a NuBits address where unparked coins will be sent</string>
             </property>
             <property name="maxLength">
              <number>34</number>

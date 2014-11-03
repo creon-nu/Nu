@@ -393,7 +393,12 @@ Object voteToJSON(const CVote& vote)
     }
     result.push_back(Pair("parkrates", parkRateVotes));
 
-    result.push_back(Pair("motionhash", vote.hashMotion.GetHex()));
+    Array motionVotes;
+    BOOST_FOREACH(const uint160& motionVote, vote.vMotion)
+    {
+        motionVotes.push_back(motionVote.GetHex());
+    }
+    result.push_back(Pair("motions", motionVotes));
 
     return result;
 }
@@ -2900,20 +2905,6 @@ Value getvote(const Array& params, bool fHelp)
 }
 
 
-Value setmotionvote(const Array& params, bool fHelp)
-{
-    if (fHelp || params.size() != 1)
-        throw runtime_error(
-            "setmotionvote <motion hash>\n"
-            "<motionhash> is the hash of the motion to vote for.");
-
-    string encodedHash = params[0].get_str();
-    pwalletMain->vote.hashMotion.SetHex(encodedHash);
-    pwalletMain->SaveVote();
-
-    return Value::null;
-}
-
 CVote SampleVote()
 {
     CVote sample;
@@ -2939,7 +2930,8 @@ CVote SampleVote()
     parkRateVote.vParkRate.push_back(CParkRate(15, 13 * COIN_PARK_RATE / COIN));
     sample.vParkRateVote.push_back(parkRateVote);
 
-    sample.hashMotion.SetHex("8151325dcdbae9e0ff95f9f9658432dbedfdb209");
+    sample.vMotion.push_back(uint160("8151325dcdbae9e0ff95f9f9658432dbedfdb209"));
+    sample.vMotion.push_back(uint160("3f786850e387550fdab836ed7e6dc881de23001b"));
 
     return sample;
 }
@@ -2958,8 +2950,11 @@ Value setvote(const Array& params, bool fHelp)
 
     BOOST_FOREACH(const Pair& voteAttribute, objVote)
     {
-        if (voteAttribute.name_ == "motionhash")
-            vote.hashMotion.SetHex(voteAttribute.value_.get_str());
+        if (voteAttribute.name_ == "motions")
+        {
+            BOOST_FOREACH(const Value& motionVoteObject, voteAttribute.value_.get_array())
+                vote.vMotion.push_back(uint160(motionVoteObject.get_str()));
+        }
         else if (voteAttribute.name_ == "custodians")
         {
             BOOST_FOREACH(const Value& custodianVoteObject, voteAttribute.value_.get_array())
@@ -3100,10 +3095,14 @@ Value getmotions(const Array& params, bool fHelp)
 
         const CVote& vote = pindex->vote;
 
-        MotionResult& result = mapMotion[vote.hashMotion];
-        result.nBlocks++;
+        BOOST_FOREACH(const uint160& hashMotion, vote.vMotion)
+        {
+            MotionResult& result = mapMotion[hashMotion];
+            result.nBlocks++;
+            result.nShareDaysDestroyed += vote.nCoinAgeDestroyed;
+        }
+
         total.nBlocks++;
-        result.nShareDaysDestroyed += vote.nCoinAgeDestroyed;
         total.nShareDaysDestroyed += vote.nCoinAgeDestroyed;
     }
 
@@ -4465,7 +4464,6 @@ static const CRPCCommand vRPCCommands[] =
     { "sendalert",              &sendalert,              false},
     { "getvote",                &getvote,                true },
     { "setvote",                &setvote,                true },
-    { "setmotionvote",          &setmotionvote,          true },
     { "liquidityinfo",          &liquidityinfo,          false},
     { "getliquidityinfo",       &getliquidityinfo,       false},
     { "getmotions",             &getmotions,             true },
@@ -4677,7 +4675,7 @@ string JSONRPCRequest(const string& strMethod, const Array& params, const Value&
     return write_string(Value(request), false) + "\n";
 }
 
-string JSONRPCReply(const Value& result, const Value& error, const Value& id)
+Object JSONRPCReplyObj(const Value& result, const Value& error, const Value& id)
 {
     Object reply;
     if (error.type() != null_type)
@@ -4686,6 +4684,12 @@ string JSONRPCReply(const Value& result, const Value& error, const Value& id)
         reply.push_back(Pair("result", result));
     reply.push_back(Pair("error", error));
     reply.push_back(Pair("id", id));
+    return reply;
+}
+
+string JSONRPCReply(const Value& result, const Value& error, const Value& id)
+{
+    Object reply = JSONRPCReplyObj(result, error, id);
     return write_string(Value(reply), false) + "\n";
 }
 
@@ -4807,6 +4811,59 @@ int GetRPCPort(unsigned char cUnit)
     port += unitIndex;
 
     return port;
+}
+
+static Object JSONRPCExecOne(const Value& request)
+{
+    Object rpc_result;
+    Object req = request.get_obj();
+    Value id = Value::null;
+
+    try {
+        id = find_value(req, "id");
+
+        // Parse method
+        Value valMethod = find_value(req, "method");
+        if (valMethod.type() == null_type)
+            throw JSONRPCError(-32600, "Missing method");
+        if (valMethod.type() != str_type)
+            throw JSONRPCError(-32600, "Method must be a string");
+        string strMethod = valMethod.get_str();
+        if (strMethod != "getwork" && strMethod != "getblocktemplate")
+            printf("ThreadRPCServer %c method=%s\n", pwalletMain->Unit(), strMethod.c_str());
+
+        // Parse params
+        Value valParams = find_value(req, "params");
+        Array params;
+        if (valParams.type() == array_type)
+            params = valParams.get_array();
+        else if (valParams.type() == null_type)
+            params = Array();
+        else
+            throw JSONRPCError(-32600, "Params must be an array");
+
+        Value result = tableRPC.execute(strMethod, params);
+        rpc_result = JSONRPCReplyObj(result, Value::null, id);
+    }
+    catch (Object& objError)
+    {
+        rpc_result = JSONRPCReplyObj(Value::null, objError, id);
+    }
+    catch (std::exception& e)
+    {
+        rpc_result = JSONRPCReplyObj(Value::null, JSONRPCError(-32700, e.what()), id);
+    }
+
+    return rpc_result;
+}
+
+static string JSONRPCExecBatch(const Array& vReq)
+{
+    Array ret;
+    for (unsigned int reqIdx = 0; reqIdx < vReq.size(); reqIdx++)
+        ret.push_back(JSONRPCExecOne(vReq[reqIdx]));
+
+    return write_string(Value(ret), false) + "\n";
 }
 
 CCriticalSection cs_RPCConfigError;
@@ -4946,37 +5003,22 @@ void ThreadRPCServer2(void* parg)
         {
             // Parse request
             Value valRequest;
-            if (!read_string(strRequest, valRequest) || valRequest.type() != obj_type)
+            if (!read_string(strRequest, valRequest))
                 throw JSONRPCError(-32700, "Parse error");
-            const Object& request = valRequest.get_obj();
 
-            // Parse id now so errors from here on will have the id
-            id = find_value(request, "id");
-
-            // Parse method
-            Value valMethod = find_value(request, "method");
-            if (valMethod.type() == null_type)
-                throw JSONRPCError(-32600, "Missing method");
-            if (valMethod.type() != str_type)
-                throw JSONRPCError(-32600, "Method must be a string");
-            string strMethod = valMethod.get_str();
-            if (strMethod != "getwork" && strMethod != "getblocktemplate")
-                printf("ThreadRPCServer %c method=%s\n", pwalletMain->Unit(), strMethod.c_str());
-
-            // Parse params
-            Value valParams = find_value(request, "params");
-            Array params;
-            if (valParams.type() == array_type)
-                params = valParams.get_array();
-            else if (valParams.type() == null_type)
-                params = Array();
-            else
-                throw JSONRPCError(-32600, "Params must be an array");
-
-            Value result = tableRPC.execute(strMethod, params);
+            string strReply;
+            if (valRequest.type() == obj_type) {
+              // singleton request
+              Object result;
+              result = JSONRPCExecOne(valRequest);
+              strReply = write_string(Value(result), false) + "\n";
+            } else if (valRequest.type() == array_type) {
+              // array of requests
+              strReply = JSONRPCExecBatch(valRequest.get_array());
+            } else
+              throw JSONRPCError(-32600, "Top-level object parse error");
 
             // Send reply
-            string strReply = JSONRPCReply(result, Value::null, id);
             stream << HTTPReply(200, strReply) << std::flush;
         }
         catch (Object& objError)

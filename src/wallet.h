@@ -187,7 +187,7 @@ public:
     std::string SendMoney(CScript scriptPubKey, int64 nValue, CWalletTx& wtxNew, bool fAskFee=false);
     std::string SendMoneyToBitcoinAddress(const CBitcoinAddress& address, int64 nValue, CWalletTx& wtxNew, bool fAskFee=false);
     std::string Park(int64 nValue, int64 nDuration, const CBitcoinAddress& unparkAddress, CWalletTx& wtxNew, bool fAskFee=false);
-    bool SendUnparkTransactions(std::vector<CWalletTx> vtxRet);
+    bool SendUnparkTransactions(std::vector<CWalletTx>& vtxRet);
     bool SendUnparkTransactions() { std::vector<CWalletTx> vtxRet; return SendUnparkTransactions(vtxRet); }
     void CheckUnparkableOutputs();
 

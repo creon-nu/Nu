@@ -1,5 +1,5 @@
 Feature: The client keeps track of the total amount of NuBits parked
-  Scenario: Total parked after NuBits are parked and unparked
+  Scenario: Total parked after parking
     Given a network with nodes "Alice" and "Bob" able to mint
     Then the total parked NuBits should reach "0"
 

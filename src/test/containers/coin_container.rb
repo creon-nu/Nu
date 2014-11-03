@@ -5,6 +5,7 @@ class CoinContainer
   def initialize(options = {})
     default_options = {
       image: "nubit/base",
+      bind_code: true,
       shutdown_at_exit: true,
       delete_at_exit: false,
       remove_addr_after_shutdown: true,
@@ -48,6 +49,7 @@ class CoinContainer
       logtimestamps: true,
       keypool: 1,
       stakegen: false,
+      unpark: false,
     }
 
     args = default_args.merge(options[:args] || {})
@@ -73,17 +75,17 @@ class CoinContainer
     end
 
     if options[:remove_wallet_before_startup]
-      bash_cmds += ["rm -f /.nu/testnet/wallet*.dat"]
+      bash_cmds += ["rm -f ~/.nu/testnet/wallet*.dat"]
     end
 
     bash_cmds += ["./nud " + cmd_args.join(" ")]
 
     if options[:remove_addr_after_shutdown]
-      bash_cmds += ["rm /.nu/testnet/addr.dat"]
+      bash_cmds += ["rm ~/.nu/testnet/addr.dat"]
     end
 
     if options[:remove_wallet_after_shutdown]
-      bash_cmds += ["rm /.nu/testnet/wallet*.dat"]
+      bash_cmds += ["rm ~/.nu/testnet/wallet*.dat"]
     end
 
     command = [
@@ -117,24 +119,42 @@ class CoinContainer
       end
     end
 
-    node_container.start(
-      'Binds' => ["#{File.expand_path('../../..', __FILE__)}:/code"],
+    start_options = {
       'PortBindings' => {
         "15001/tcp" => ['127.0.0.1'],
         "15002/tcp" => ['127.0.0.1'],
         "7895/tcp" => ['127.0.0.1'],
       },
       'Links' => links.map { |link_name, alias_name| "#{link_name}:#{alias_name}" },
-    )
+    }
+
+    if options[:bind_code]
+      start_options['Binds'] = ["#{File.expand_path('../../..', __FILE__)}:/code"]
+    end
+
+    sleep 0.1
+    node_container.start(start_options)
 
     @container = node_container
     @json = @container.json
     @name = @json["Name"]
 
-    ports = node_container.json["NetworkSettings"]["Ports"]
-    if ports.nil?
-      raise "Unable to get port. Usualy this means the daemon process failed to start."
+    retries = 0
+    begin
+      ports = node_container.json["NetworkSettings"]["Ports"]
+      if ports.nil?
+        raise "Unable to get port. Usualy this means the daemon process failed to start. Container was #{@name}"
+      end
+    rescue
+      if retries >= 3
+        raise
+      else
+        sleep 0.1
+        retries += 1
+        retry
+      end
     end
+
     @rpc_ports = {
       'S' => ports["15001/tcp"].first["HostPort"].to_i,
       'B' => ports["15002/tcp"].first["HostPort"].to_i,
@@ -163,16 +183,20 @@ class CoinContainer
       params: params,
       id: 'jsonrpc',
     }
+    result = raw_rpc(unit, data.to_json)
+    raise result.inspect if result["error"]
+    result["result"]
+  end
+
+  def raw_rpc(unit, body)
     rpc_port = @rpc_ports.fetch(unit)
     url = "http://localhost:#{rpc_port}/"
     auth = {
       username: "bob",
       password: "bar",
     }
-    response = HTTParty.post url, body: data.to_json, headers: { 'Content-Type' => 'application/json' }, basic_auth: auth
-    result = JSON.parse(response.body)
-    raise result.inspect if result["error"]
-    result["result"]
+    response = HTTParty.post url, body: body, headers: { 'Content-Type' => 'application/json' }, basic_auth: auth
+    JSON.parse(response.body)
   end
 
   def wait_for_boot
