@@ -165,7 +165,9 @@ namespace json_spirit
 
         void output_real( const Value_type& value )
         {
-            std::string str = strprintf("%.8f", value.get_real());
+            std::ostringstream out;
+            out << std::showpoint << std::fixed << std::setprecision(4) << value.get_real();
+            std::string str = out.str();
 
             // Right-trim excess 0's before the decimal point:
             int nTrim = 0;
@@ -174,7 +176,7 @@ namespace json_spirit
             if (nTrim)
                 str.erase(str.size()-nTrim, nTrim);
 
-            os_ << str;
+            os_ << String_type(str.begin(), str.end());
         }
 
         void output( const String_type& s )
