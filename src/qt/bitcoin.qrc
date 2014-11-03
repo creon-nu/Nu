@@ -1,4 +1,8 @@
 <RCC>
+    <qresource prefix="/styles">
+        <file alias="nubits.qss">res/styles/nubits.qss</file>
+        <file alias="nushares.qss">res/styles/nushares.qss</file>
+    </qresource>
     <qresource prefix="/icons">
         <file alias="nu">res/icons/nu.png</file>
         <file alias="address-book">res/icons/address-book.png</file>
@@ -43,6 +47,8 @@
         <file alias="about">res/images/about.png</file>
         <file alias="splash">res/images/nu_splash.png</file>
         <file alias="qrcode">res/images/qrcode.png</file>
+        <file>res/images/nubitslogotext.png</file>
+        <file>res/images/nushareslogotext.png</file>
     </qresource>
     <qresource prefix="/movies">
         <file alias="update_spinner">res/movies/update_spinner.mng</file>
@@ -80,5 +86,8 @@
         <file alias="uk">locale/bitcoin_uk.qm</file>
         <file alias="zh_CN">locale/bitcoin_zh_CN.qm</file>
         <file alias="zh_TW">locale/bitcoin_zh_TW.qm</file>
+    </qresource>
+    <qresource prefix="/fonts">
+        <file alias="rob_l">res/fonts/Roboto-Light.ttf</file>
     </qresource>
 </RCC>
