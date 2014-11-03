@@ -166,7 +166,7 @@ namespace json_spirit
         void output_real( const Value_type& value )
         {
             std::ostringstream out;
-            out << std::showpoint << std::fixed << std::setprecision(4) << value.get_real();
+            out << std::showpoint << std::fixed << std::setprecision(8) << value.get_real();
             std::string str = out.str();
 
             // Right-trim excess 0's before the decimal point:
