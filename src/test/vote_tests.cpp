@@ -13,15 +13,13 @@ BOOST_AUTO_TEST_CASE(reload_vote_from_script_tests)
     CVote vote;
 
     CCustodianVote custodianVote;
-    CBitcoinAddress custodianAddress;
-    custodianAddress.SetHash160(123465, 'B');
+    CBitcoinAddress custodianAddress(CKeyID(123465), 'B');
     custodianVote.SetAddress(custodianAddress);
     custodianVote.nAmount = 100 * COIN;
     vote.vCustodianVote.push_back(custodianVote);
 
     CCustodianVote custodianVote2;
-    CBitcoinAddress custodianAddress2;
-    custodianAddress2.SetScriptHash160(555555555, 'B');
+    CBitcoinAddress custodianAddress2(CKeyID(555555555), 'B');
     custodianVote2.SetAddress(custodianAddress2);
     custodianVote2.nAmount = 5.5 * COIN;
     vote.vCustodianVote.push_back(custodianVote2);
@@ -468,12 +466,12 @@ BOOST_AUTO_TEST_CASE(create_currency_coin_bases)
     BOOST_CHECK_EQUAL('B', tx.cUnit);
     BOOST_CHECK_EQUAL(1, tx.vout.size());
     BOOST_CHECK_EQUAL(8 * COIN, tx.vout[0].nValue);
-    CBitcoinAddress address;
-    BOOST_CHECK(ExtractAddress(tx.vout[0].scriptPubKey, address, tx.cUnit));
-    BOOST_CHECK_EQUAL(uint160(1).ToString(), address.GetHash160().ToString());
+    CTxDestination address;
+    BOOST_CHECK(ExtractDestination(tx.vout[0].scriptPubKey, address));
+    BOOST_CHECK_EQUAL(uint160(1).ToString(), boost::get<CKeyID>(address).ToString());
 
     // This custodian has already been elected
-    mapAlreadyElected[address] = new CBlockIndex;
+    mapAlreadyElected[CBitcoinAddress(address, 'B')] = new CBlockIndex;
 
     // He should not receive any new currency
     BOOST_CHECK(GenerateCurrencyCoinBases(vVote, mapAlreadyElected, vCurrencyCoinBase));
@@ -496,11 +494,11 @@ BOOST_AUTO_TEST_CASE(create_currency_coin_bases)
     BOOST_CHECK_EQUAL('B', tx.cUnit);
     BOOST_CHECK_EQUAL(2, tx.vout.size());
     BOOST_CHECK_EQUAL(8 * COIN, tx.vout[0].nValue);
-    BOOST_CHECK(ExtractAddress(tx.vout[0].scriptPubKey, address, tx.cUnit));
-    BOOST_CHECK_EQUAL(uint160(1).ToString(), address.GetHash160().ToString());
+    BOOST_CHECK(ExtractDestination(tx.vout[0].scriptPubKey, address));
+    BOOST_CHECK_EQUAL(uint160(1).ToString(), boost::get<CKeyID>(address).ToString());
     BOOST_CHECK_EQUAL(5 * COIN, tx.vout[1].nValue);
-    BOOST_CHECK(ExtractAddress(tx.vout[1].scriptPubKey, address, tx.cUnit));
-    BOOST_CHECK_EQUAL(uint160(2).ToString(), address.GetHash160().ToString());
+    BOOST_CHECK(ExtractDestination(tx.vout[1].scriptPubKey, address));
+    BOOST_CHECK_EQUAL(uint160(2).ToString(), boost::get<CKeyID>(address).ToString());
 
     // But if they have the same address
     uint160 hashAddress = vVote[1].vCustodianVote.front().hashAddress;
@@ -523,8 +521,8 @@ BOOST_AUTO_TEST_CASE(create_currency_coin_bases)
     BOOST_CHECK_EQUAL('B', tx.cUnit);
     BOOST_CHECK_EQUAL(1, tx.vout.size());
     BOOST_CHECK_EQUAL(5 * COIN, tx.vout[0].nValue);
-    BOOST_CHECK(ExtractAddress(tx.vout[0].scriptPubKey, address, tx.cUnit));
-    BOOST_CHECK_EQUAL(uint160(1).ToString(), address.GetHash160().ToString());
+    BOOST_CHECK(ExtractDestination(tx.vout[0].scriptPubKey, address));
+    BOOST_CHECK_EQUAL(uint160(1).ToString(), boost::get<CKeyID>(address).ToString());
 
     // If any vote is invalid the generation should fail
     vVote[1].vCustodianVote.back().cUnit = 'S';
@@ -600,7 +598,7 @@ BOOST_AUTO_TEST_CASE(vote_v1_unserialization)
     CVote vote;
     BOOST_CHECK(ExtractVote(voteV1Script, vote));
 
-    BOOST_CHECK_EQUAL(CBitcoinAddress(uint160(123465), 'B').ToString(), vote.vCustodianVote[0].GetAddress().ToString());
+    BOOST_CHECK_EQUAL(CBitcoinAddress(CKeyID(123465), 'B').ToString(), vote.vCustodianVote[0].GetAddress().ToString());
 }
 
 BOOST_AUTO_TEST_CASE(vote_before_multi_motion_unserialization)

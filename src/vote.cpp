@@ -458,7 +458,7 @@ bool GenerateCurrencyCoinBases(const std::vector<CVote> vVote, std::map<CBitcoin
             uint64 amount = grantedAmount.second;
 
             CScript scriptPubKey;
-            scriptPubKey.SetBitcoinAddress(address, cUnit);
+            scriptPubKey.SetDestination(address.Get());
 
             tx.vout.push_back(CTxOut(amount, scriptPubKey));
         }

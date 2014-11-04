@@ -13,6 +13,7 @@
 #include "kernel.h"
 #include "wallet.h"
 #include "liquidityinfo.h"
+#include "coincontrol.h"
 #include <boost/algorithm/string/replace.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>
@@ -458,6 +459,67 @@ CTransaction::GetLegacySigOpCount() const
     return nSigOps;
 }
 
+void CTransaction::AddOutput(const CScript script, int64 nAmount)
+{
+    if (cUnit == 'S' && nSplitShareOutputs > 0 && nAmount >= nSplitShareOutputs * 2)
+    {
+        int nOutputs = nAmount / nSplitShareOutputs;
+        int64 nRemainingAmount = nAmount;
+
+        for (int i = 0; i < nOutputs - 1; i++)
+        {
+            int64 nAmount = nSplitShareOutputs;
+            vout.push_back(CTxOut(nAmount, script));
+            nRemainingAmount -= nAmount;
+        }
+        vout.push_back(CTxOut(nRemainingAmount, script));
+    }
+    else
+        vout.push_back(CTxOut(nAmount, script));
+}
+
+void CTransaction::AddChange(int64 nChange, CScript& scriptChange, const CCoinControl* coinControl, CReserveKey& reservekey)
+{
+    // coin control: send change to custom address
+    if (coinControl && !boost::get<CNoDestination>(&coinControl->destChange))
+        scriptChange.SetDestination(coinControl->destChange);
+    else if (!GetBoolArg("-avatar", (cUnit == 'S'))) // ppcoin: not avatar mode; nu: avatar mode enabled by default only on Share wallet to avoid change being sent to hidden address
+    {
+        // send change to newly generated address
+        //
+        // Note: We use a new key here to keep it from being obvious which side is the change.
+        //  The drawback is that by not reusing a previous key, the change may be lost if a
+        //  backup is restored, if the backup doesn't have the new private key for the change.
+        //  If we reused the old key, it would be possible to add code to look for and
+        //  rediscover unknown transactions that were written with keys of ours to recover
+        //  post-backup change.
+
+        // Reserve a new key pair from key pool
+        CPubKey vchPubKey = reservekey.GetReservedKey();
+
+        scriptChange.SetDestination(vchPubKey.GetID());
+    }
+
+    // nu: split change if appropriate
+    int nChangeOutputs;
+    if (cUnit == 'S' && nSplitShareOutputs > 0 && nChange >= nSplitShareOutputs * 2)
+        nChangeOutputs = nChange / nSplitShareOutputs;
+    else
+        nChangeOutputs = 1;
+
+    int64 nChangeRemaining = nChange;
+    for (int i = 0; i < nChangeOutputs - 1; i++)
+    {
+        // Insert split change txn at random position:
+        vector<CTxOut>::iterator position = vout.begin()+GetRandInt(vout.size());
+        int64 nAmount = nSplitShareOutputs;
+        vout.insert(position, CTxOut(nAmount, scriptChange));
+        nChangeRemaining -= nAmount;
+    }
+    // Insert remaining change txn at random position:
+    vector<CTxOut>::iterator position = vout.begin()+GetRandInt(vout.size());
+    vout.insert(position, CTxOut(nChangeRemaining, scriptChange));
+}
 
 int CMerkleTx::SetMerkleBranch(const CBlock* pblock)
 {
@@ -595,6 +657,53 @@ bool CTransaction::CheckTransaction() const
     return true;
 }
 
+int64 CTransaction::GetMinFee(unsigned int nBlockSize, bool fAllowFree,
+                              enum GetMinFee_mode mode, unsigned int nBytes) const
+{
+    // Base fee is either MIN_TX_FEE or MIN_RELAY_TX_FEE
+    int64 nBaseFee = (mode == GMF_RELAY) ? GetMinRelayFee() : GetUnitMinFee();
+
+    unsigned int nNewBlockSize = nBlockSize + nBytes;
+    int64 nMinFee = (1 + (int64)nBytes / 1000) * nBaseFee;
+
+    if (fAllowFree)
+    {
+        if (nBlockSize == 1)
+        {
+            // Transactions under 10K are free
+            // (about 4500 BTC if made of 50 BTC inputs)
+            if (nBytes < 10000)
+                nMinFee = 0;
+        }
+        else
+        {
+            // Free transaction area
+            if (nNewBlockSize < 27000)
+                nMinFee = 0;
+        }
+    }
+
+    // To limit dust spam, require MIN_TX_FEE/MIN_RELAY_TX_FEE if any output is less than 0.01
+    if (nMinFee < nBaseFee)
+    {
+        BOOST_FOREACH(const CTxOut& txout, vout)
+            if (txout.nValue < CENT)
+                nMinFee = nBaseFee;
+    }
+
+    // Raise the price as the block approaches full
+    if (nBlockSize != 1 && nNewBlockSize >= MAX_BLOCK_SIZE_GEN/2)
+    {
+        if (nNewBlockSize >= MAX_BLOCK_SIZE_GEN)
+            return MAX_MONEY;
+        nMinFee *= MAX_BLOCK_SIZE_GEN / (MAX_BLOCK_SIZE_GEN - nNewBlockSize);
+    }
+
+    if (!MoneyRange(nMinFee))
+        nMinFee = MAX_MONEY;
+    return nMinFee;
+}
+
 bool CTxMemPool::accept(CTxDB& txdb, CTransaction &tx, bool fCheckInputs,
                         bool* pfMissingInputs)
 {
@@ -692,9 +801,10 @@ bool CTxMemPool::accept(CTxDB& txdb, CTransaction &tx, bool fCheckInputs,
         unsigned int nSize = ::GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION);
 
         // Don't accept it if it can't get into a block
-        if (!tx.IsUnpark() && nFees < tx.GetMinFee(1000, false, GMF_RELAY))
+        int64 txMinFee = tx.GetMinFee(1000, false, GMF_RELAY, nSize);
+        if (!tx.IsUnpark() && nFees < txMinFee)
         {
-            printf("Fees: %s, minimum: %s\n", FormatMoney(nFees).c_str(), FormatMoney(tx.GetMinFee(1000, false, GMF_RELAY)).c_str());
+            printf("Fees: %s, minimum: %s\n", FormatMoney(nFees).c_str(), FormatMoney(txMinFee).c_str());
             return error("CTxMemPool::accept() : not enough fees");
         }
 
@@ -1347,9 +1457,10 @@ bool CTransaction::ConnectInputs(CTxDB& txdb, MapPrevTx inputs,
                     return error("ConnectInputs() : unpark transaction with too many outputs");
 
                 uint64 nDuration;
-                CBitcoinAddress unparkAddress;
-                if (!ExtractPark(txPrev.vout[prevout.n].scriptPubKey, txPrev.cUnit, nDuration, unparkAddress))
+                CTxDestination unparkDestination;
+                if (!ExtractPark(txPrev.vout[prevout.n].scriptPubKey, nDuration, unparkDestination))
                     return error("ConnectInputs() : ExtractPark failed");
+                CBitcoinAddress unparkAddress(unparkDestination, txPrev.cUnit);
 
                 CBlockIndex *pindex = NULL;
                 if (txindex.GetDepthInMainChain(pindex) < nDuration)
@@ -1365,11 +1476,14 @@ bool CTransaction::ConnectInputs(CTxDB& txdb, MapPrevTx inputs,
                 if (GetValueOut() > nMaxValueOut)
                     return error("ConnectInputs() : invalid unpark value");
 
-                CBitcoinAddress outAddress;
-                if (!ExtractAddress(vout[0].scriptPubKey, outAddress, cUnit))
+                CTxDestination outDestination;
+                if (!ExtractDestination(vout[0].scriptPubKey, outDestination))
                     return error("ConnectInputs() : ExtractAddress failed");
+                CBitcoinAddress outAddress(outDestination, cUnit);
 
-                if (outAddress.GetHash160() != unparkAddress.GetHash160())
+                const CKeyID& outID = get<CKeyID>(outDestination);
+                const CKeyID& unparkID = get<CKeyID>(unparkDestination);
+                if (outID != unparkID)
                     return error("ConnectInputs() : invalid unpark address");
 
                 fValidUnpark = true;
@@ -1499,9 +1613,10 @@ bool CBlock::DisconnectBlock(CTxDB& txdb, CBlockIndex* pindex)
             if (tx.vout.size() < 1)
                 return error("Connect() : not output in CurrencyCoinBase");
 
-            CBitcoinAddress address;
-            if (!ExtractAddress(tx.vout[0].scriptPubKey, address, tx.cUnit))
+            CTxDestination destination;
+            if (!ExtractDestination(tx.vout[0].scriptPubKey, destination))
                 return error("Connect() : ExtractAddress on CurrencyCoinBase failed");
+            CBitcoinAddress address(destination, tx.cUnit);
 
             {
                 LOCK(cs_mapElectedCustodian);
@@ -1656,9 +1771,10 @@ bool CBlock::ConnectBlock(CTxDB& txdb, CBlockIndex* pindex)
 
                 BOOST_FOREACH(const CTxOut& txo, tx.vout)
                 {
-                    CBitcoinAddress address;
-                    if (!ExtractAddress(txo.scriptPubKey, address, tx.cUnit))
+                    CTxDestination destination;
+                    if (!ExtractDestination(txo.scriptPubKey, destination))
                         return error("Connect() : ExtractAddress on CurrencyCoinBase failed");
+                    CBitcoinAddress address(destination, tx.cUnit);
 
                     if (mapElectedCustodian.count(address))
                         return error("Connect() : custodian has already been elected");
@@ -2061,9 +2177,10 @@ bool CBlock::AddToBlockIndex(unsigned int nFile, unsigned int nBlockPos)
 
             BOOST_FOREACH(const CTxOut& txo, tx.vout)
             {
-                CBitcoinAddress address;
-                if (!ExtractAddress(txo.scriptPubKey, address, tx.cUnit))
+                CTxDestination destination;
+                if (!ExtractDestination(txo.scriptPubKey, destination))
                     return error("Unable to extract address from currency coinbase");
+                CBitcoinAddress address(destination, tx.cUnit);
 
                 CCustodianVote electedCustodian;
                 electedCustodian.SetAddress(address);
@@ -2422,7 +2539,12 @@ bool ProcessBlock(CNode* pfrom, CBlock* pblock)
             // Limited duplicity on stake: prevents block flood attack
             // Duplicate stake allowed only when there is orphan child block
             if (setStakeSeenOrphan.count(pblock2->GetProofOfStake()) && !mapOrphanBlocksByPrev.count(hash) && !Checkpoints::WantedByPendingSyncCheckpoint(hash))
-                return error("ProcessBlock() : duplicate proof-of-stake (%s, %d) for orphan block %s", pblock2->GetProofOfStake().first.ToString().c_str(), pblock2->GetProofOfStake().second, hash.ToString().c_str());
+            {
+                error("ProcessBlock() : duplicate proof-of-stake (%s, %d) for orphan block %s", pblock2->GetProofOfStake().first.ToString().c_str(), pblock2->GetProofOfStake().second, hash.ToString().c_str());
+                //pblock2 will not be needed, free it
+                delete pblock2;
+                return false;
+            }
             else
                 setStakeSeenOrphan.insert(pblock2->GetProofOfStake());
         }
@@ -3029,7 +3151,7 @@ bool static AlreadyHave(CTxDB& txdb, const CInv& inv)
 
 bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv)
 {
-    static map<CService, vector<unsigned char> > mapReuseKey;
+    static map<CService, CPubKey> mapReuseKey;
     RandAddSeedPerfmon();
     if (fDebug) {
         printf("%s ", DateTimeStrFormat(GetTime()).c_str());

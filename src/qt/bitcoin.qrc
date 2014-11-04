@@ -66,8 +66,7 @@
         <file alias="fa_IR">locale/bitcoin_fa_IR.qm</file>
         <file alias="fa">locale/bitcoin_fa.qm</file>
         <file alias="fi">locale/bitcoin_fi.qm</file>
-        <file alias="fr_CA">locale/bitcoin_fr_CA.qm</file>
-        <file alias="fr_FR">locale/bitcoin_fr_FR.qm</file>
+        <file alias="fr">locale/bitcoin_fr.qm</file>
         <file alias="he">locale/bitcoin_he.qm</file>
         <file alias="hr">locale/bitcoin_hr.qm</file>
         <file alias="hu">locale/bitcoin_hu.qm</file>
