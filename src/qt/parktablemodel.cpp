@@ -48,6 +48,9 @@ public:
         if (!ExtractPark(txo.scriptPubKey, nDuration, unparkAddress))
             return false;
 
+        if (!wallet->IsMine(txo))
+            return false;
+
         record.hash = out.hash;
         record.n = out.n;
 

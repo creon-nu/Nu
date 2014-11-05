@@ -499,6 +499,7 @@ int64 CWallet::GetDebit(const CTxIn &txin) const
 bool CWallet::IsChange(const CTxOut& txout, const CTransaction& tx) const
 {
     CTxDestination address;
+    txnouttype type;
 
     // TODO: fix handling of 'change' outputs. The assumption is that any
     // payment to a TX_PUBKEYHASH that is mine but isn't in the address book
@@ -507,8 +508,12 @@ bool CWallet::IsChange(const CTxOut& txout, const CTransaction& tx) const
     // a better way of identifying which outputs are 'the send' and which are
     // 'the change' will need to be implemented (maybe extend CWalletTx to remember
     // which output, if any, was change).
-    if (ExtractDestination(txout.scriptPubKey, address) && ::IsMine(*this, address))
+    if (ExtractDestination(txout.scriptPubKey, address, type) && ::IsMine(*this, address))
     {
+        // Park transaction may be mine because the wallet has the unpark address, but it's never change
+        if (type == TX_PARK)
+            return false;
+
         LOCK(cs_wallet);
         if (!mapAddressBook.count(address))
             return true;
@@ -615,7 +620,8 @@ void CWalletTx::GetAmounts(int64& nGeneratedImmature, int64& nGeneratedMature, l
 
         CTxDestination address;
         vector<unsigned char> vchPubKey;
-        if (!ExtractDestination(txout.scriptPubKey, address))
+        txnouttype type;
+        if (!ExtractDestination(txout.scriptPubKey, address, type))
         {
             printf("CWalletTx::GetAmounts: Unknown transaction type found, txid %s\n",
                    this->GetHash().ToString().c_str());
@@ -633,8 +639,8 @@ void CWalletTx::GetAmounts(int64& nGeneratedImmature, int64& nGeneratedMature, l
                 listSent.push_back(make_pair(address, txout.nValue));
         }
 
-        // Do not count parked amount as received unless it was unparked
-        if (IsParked(i) && !IsSpent(i))
+        // Do not count parked amount as received
+        if (type == TX_PARK)
             continue;
 
         if (pwallet->IsMine(txout))
@@ -1053,7 +1059,7 @@ int64 CWallet::GetParked() const
     {
         const CWalletTx* pcoin = &(*it).second;
         for (unsigned int i = 0; i < pcoin->vout.size(); i++)
-            if (!pcoin->IsSpent(i) && pcoin->IsParked(i))
+            if (!pcoin->IsSpent(i) && pcoin->IsParked(i) && IsMine(pcoin->vout[i]))
                 nTotal += pcoin->vout[i].nValue;
     }
     return nTotal;

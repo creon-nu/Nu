@@ -1546,8 +1546,13 @@ bool IsMine(const CKeyStore &keystore, const CScript& scriptPubKey)
 
 bool ExtractDestination(const CScript& scriptPubKey, CTxDestination& addressRet)
 {
-    vector<valtype> vSolutions;
     txnouttype whichType;
+    return ExtractDestination(scriptPubKey, addressRet, whichType);
+}
+
+bool ExtractDestination(const CScript& scriptPubKey, CTxDestination& addressRet, txnouttype& whichType)
+{
+    vector<valtype> vSolutions;
     if (!Solver(scriptPubKey, whichType, vSolutions))
         return false;
     if (whichType == TX_NULL_DATA)

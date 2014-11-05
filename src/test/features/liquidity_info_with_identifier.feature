@@ -8,5 +8,6 @@ Feature: Sending liquidity info with an identifier
     And all nodes reach the same height
     And node "Custodian" sends a liquidity of "1000" buy and "2000" sell on unit "B" from address "cust" with identifier "A"
     Then node "Alice" should reach a total liquidity info of "1000" buy and "2000" sell on unit "B"
+    And 1 second passes
     And node "Custodian" sends a liquidity of "10" buy and "5" sell on unit "B" from address "cust" with identifier "B"
     Then node "Alice" should reach a total liquidity info of "1010" buy and "2005" sell on unit "B"
