@@ -523,8 +523,8 @@ bool CWallet::IsChange(const CTxOut& txout, const CTransaction& tx) const
                 if (txin.prevout.n < prev.vout.size())
                 {
                     const CTxOut& prevout = prev.vout[txin.prevout.n];
-                    CBitcoinAddress inAddress;
-                    if (ExtractAddress(prevout.scriptPubKey, inAddress))
+                    CTxDestination inAddress;
+                    if (ExtractDestination(prevout.scriptPubKey, inAddress))
                     {
                         if (inAddress == address)
                             return true;
