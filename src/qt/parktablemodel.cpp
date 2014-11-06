@@ -43,9 +43,9 @@ public:
         const CTxOut& txo = wtx.vout[out.n];
 
         uint64 nDuration;
-        CBitcoinAddress unparkAddress;
+        CTxDestination unparkAddress;
 
-        if (!ExtractPark(txo.scriptPubKey, wtx.cUnit, nDuration, unparkAddress))
+        if (!ExtractPark(txo.scriptPubKey, nDuration, unparkAddress))
             return false;
 
         record.hash = out.hash;
@@ -54,7 +54,7 @@ public:
         record.time = wtx.nTime;
         record.amount = txo.nValue;
         record.duration = nDuration;
-        record.unparkAddress = unparkAddress.ToString();
+        record.unparkAddress = CBitcoinAddress(unparkAddress, wtx.cUnit).ToString();
 
         CBlockIndex *pindex = NULL;
         record.depth = wtx.GetDepthInMainChain(pindex);

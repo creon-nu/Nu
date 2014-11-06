@@ -58,6 +58,7 @@ public:
 private:
     QValueComboBox *unit;
     QCheckBox *display_addresses;
+    QCheckBox *coin_control_features;
 signals:
 
 public slots:
@@ -264,8 +265,12 @@ DisplayOptionsPage::DisplayOptionsPage(QWidget *parent):
     layout->addLayout(unit_hbox);
 
     display_addresses = new QCheckBox(tr("&Display addresses in transaction list"), this);
-    display_addresses->setToolTip(tr("Whether to show Nu addresses in the transaction list"));
+    display_addresses->setToolTip(tr("Whether to show addresses in the transaction list"));
     layout->addWidget(display_addresses);
+
+    coin_control_features = new QCheckBox(tr("Display coin control features (experts only!)"), this);
+    coin_control_features->setToolTip(tr("Whether to show coin control features or not"));
+    layout->addWidget(coin_control_features);
 
     layout->addStretch();
 
@@ -276,4 +281,5 @@ void DisplayOptionsPage::setMapper(MonitoredDataMapper *mapper)
 {
     mapper->addMapping(unit, OptionsModel::DisplayUnit);
     mapper->addMapping(display_addresses, OptionsModel::DisplayAddresses);
+    mapper->addMapping(coin_control_features, OptionsModel::CoinControlFeatures);
 }

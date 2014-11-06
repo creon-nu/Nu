@@ -42,9 +42,9 @@ SetupDummyInputs(CBasicKeyStore& keystoreRet, MapPrevTx& inputsRet)
     dummyTransactions[1].cUnit = 'S';
     dummyTransactions[1].vout.resize(2);
     dummyTransactions[1].vout[0].nValue = 21*CENT;
-    dummyTransactions[1].vout[0].scriptPubKey.SetBitcoinAddress(key[2].GetPubKey(), 'S');
+    dummyTransactions[1].vout[0].scriptPubKey.SetDestination(key[2].GetPubKey().GetID());
     dummyTransactions[1].vout[1].nValue = 22*CENT;
-    dummyTransactions[1].vout[1].scriptPubKey.SetBitcoinAddress(key[3].GetPubKey(), 'S');
+    dummyTransactions[1].vout[1].scriptPubKey.SetDestination(key[3].GetPubKey().GetID());
     inputsRet[dummyTransactions[1].GetHash()] = make_pair(CTxIndex(), dummyTransactions[1]);
 
     return dummyTransactions;
@@ -68,7 +68,7 @@ BOOST_AUTO_TEST_CASE(test_same_unit_in_transaction)
     t1.vin[2].prevout.n = 1;
     t1.vin[2].scriptSig << std::vector<unsigned char>(65, 0) << std::vector<unsigned char>(33, 4);
     t1.vout.resize(1);
-    t1.vout[0].nValue = 90*CENT;
+    t1.vout[0].nValue = 10*COIN;
     t1.vout[0].scriptPubKey << OP_1;
 
     // No unit defined
@@ -103,7 +103,7 @@ BOOST_AUTO_TEST_CASE(test_changing_unit_invalidates_signature)
     t1.vin[0].prevout.n = 1;
     t1.vin[0].scriptSig << std::vector<unsigned char>(65, 0);
     t1.vout.resize(1);
-    t1.vout[0].nValue = 11*CENT;
+    t1.vout[0].nValue = 11*COIN;
     t1.vout[0].scriptPubKey << OP_1;
     t1.cUnit = 'S';
 
@@ -119,10 +119,10 @@ BOOST_AUTO_TEST_CASE(test_changing_unit_invalidates_signature)
 BOOST_AUTO_TEST_CASE(address_use_unit)
 {
     // Invalid unit
-    BOOST_CHECK_THROW(CBitcoinAddress(1, '?'), runtime_error);
+    BOOST_CHECK_THROW(CBitcoinAddress(CKeyID(1), '?'), runtime_error);
 
-    BOOST_CHECK_EQUAL(CBitcoinAddress(uint160(0), 'B').ToString(), "B4T5ciTCkWauSqVAcVKy88ofjcSasUkSYU");
-    BOOST_CHECK_EQUAL(CBitcoinAddress(uint160(0), 'S').ToString(), "SMJ12qn9jNCCXJnTYRz5Yu9ZenERqvYwfg");
+    BOOST_CHECK_EQUAL(CBitcoinAddress(CKeyID(0), 'B').ToString(), "B4T5ciTCkWauSqVAcVKy88ofjcSasUkSYU");
+    BOOST_CHECK_EQUAL(CBitcoinAddress(CKeyID(0), 'S').ToString(), "SMJ12qn9jNCCXJnTYRz5Yu9ZenERqvYwfg");
 }
 
 BOOST_AUTO_TEST_CASE(serialize_keeps_unit)
@@ -137,7 +137,7 @@ BOOST_AUTO_TEST_CASE(serialize_keeps_unit)
     t1.vin[0].prevout.n = 1;
     t1.vin[0].scriptSig << std::vector<unsigned char>(65, 0);
     t1.vout.resize(1);
-    t1.vout[0].nValue = 11*CENT;
+    t1.vout[0].nValue = 11*COIN;
     t1.vout[0].scriptPubKey << OP_1;
     t1.cUnit = 'S';
     BOOST_CHECK(SignSignature(keystore, dummyTransactions[0], t1, 0));
@@ -150,7 +150,7 @@ BOOST_AUTO_TEST_CASE(serialize_keeps_unit)
     CDataStream stream2(vch, SER_DISK, CLIENT_VERSION);
     CTransaction t2;
     stream2 >> t2;
-    BOOST_CHECK_EQUAL(11*CENT, t2.vout[0].nValue);
+    BOOST_CHECK_EQUAL(11*COIN, t2.vout[0].nValue);
     BOOST_CHECK_EQUAL('S', t2.cUnit);
     BOOST_CHECK(t2.CheckTransaction());
 }

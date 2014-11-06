@@ -102,7 +102,7 @@ public:
 
     CBitcoinAddress GetCustodianAddress() const
     {
-        return CBitcoinAddress(Hash160(vchCustodianPubKey), cCustodianUnit);
+        return CBitcoinAddress(CKeyID(Hash160(vchCustodianPubKey)), cCustodianUnit);
     }
 
     uint256 GetHash() const
