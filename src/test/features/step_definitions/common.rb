@@ -165,7 +165,7 @@ When(/^node "(.*?)" finds (\d+) blocks$/) do |arg1, arg2|
   end
 end
 
-When(/^node "(.*?)" finds (\d+) blocks received by all nodes$/) do |arg1, arg2|
+When(/^node "(.*?)" finds (\d+) blocks received by all (?:nodes|other nodes)$/) do |arg1, arg2|
   step "node \"#{arg1}\" finds #{arg2} blocks"
   step "all nodes reach the same height"
 end
@@ -300,19 +300,40 @@ When(/^node "(.*?)" finds a block received by all other nodes$/) do |arg1|
   end
 end
 
+def debug_balance(node, unit_name)
+  require 'pp'
+  pp(
+    unconfirmed_balance: node.unit_rpc(unit(unit_name), "getbalance", "*", 0),
+    balance: node.unit_rpc(unit(unit_name), "getbalance"),
+    balance_all_accounts: node.unit_rpc(unit(unit_name), "getbalance", "*"),
+  )
+end
+
 Then(/^node "(.*?)" (?:should reach|reaches) a balance of "([^"]*?)"( NuBits| NuShares|)$/) do |arg1, arg2, unit_name|
   node = @nodes[arg1]
   amount = parse_number(arg2)
-  wait_for do
-    expect(node.unit_rpc(unit(unit_name), "getbalance")).to eq(amount)
+  begin
+    wait_for do
+      expect(node.unit_rpc(unit(unit_name), "getbalance")).to eq(amount)
+      expect(node.unit_rpc(unit(unit_name), "getbalance", "*")).to eq(amount)
+    end
+  rescue RSpec::Expectations::ExpectationNotMetError
+    debug_balance(node, unit_name)
+    raise
   end
 end
 
 Then(/^node "(.*?)" should have a balance of "([^"]*?)"( NuBits|)$/) do |arg1, arg2, unit_name|
   node = @nodes[arg1]
   amount = parse_number(arg2)
-  wait_for do
-    expect(node.unit_rpc(unit(unit_name), "getbalance")).to eq(amount)
+  begin
+    wait_for do
+      expect(node.unit_rpc(unit(unit_name), "getbalance")).to eq(amount)
+      expect(node.unit_rpc(unit(unit_name), "getbalance", "*")).to eq(amount)
+    end
+  rescue RSpec::Expectations::ExpectationNotMetError
+    debug_balance(node, unit_name)
+    raise
   end
 end
 
@@ -386,6 +407,7 @@ When(/^node "(.*?)" finds enough blocks to mature a Proof of Stake block$/) do |
 end
 
 When(/^node "(.*?)" parks "(.*?)" NuBits (?:for|during) (\d+) blocks$/) do |arg1, arg2, arg3|
+  time_travel(5)
   node = @nodes[arg1]
   amount = parse_number(arg2)
   blocks = arg3.to_i
@@ -393,12 +415,24 @@ When(/^node "(.*?)" parks "(.*?)" NuBits (?:for|during) (\d+) blocks$/) do |arg1
   node.unit_rpc('B', 'park', amount, blocks)
 end
 
+When(/^node "(.*?)" parks "(.*?)" NuBits (?:for|during) (\d+) blocks with "(.*?)" as unpark address$/) do |arg1, arg2, arg3, arg4|
+  time_travel(5)
+  node = @nodes[arg1]
+  amount = parse_number(arg2)
+  blocks = arg3.to_i
+  unpark_address = @addresses[arg4]
+
+  node.unit_rpc('B', 'park', amount, blocks, "", unpark_address)
+end
+
 When(/^node "(.*?)" unparks$/) do |arg1|
+  time_travel(5)
   node = @nodes[arg1]
   node.unit_rpc('B', 'unpark')
 end
 
 When(/^node "(.*?)" unparks to transaction "(.*?)"$/) do |arg1, arg2|
+  time_travel(5)
   node = @nodes[arg1]
   txs = node.unit_rpc('B', 'unpark')
   raise "No unpark transaction received" if txs.empty?
@@ -406,11 +440,13 @@ When(/^node "(.*?)" unparks to transaction "(.*?)"$/) do |arg1, arg2|
   @tx[arg2] = txs.first
 end
 
-Then(/^"(.*?)" should have "(.*?)" NuBits parked$/) do |arg1, arg2|
+Then(/^(?:node |)"(.*?)" should have "(.*?)" NuBits parked$/) do |arg1, arg2|
   node = @nodes[arg1]
   amount = parse_number(arg2)
   info = node.unit_rpc("B", "getinfo")
-  expect(info["parked"]).to eq(amount)
+  wait_for do
+    expect(info["parked"]).to eq(amount)
+  end
 end
 
 When(/^the nodes travel to the Nu protocol v(\d+) switch time$/) do |arg1|
@@ -434,10 +470,16 @@ Then(/^node "(.*?)" should have (\d+) (\w+) transactions?$/) do |arg1, arg2, uni
 end
 
 Then(/^the (\d+)\S+ transaction should be a send of "(.*?)" to "(.*?)"$/) do |arg1, arg2, arg3|
-  tx = @listtransactions[arg1.to_i - 1]
-  expect(tx["category"]).to eq("send")
-  expect(tx["amount"]).to eq(-parse_number(arg2))
-  expect(tx["address"]).to eq(@addresses[arg3])
+  begin
+    tx = @listtransactions[arg1.to_i - 1]
+    expect(tx["category"]).to eq("send")
+    expect(tx["amount"]).to eq(-parse_number(arg2))
+    expect(tx["address"]).to eq(@addresses[arg3])
+  rescue RSpec::Expectations::ExpectationNotMetError
+    require 'pp'
+    pp @listtransactions
+    raise
+  end
 end
 
 Then(/^the (\d+)\S+ transaction should be a receive of "(.*?)" to "(.*?)"$/) do |arg1, arg2, arg3|
@@ -445,6 +487,20 @@ Then(/^the (\d+)\S+ transaction should be a receive of "(.*?)" to "(.*?)"$/) do 
   expect(tx["category"]).to eq("receive")
   expect(tx["amount"]).to eq(parse_number(arg2))
   expect(tx["address"]).to eq(@addresses[arg3])
+end
+
+Then(/^the transaction should be a send of "(.*?)" to "(.*?)"$/) do |arg1, arg2|
+  step "the 1st transaction should be a send of \"#{arg1}\" to \"#{arg2}\""
+end
+
+Then(/^the transaction should be a receive of "(.*?)" to "(.*?)"$/) do |arg1, arg2|
+  step "the 1st transaction should be a receive of \"#{arg1}\" to \"#{arg2}\""
+end
+
+Then(/^the (\d+)st transaction should be the initial distribution of shares$/) do |arg1|
+  tx = @listtransactions[arg1.to_i - 1]
+  expect(tx["category"]).to eq("receive")
+  expect(tx["amount"]).to eq(parse_number("10,000,000"))
 end
 
 Then(/^block "(.*?)" should contain transaction "(.*?)"$/) do |arg1, arg2|
@@ -457,4 +513,8 @@ Then(/^node "(.*?)" prints the last block$/) do |arg1|
   node = @nodes[arg1]
   require 'pp'
   pp node.top_block
+end
+
+Then(/^(\d+) seconds? pass(?:es|)$/) do |arg1|
+  time_travel(arg1.to_i)
 end
