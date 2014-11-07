@@ -67,10 +67,11 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
 
                     if (ExtractDestination(txout.scriptPubKey, address) && IsMine(*wallet, address))
                     {
-                        // Received by Bitcoin Address
                         if (wtx.IsUnpark())
+                        {
                             sub.type = TransactionRecord::Unpark;
-                        else
+                        }
+                        else // Received by Bitcoin Address
                             sub.type = TransactionRecord::RecvWithAddress;
                         sub.address = CBitcoinAddress(address, wtx.cUnit).ToString();
                     }
@@ -123,6 +124,8 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
                 if (ExtractPark(txout.scriptPubKey, nParkDuration, unparkAddress))
                 {
                     fPark = true;
+                    if (nDebit == 0) // if the parking was not done by me, do not list the transaction
+                        continue;
                     TransactionRecord sub(hash, nTime);
                     sub.idx = parts.size();
                     sub.type = TransactionRecord::Park;

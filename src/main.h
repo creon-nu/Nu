@@ -447,6 +447,11 @@ public:
         return (nValue == 0 && ::IsParkRateResult(scriptPubKey));
     }
 
+    bool IsPark() const
+    {
+        return ::IsPark(scriptPubKey);
+    }
+
     uint256 GetHash() const
     {
         return SerializeHash(*this);
@@ -612,7 +617,7 @@ public:
     {
         if (nOut >= vout.size())
             throw std::runtime_error("CTransaction::IsParked() : nOut out of range");
-        return IsPark(vout[nOut].scriptPubKey);
+        return vout[nOut].IsPark();
     }
 
     bool IsUnpark() const
