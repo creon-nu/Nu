@@ -1,7 +1,7 @@
 Feature: Split outputs appear as a single transaction in listtransactions
   Scenario:
     Given a network with node "Alice" able to mint
-    And a node "Bob" with an empty wallet and with avatar mode disabled
+    And a node "Bob" with an empty wallet
     And node "Bob" generates a new address "bob"
     When node "Alice" sends "30,000" NSR to "bob"
     Then all nodes should have 1 transaction in memory pool

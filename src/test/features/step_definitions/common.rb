@@ -447,6 +447,12 @@ Then(/^the (\d+)\S+ transaction should be a receive of "(.*?)" to "(.*?)"$/) do 
   expect(tx["address"]).to eq(@addresses[arg3])
 end
 
+Then(/^the (\d+)st transaction should be the initial distribution of shares$/) do |arg1|
+  tx = @listtransactions[arg1.to_i - 1]
+  expect(tx["category"]).to eq("receive")
+  expect(tx["amount"]).to eq(parse_number("10,000,000"))
+end
+
 Then(/^block "(.*?)" should contain transaction "(.*?)"$/) do |arg1, arg2|
   node = @nodes.values.first
   block = node.rpc("getblock", @blocks[arg1])

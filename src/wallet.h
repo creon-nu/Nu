@@ -214,12 +214,12 @@ public:
             throw std::runtime_error("CWallet::GetCredit() : value out of range");
         return (IsMine(txout) ? txout.nValue : 0);
     }
-    bool IsChange(const CTxOut& txout) const;
-    int64 GetChange(const CTxOut& txout) const
+    bool IsChange(const CTxOut& txout, const CTransaction& tx) const;
+    int64 GetChange(const CTxOut& txout, const CTransaction& tx) const
     {
         if (!MoneyRange(txout.nValue))
             throw std::runtime_error("CWallet::GetChange() : value out of range");
-        return (IsChange(txout) ? txout.nValue : 0);
+        return (IsChange(txout, tx) ? txout.nValue : 0);
     }
     bool IsMine(const CTransaction& tx) const
     {
@@ -259,7 +259,7 @@ public:
         int64 nChange = 0;
         BOOST_FOREACH(const CTxOut& txout, tx.vout)
         {
-            nChange += GetChange(txout);
+            nChange += GetChange(txout, tx);
             if (!MoneyRange(nChange))
                 throw std::runtime_error("CWallet::GetChange() : value out of range");
         }

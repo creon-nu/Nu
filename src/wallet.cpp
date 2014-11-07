@@ -496,7 +496,7 @@ int64 CWallet::GetDebit(const CTxIn &txin) const
     return 0;
 }
 
-bool CWallet::IsChange(const CTxOut& txout) const
+bool CWallet::IsChange(const CTxOut& txout, const CTransaction& tx) const
 {
     CTxDestination address;
 
@@ -512,6 +512,26 @@ bool CWallet::IsChange(const CTxOut& txout) const
         LOCK(cs_wallet);
         if (!mapAddressBook.count(address))
             return true;
+
+        // nubit: if the output address is the same as any input address, it is change (happens when avatar mode is enabled)
+        BOOST_FOREACH(const CTxIn& txin, tx.vin)
+        {
+            map<uint256, CWalletTx>::const_iterator mi = mapWallet.find(txin.prevout.hash);
+            if (mi != mapWallet.end())
+            {
+                const CWalletTx& prev = (*mi).second;
+                if (txin.prevout.n < prev.vout.size())
+                {
+                    const CTxOut& prevout = prev.vout[txin.prevout.n];
+                    CTxDestination inAddress;
+                    if (ExtractDestination(prevout.scriptPubKey, inAddress))
+                    {
+                        if (inAddress == address)
+                            return true;
+                    }
+                }
+            }
+        }
     }
     return false;
 }
@@ -602,7 +622,7 @@ void CWalletTx::GetAmounts(int64& nGeneratedImmature, int64& nGeneratedMature, l
         }
 
         // Don't report 'change' txouts
-        if (nDebit > 0 && pwallet->IsChange(txout))
+        if (nDebit > 0 && pwallet->IsChange(txout, *this))
             continue;
 
         if (nDebit > 0)
