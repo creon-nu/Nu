@@ -453,7 +453,7 @@ void SendCoinsDialog::coinControlChangeEdited(const QString& text)
         {
             ui->labelCoinControlChangeLabel->setText("");
         }
-        else if (!addr.IsValid()) // Invalid address
+        else if (!addr.IsValid(model->getUnit())) // Invalid address
         {
             ui->labelCoinControlChangeLabel->setText(tr("Warning: Invalid Bitcoin address"));
         }
