@@ -476,7 +476,6 @@ void CoinControlDialog::updateLabels(WalletModel *model, QDialog* dialog)
 
             // Bytes
             CTxDestination address;
-            int nBytesInput;
             vector<valtype> vSolutions;
             txnouttype whichType;
             if (Solver(out.tx->vout[out.i].scriptPubKey, whichType, vSolutions) && whichType == TX_PUBKEY)
