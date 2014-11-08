@@ -476,9 +476,9 @@ void SendCoinsDialog::coinControlChangeEdited(const QString& text)
                     ui->labelCoinControlChangeLabel->setText(associatedLabel);
                 else
                     ui->labelCoinControlChangeLabel->setText(tr("(no label)"));
-
-                CoinControlDialog::coinControl->destChange = addr.Get();
             }
+
+            CoinControlDialog::coinControl->destChange = addr.Get();
         }
     }
 }
