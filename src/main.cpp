@@ -1000,8 +1000,6 @@ unsigned int ComputeMinWork(unsigned int nBase, int64 nTime)
         bnResult *= 2;
         nTime -= 24 * 60 * 60;
     }
-    if (bnResult > bnProofOfWorkLimit)
-        bnResult = bnProofOfWorkLimit;
     return bnResult.GetCompact();
 }
 
