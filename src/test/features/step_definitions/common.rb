@@ -518,3 +518,7 @@ end
 Then(/^(\d+) seconds? pass(?:es|)$/) do |arg1|
   time_travel(arg1.to_i)
 end
+
+When(/^node "(.*?)" finds a block "(.*?)" on top of(?: block|) "(.*?)"$/) do |node, block, parent|
+  @blocks[block] = @nodes[node].generate_stake(@blocks[parent])
+end
