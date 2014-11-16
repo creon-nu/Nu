@@ -456,7 +456,7 @@ void SendCoinsDialog::coinControlChangeEdited(const QString& text)
         }
         else if (!addr.IsValid(model->getUnit())) // Invalid address
         {
-            ui->labelCoinControlChangeLabel->setText(tr("Warning: Invalid %1 address").arg(BitcoinUnits::baseName()));
+            ui->labelCoinControlChangeLabel->setText(tr("Warning: Invalid %1 address.\nA standard change address will be used instead.").arg(BitcoinUnits::baseName()));
         }
         else // Valid address
         {
@@ -465,7 +465,7 @@ void SendCoinsDialog::coinControlChangeEdited(const QString& text)
             addr.GetKeyID(keyid);
             if (!model->getPubKey(keyid, pubkey)) // Unknown change address
             {
-                ui->labelCoinControlChangeLabel->setText(tr("Warning: Unknown change address"));
+                ui->labelCoinControlChangeLabel->setText(tr("Warning: Unknown change address.\nA standard change address will be used instead."));
             }
             else // Known change address
             {
