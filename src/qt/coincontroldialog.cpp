@@ -429,7 +429,7 @@ void CoinControlDialog::updateLabels(WalletModel *model, QDialog* dialog)
         
         if (amount > 0)
         {
-            if (amount < CENT)
+            if (amount < model->getMinTxOutAmount())
                 fLowOutput = true;
         }
     }
@@ -518,7 +518,7 @@ void CoinControlDialog::updateLabels(WalletModel *model, QDialog* dialog)
             // if sub-cent change is required, the fee must be raised to at least unit's min fee
             // or until nChange becomes zero
             // NOTE: this depends on the exact behaviour of GetMinFee
-            if (nPayFee < txDummy.GetUnitMinFee() && nChange > 0 && nChange < CENT)
+            if (nPayFee < txDummy.GetUnitMinFee() && nChange > 0 && nChange < model->getMinTxOutAmount())
             {
                 int64 nMoveToFee = min(nChange, txDummy.GetUnitMinFee() - nPayFee);
                 nChange -= nMoveToFee;
@@ -600,13 +600,15 @@ void CoinControlDialog::updateLabels(WalletModel *model, QDialog* dialog)
     l5->setStyleSheet((nBytes >= 10000) ? "color:red;" : "");               // Bytes >= 10000
     l6->setStyleSheet((dPriority <= 576000) ? "color:red;" : "");         // Priority < "medium"
     l7->setStyleSheet((fLowOutput) ? "color:red;" : "");                    // Low Output = "yes"
-    l8->setStyleSheet((nChange > 0 && nChange < CENT) ? "color:red;" : ""); // Change < 0.01BTC
+    l8->setStyleSheet((nChange > 0 && nChange < model->getMinTxOutAmount()) ? "color:red;" : ""); // Change < min output amount
         
     // tool tips
-    l5->setToolTip(tr("This label turns red, if the transaction size is bigger than 10000 bytes.\n\n This means a fee of at least %1 per kb is required.\n\n Can vary +/- 1 Byte per input.").arg(BitcoinUnits::formatWithUnit(nDisplayUnit, model->getMinTxFee())));
-    l6->setToolTip(tr("Transactions with higher priority get more likely into a block.\n\nThis label turns red, if the priority is smaller than \"medium\".\n\n This means a fee of at least %1 per kb is required.").arg(BitcoinUnits::formatWithUnit(nDisplayUnit, CENT)));
-    l7->setToolTip(tr("This label turns red, if any recipient receives an amount smaller than %1.\n\n This means a fee of at least %2 is required. \n\n Amounts below 0.546 times the minimum relay fee are shown as DUST.").arg(BitcoinUnits::formatWithUnit(nDisplayUnit, CENT)).arg(BitcoinUnits::formatWithUnit(nDisplayUnit, CENT)));
-    l8->setToolTip(tr("This label turns red, if the change is smaller than %1.\n\n This means a fee of at least %2 is required.").arg(BitcoinUnits::formatWithUnit(nDisplayUnit, CENT)).arg(BitcoinUnits::formatWithUnit(nDisplayUnit, CENT)));
+    l3->setToolTip(tr("The minimum fee is %1 per kilobyte.").arg(BitcoinUnits::formatWithUnit(nDisplayUnit, model->getMinTxFee())));
+    l5->setToolTip(tr("This label turns red, if the transaction size is bigger than 10000 bytes.\n\n Can vary +/- 1 Byte per input."));
+    l6->setToolTip(tr("Transactions with higher priority get more likely into a block.\n\nThis label turns red, if the priority is smaller than \"medium\"."));
+    l7->setToolTip(tr("This label turns red, if any recipient receives an amount smaller than %1.\n\n This means the transaction will be rejected.").arg(BitcoinUnits::formatWithUnit(nDisplayUnit, model->getMinTxOutAmount())));
+    l8->setToolTip(tr("If the change is smaller than %1 it will be added to the fees.").arg(BitcoinUnits::formatWithUnit(nDisplayUnit, model->getMinTxOutAmount())));
+    dialog->findChild<QLabel *>("labelCoinControlFeeText")      ->setToolTip(l3->toolTip());
     dialog->findChild<QLabel *>("labelCoinControlBytesText")    ->setToolTip(l5->toolTip());
     dialog->findChild<QLabel *>("labelCoinControlPriorityText") ->setToolTip(l6->toolTip());
     dialog->findChild<QLabel *>("labelCoinControlLowOutputText")->setToolTip(l7->toolTip());
