@@ -65,7 +65,7 @@ script: |
     export LD_PRELOAD=/usr/lib/faketime/libfaketime.so.1
     export FAKETIME=$REFERENCE_DATETIME
 
-    $STAGING/host/bin/qmake -spec win32-g++ CROSS_COMPILE=$HOST USE_QRCODE=1 INCLUDEPATH=$STAGING BOOST_LIB_SUFFIX=-mt-s BOOST_THREAD_LIB_SUFFIX=_win32-mt-s DEFINES=BOOST_THREAD_USE_LIB BITCOIN_NEED_QT_PLUGINS=1 QMAKE_LRELEASE=lrelease QMAKE_CXXFLAGS=-frandom-seed=nu QMAKE_LFLAGS="-static-libgcc -static-libstdc++ -frandom-seed=nu" USE_BUILD_INFO=1
+    $STAGING/host/bin/qmake -spec win32-g++ CROSS_COMPILE=$HOST USE_QRCODE=1 INCLUDEPATH=$STAGING BOOST_LIB_SUFFIX=-mt-s BOOST_THREAD_LIB_SUFFIX=_win32-mt-s DEFINES=BOOST_THREAD_USE_LIB BITCOIN_NEED_QT_PLUGINS=1 QMAKE_LRELEASE=lrelease QMAKE_CXXFLAGS=-frandom-seed=nu QMAKE_LFLAGS="-static-libgcc -static-libstdc++ -frandom-seed=nu" USE_BUILD_INFO=1 CURL_STATIC=1
     make $MAKEOPTS
     ${HOST}-strip release/nu.exe
     cp -f release/nu.exe $BINDIR/

@@ -20,6 +20,7 @@ files:
 - "zlib-1.2.8.tar.gz"
 - "libpng-1.6.8.tar.gz"
 - "qrencode-3.4.3.tar.bz2"
+- "curl-7.39.0.tar.gz"
 script: |
   #
   export LD_PRELOAD=/usr/lib/faketime/libfaketime.so.1
@@ -34,6 +35,7 @@ script: |
   echo "36658cb768a54c1d4dec43c3116c27ed893e88b02ecfcb44f2166f9c0b7f2a0d  zlib-1.2.8.tar.gz"      | sha256sum -c
   echo "32c7acf1608b9c8b71b743b9780adb7a7b347563dbfb4a5263761056da44cc96  libpng-1.6.8.tar.gz"    | sha256sum -c
   echo "dfd71487513c871bad485806bfd1fdb304dedc84d2b01a8fb8e0940b50597a98  qrencode-3.4.3.tar.bz2" | sha256sum -c
+  echo "a3a7c2b9e7416c728469eb4cb5b61e9161335df4278329e1d9cc3c194e25d795  curl-7.39.0.tar.gz"     | sha256sum -c
 
   for BITS in 32 64; do # for architectures
     #
@@ -113,6 +115,29 @@ script: |
     find . -print0 | xargs -r0 touch -t 200001010000
     make
     make install
+    cd ..
+
+    tar xzf $INDIR/curl-7.39.0.tar.gz
+    cd curl-7.39.0
+    ./configure --prefix=$INSTALLPREFIX --host=$HOST \
+      --enable-static --disable-shared \
+      --disable-ftp --disable-file --disable-ldap --disable-ldaps --disable-rtsp --disable-dict \
+      --disable-tftp --disable-pop3 --disable-imap --disable-smtp --disable-gopher --disable-manual \
+      --disable-telnet \
+      --disable-cookies \
+      --disable-sspi \
+      --disable-ntlm-wb \
+      --without-libssh2 \
+      --without-librtmp \
+      --without-winssl \
+      --without-winidn \
+      --without-libidn \
+      --without-darwinssl \
+      --without-curl
+    # Workaround to prevent re-configuring by make; make all files have a date in the past
+    find . -print0 | xargs -r0 touch -t 200001010000
+    make $MAKEOPTS install
+
     cd ..
     # post-process all generated libraries to be deterministic
     # extract them to a temporary directory then re-build them deterministically

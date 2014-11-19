@@ -6,3 +6,4 @@ RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selectio
 RUN apt-get install -y git build-essential g++
 RUN apt-get install -y libboost-all-dev libdb4.8++-dev libqrencode-dev
 RUN apt-get install -y libssl-dev
+RUN apt-get install -y libcurl4-openssl-dev

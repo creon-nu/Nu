@@ -28,9 +28,10 @@ LIBS= \
  -l boost_thread_win32-mt-s \
  -l db_cxx \
  -l ssl \
- -l crypto
+ -l crypto \
+ -l curl
 
-DEFS=-D_MT -DWIN32 -D_WINDOWS -DBOOST_THREAD_USE_LIB -DBOOST_SPIRIT_THREADSAFE
+DEFS=-D_MT -DWIN32 -D_WINDOWS -DBOOST_THREAD_USE_LIB -DBOOST_SPIRIT_THREADSAFE -DCURL_STATICLIB
 DEBUGFLAGS=-g
 CFLAGS=-O2 -w -Wno-invalid-offsetof -Wformat $(DEBUGFLAGS) $(DEFS) $(INCLUDEPATHS)
 

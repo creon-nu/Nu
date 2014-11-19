@@ -52,7 +52,9 @@ LIBS += \
  -lboost_thread-mt \
  -lssl \
  -lcrypto \
- -lz
+ -lz \
+ -l curl
+
 TESTDEFS += -DBOOST_TEST_DYN_LINK
 endif
 
