@@ -313,6 +313,12 @@ int CWalletDB::LoadWallet(CWallet* pwallet)
             {
                 ssValue >> pwallet->vote;
             }
+            else if (strType == "datafeedurl")
+            {
+                string url;
+                ssValue >> url;
+                pwallet->SetDataFeed(url, false);
+            }
             else if (strType == "unit")
             {
                 ssValue >> cUnit;

@@ -21,6 +21,7 @@
 #include <boost/interprocess/sync/file_lock.hpp>
 #include <boost/format.hpp>
 #include <boost/lexical_cast.hpp>
+#include <curl/curl.h>
 
 #ifndef WIN32
 #include <signal.h>
@@ -74,6 +75,7 @@ void Shutdown(void* parg)
         DBFlush(false);
         StopNode();
         DBFlush(true);
+        curl_global_cleanup();
         boost::filesystem::remove(GetPidFile());
         UnregisterAndDeleteAllWallets();
         CreateThread(ExitTimeout, NULL);
@@ -267,6 +269,8 @@ bool AppInit2(int argc, char* argv[])
 #endif
         return false;
     }
+
+    curl_global_init(CURL_GLOBAL_NOTHING);
 
 #ifdef TESTING
     if (mapArgs.count("-timetravel"))

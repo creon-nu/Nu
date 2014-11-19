@@ -10,6 +10,7 @@
 #include "wallet.h"
 #include "walletdb.h" // for BackupWallet
 #include "base58.h"
+#include "datafeed.h"
 
 #include <QSet>
 #include <QTimer>
@@ -502,3 +503,24 @@ CDefaultKey WalletModel::getDefaultKey()
 {
     return CDefaultKey(wallet);
 }
+
+QString WalletModel::getDataFeed() const
+{
+    return QString::fromStdString(wallet->GetDataFeed());
+}
+
+void WalletModel::setDataFeed(QString url)
+{
+    wallet->SetDataFeed(url.toUtf8().constData());
+}
+
+void WalletModel::updateFromDataFeed()
+{
+    UpdateFromDataFeed();
+}
+
+QString WalletModel::getDataFeedError() const
+{
+    return QString::fromStdString(strDataFeedError);
+}
+

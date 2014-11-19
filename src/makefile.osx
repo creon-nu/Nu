@@ -103,7 +103,8 @@ OBJS= \
     obj/kernel.o \
     obj/distribution.o \
     obj/vote.o \
-    obj/liquidityinfo.o
+    obj/liquidityinfo.o \
+    obj/datafeed.o
 
 ifdef USE_UPNP
 	DEFS += -DUSE_UPNP=$(USE_UPNP)

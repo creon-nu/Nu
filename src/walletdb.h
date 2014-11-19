@@ -155,6 +155,17 @@ public:
         return Read(std::string("vote"), vote);
     }
 
+    bool WriteDataFeed(const std::string& url)
+    {
+        nWalletDBUpdated++;
+        return Write(std::string("datafeedurl"), url);
+    }
+
+    bool ReadDataFeed(std::string& url)
+    {
+        return Read(std::string("datafeedurl"), url);
+    }
+
     // Settings are no longer stored in wallet.dat; these are
     // used only for backwards compatibility:
     template<typename T>

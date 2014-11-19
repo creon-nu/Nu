@@ -196,7 +196,9 @@ HEADERS += src/qt/bitcoingui.h \
     src/qt/custodianvotedialog.h \
     src/qt/parkratevotedialog.h \
     src/qt/motionvotedialog.h \
-    src/liquidityinfo.h
+    src/liquidityinfo.h \
+    src/datafeed.h \
+    src/qt/datafeeddialog.h
 
 SOURCES += src/qt/bitcoin.cpp src/qt/bitcoingui.cpp \
     src/qt/transactiontablemodel.cpp \
@@ -266,7 +268,9 @@ SOURCES += src/qt/bitcoin.cpp src/qt/bitcoingui.cpp \
     src/qt/custodianvotedialog.cpp \
     src/qt/parkratevotedialog.cpp \
     src/qt/motionvotedialog.cpp \
-    src/liquidityinfo.cpp
+    src/liquidityinfo.cpp \
+    src/datafeed.cpp \
+    src/qt/datafeeddialog.cpp
 
 RESOURCES += \
     src/qt/bitcoin.qrc
@@ -289,7 +293,8 @@ FORMS += \
     src/qt/forms/votepage.ui \
     src/qt/forms/custodianvotedialog.ui \
     src/qt/forms/parkratevotedialog.ui \
-    src/qt/forms/motionvotedialog.ui
+    src/qt/forms/motionvotedialog.ui \
+    src/qt/forms/datafeeddialog.ui
 
 contains(USE_QRCODE, 1) {
 HEADERS += src/qt/qrcodedialog.h

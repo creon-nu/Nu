@@ -14,6 +14,7 @@
 #include "bitcoinrpc.h"
 #include "script.h"
 #include "vote.h"
+#include "datafeed.h"
 #include <boost/algorithm/string/replace.hpp>
 
 using namespace std;
@@ -156,6 +157,12 @@ void CWallet::SaveVote() const
 {
     CWalletDB walletdb(strWalletFile);
     walletdb.WriteVote(vote);
+}
+
+void CWallet::SaveDataFeed() const
+{
+    CWalletDB walletdb(strWalletFile);
+    walletdb.WriteDataFeed(sDataFeedURL);
 }
 
 // This class implements an addrIncoming entry that causes pre-0.4

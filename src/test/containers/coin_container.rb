@@ -14,6 +14,7 @@ class CoinContainer
     }
 
     options = default_options.merge(options)
+    @options = options
 
     links = options[:links]
     case links
@@ -33,6 +34,8 @@ class CoinContainer
     else
       raise "Invalid links"
     end
+    @links = links
+
     name = options[:name]
 
     connects = links.map do |linked_name, alias_name|
@@ -107,6 +110,16 @@ class CoinContainer
       'name' => name,
     }
     node_container = Docker::Container.create(create_options)
+    @container = node_container
+
+    sleep 0.1
+    start
+  end
+
+  def start
+    node_container = @container
+    options = @options
+    links = @links
 
     if options[:shutdown_at_exit]
       at_exit do
@@ -132,10 +145,8 @@ class CoinContainer
       start_options['Binds'] = ["#{File.expand_path('../../..', __FILE__)}:/code"]
     end
 
-    sleep 0.1
     node_container.start(start_options)
 
-    @container = node_container
     @json = @container.json
     @name = @json["Name"]
 
@@ -219,6 +230,10 @@ class CoinContainer
 
   def wait_for_shutdown
     container.wait
+  end
+
+  def restart
+    @container.restart
   end
 
   def block_count

@@ -152,6 +152,11 @@ public:
 
     CDefaultKey getDefaultKey();
 
+    QString getDataFeed() const;
+    void setDataFeed(QString url);
+    void updateFromDataFeed();
+    QString getDataFeedError() const;
+
 private:
     CWallet *wallet;
 

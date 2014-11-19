@@ -115,7 +115,8 @@ OBJS= \
     obj/kernel.o \
     obj/distribution.o \
     obj/vote.o \
-    obj/liquidityinfo.o
+    obj/liquidityinfo.o \
+    obj/datafeed.o
 
 
 all: nud

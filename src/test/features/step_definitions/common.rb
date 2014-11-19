@@ -147,6 +147,15 @@ After do
   end
 end
 
+When(/^node "(.*?)" restarts$/) do |arg1|
+  @nodes[arg1].tap do |node|
+    node.shutdown
+    node.wait_for_shutdown
+    node.start
+    node.wait_for_boot
+  end
+end
+
 When(/^node "(.*?)" finds a block "([^"]*?)"$/) do |node, block|
   time_travel(5)
   @blocks[block] = @nodes[node].generate_stake
@@ -517,4 +526,17 @@ end
 
 Then(/^(\d+) seconds? pass(?:es|)$/) do |arg1|
   time_travel(arg1.to_i)
+end
+
+When(/^the error on node "(.*?)" should be "(.*?)"$/) do |arg1, arg2|
+  node = @nodes[arg1]
+  error = arg2
+
+  wait_for do
+    expect(node.info["errors"]).to eq(error)
+  end
+end
+
+Given(/^node "(.*?)" sets her vote to:$/) do |arg1, string|
+  @nodes[arg1].rpc("setvote", JSON.parse(string))
 end

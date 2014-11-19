@@ -79,6 +79,8 @@ private:
     int64 nNextTimeCheckUnparkableOutputs;
     int64 nLastTimeCheckUnparkableOutputs;
 
+    std::string sDataFeedURL;
+
 public:
     mutable CCriticalSection cs_wallet;
 
@@ -111,6 +113,7 @@ public:
         nNextTimeCheckUnparkableOutputs = 0;
         nLastTimeCheckUnparkableOutputs = 0;
         fWalletUnlockMintOnly = false;
+        sDataFeedURL = "";
     }
     CWallet(std::string strWalletFileIn)
     {
@@ -126,6 +129,7 @@ public:
         nNextTimeCheckUnparkableOutputs = 0;
         nLastTimeCheckUnparkableOutputs = 0;
         fWalletUnlockMintOnly = false;
+        sDataFeedURL = "";
     }
 
     std::map<uint256, CWalletTx> mapWallet;
@@ -335,6 +339,18 @@ public:
     {
         return MinTxOutAmount(cUnit);
     }
+
+    void SetDataFeed(const std::string sURL, bool fSave = true)
+    {
+        sDataFeedURL = sURL;
+        if (fSave)
+            SaveDataFeed();
+    }
+    std::string GetDataFeed() const
+    {
+        return sDataFeedURL;
+    }
+    void SaveDataFeed() const;
 };
 
 /** A key allocated from the key pool. */
