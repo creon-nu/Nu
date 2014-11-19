@@ -1,0 +1,41 @@
+From the Nu repository root build the nugitian/base image:
+
+    docker build -t nugitian/base $PWD/contrib/gitian-docker
+
+Then the nugitian/setup image:
+
+    ID=`docker run --privileged -d -v $PWD:/nubit -t nugitian/base /setup.sh`
+    docker attach $ID
+    docker commit $ID nugitian/setup
+
+If the setup fails you should still commit the container to save the current state. Then you can start the container to complete the jobs manually and commit again:
+
+    ID=`docker run --privileged -d -v $PWD:/nubit -ti nugitian/setup bash`
+    docker attach $ID
+    service apt-cacher-ng start
+    cd gitian-builder
+    # finish the setup process manually and exit the container
+    docker commit $ID nugitian/setup
+
+
+Then you must choose to either build from your local repository or from the official repository.
+
+To build from your local repository:
+
+* modify `contrib/gitian-descriptors/gitian-linux.yml` and `contrib/gitian-descriptors/gitian-win.yml`: replace the line `- "url": "git@bitbucket.org:JordanLeePeershares/nubit.git"` with `- "url": "/nubit"`
+* start the container with `docker run --privileged -ti -w /gitian-builder -v $PWD:/nubit nugitian/setup bash`
+
+To build from the official repository you must mount your .ssh dir in the container. Start the container with this command:
+
+    docker run --privileged -ti -w /gitian-builder -v $PWD:/nubit -v ~/.ssh:/root/.ssh nugitian/setup bash
+
+Then you're inside the container. Verify KVM is working:
+
+    kvm-ok
+
+Start apt-cacher-ng:
+
+    service apt-cacher-ng start
+
+Then you can follow the instructions after "Build the Nu release packages" here: https://volatility.atlassian.net/wiki/pages/viewpage.action?spaceKey=NU&title=Create+a+Gitian+build+machine+using+Ubuntu+14.04+amd64+desktop
+
