@@ -197,6 +197,10 @@ void AddTimeData(const CNetAddr& ip, int64 nTime);
 void runCommand(std::string strCommand);
 
 
+std::string BlocksToTime(int64 blocks);
+double DurationInYears(int64 blocks);
+double AnnualInterestRatePercentage(int64 rate, int64 blocks);
+int64 AnnualInterestRatePercentageToRate(double percentage, int64 blocks);
 
 
 
@@ -419,7 +423,8 @@ std::string HexStr(const T itbegin, const T itend, bool fSpaces=false)
     return std::string(rv.begin(), rv.end());
 }
 
-inline std::string HexStr(const std::vector<unsigned char>& vch, bool fSpaces=false)
+template<typename T>
+inline std::string HexStr(const T& vch, bool fSpaces=false)
 {
     return HexStr(vch.begin(), vch.end(), fSpaces);
 }

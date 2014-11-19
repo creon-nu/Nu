@@ -32,20 +32,46 @@ public:
         READWRITE(nAmount);
     )
 
+    class CDestinationVisitor : public boost::static_visitor<bool>
+    {
+        private:
+            CCustodianVote *custodianVote;
+        public:
+            CDestinationVisitor(CCustodianVote *custodianVote) : custodianVote(custodianVote) { }
+
+            bool operator()(const CNoDestination &dest) const {
+                custodianVote->fScript = false;
+                custodianVote->hashAddress = 0;
+                return false;
+            }
+
+            bool operator()(const CKeyID &keyID) const {
+                custodianVote->fScript = false;
+                custodianVote->hashAddress = keyID;
+                return true;
+            }
+
+            bool operator()(const CScriptID &scriptID) const {
+                custodianVote->fScript = true;
+                custodianVote->hashAddress = scriptID;
+                return true;
+            }
+    };
+
     void SetAddress(const CBitcoinAddress& address)
     {
         cUnit = address.GetUnit();
-        fScript = address.IsScript(cUnit);
-        hashAddress = address.GetHash160();
+        CTxDestination destination = address.Get();
+        boost::apply_visitor(CDestinationVisitor(this), destination);
     }
 
     CBitcoinAddress GetAddress() const
     {
         CBitcoinAddress address;
         if (fScript)
-            address.SetScriptHash160(hashAddress, cUnit);
+            address.Set(CScriptID(hashAddress), cUnit);
         else
-            address.SetHash160(hashAddress, cUnit);
+            address.Set(CKeyID(hashAddress), cUnit);
         return address;
     }
 
@@ -154,11 +180,19 @@ public:
     int nVersion;
     std::vector<CCustodianVote> vCustodianVote;
     std::vector<CParkRateVote> vParkRateVote;
-    uint160 hashMotion;
+    std::vector<uint160> vMotion;
 
     CVote() :
-        nVersion(CLIENT_VERSION),
-        hashMotion()
+        nVersion(PROTOCOL_VERSION)
+    {
+    }
+
+    CVote(const CVote &original, int nVersion) :
+        nVersion(nVersion),
+        vCustodianVote(original.vCustodianVote),
+        vParkRateVote(original.vParkRateVote),
+        vMotion(original.vMotion),
+        nCoinAgeDestroyed(original.nCoinAgeDestroyed)
     {
     }
 
@@ -167,7 +201,45 @@ public:
         nVersion = 0;
         vCustodianVote.clear();
         vParkRateVote.clear();
-        hashMotion = 0;
+        vMotion.clear();
+    }
+
+    template<typename Stream>
+    unsigned int ReadWriteSingleMotion(Stream& s, int nType, int nVersion, CSerActionGetSerializeSize ser_action) const
+    {
+        uint160 hashMotion;
+        return ::SerReadWrite(s, hashMotion, nType, nVersion, ser_action);
+    }
+
+    template<typename Stream>
+    unsigned int ReadWriteSingleMotion(Stream& s, int nType, int nVersion, CSerActionSerialize ser_action) const
+    {
+        uint160 hashMotion;
+        switch (vMotion.size())
+        {
+            case 0:
+                hashMotion = 0;
+                break;
+            case 1:
+                hashMotion = vMotion[0];
+                break;
+            default:
+                printf("Warning: serializing multiple motion votes in a vote structure not supporting it. Only the first motion is serialized.\n");
+                hashMotion = vMotion[0];
+                break;
+        }
+        return ::SerReadWrite(s, hashMotion, nType, nVersion, ser_action);
+    }
+
+    template<typename Stream>
+    unsigned int ReadWriteSingleMotion(Stream& s, int nType, int nVersion, CSerActionUnserialize ser_action)
+    {
+        uint160 hashMotion;
+        unsigned int result = ::SerReadWrite(s, hashMotion, nType, nVersion, ser_action);
+        vMotion.clear();
+        if (hashMotion != 0)
+            vMotion.push_back(hashMotion);
+        return result;
     }
 
     IMPLEMENT_SERIALIZE
@@ -176,10 +248,17 @@ public:
         nVersion = this->nVersion;
         READWRITE(vCustodianVote);
         READWRITE(vParkRateVote);
-        READWRITE(hashMotion);
+        if (nVersion >= 50000)
+            READWRITE(vMotion);
+        else
+            ReadWriteSingleMotion(s, nType, nVersion, ser_action);
     )
 
-    CScript ToScript() const;
+    CScript ToScript(int nVersion) const;
+    CScript ToScript() const
+    {
+        return ToScript(nVersion);
+    }
 
     uint64 nCoinAgeDestroyed;
 

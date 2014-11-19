@@ -43,9 +43,12 @@ public:
         const CTxOut& txo = wtx.vout[out.n];
 
         uint64 nDuration;
-        CBitcoinAddress unparkAddress;
+        CTxDestination unparkAddress;
 
-        if (!ExtractPark(txo.scriptPubKey, wtx.cUnit, nDuration, unparkAddress))
+        if (!ExtractPark(txo.scriptPubKey, nDuration, unparkAddress))
+            return false;
+
+        if (!wallet->IsMine(txo))
             return false;
 
         record.hash = out.hash;
@@ -54,7 +57,7 @@ public:
         record.time = wtx.nTime;
         record.amount = txo.nValue;
         record.duration = nDuration;
-        record.unparkAddress = unparkAddress.ToString();
+        record.unparkAddress = CBitcoinAddress(unparkAddress, wtx.cUnit).ToString();
 
         CBlockIndex *pindex = NULL;
         record.depth = wtx.GetDepthInMainChain(pindex);
@@ -95,7 +98,6 @@ public:
 
     bool updateNeeded()
     {
-        LOCK(cs_main);
         return nBestHeight != lastUpdateBestHeight;
     }
 
@@ -303,6 +305,16 @@ ParkTableModel::~ParkTableModel()
 
 void ParkTableModel::update()
 {
+    // Get required locks upfront. This avoids the GUI from getting stuck on
+    // periodical polls if the core is holding the locks for a longer time -
+    // for example, during a wallet rescan.
+    TRY_LOCK(cs_main, lockMain);
+    if(!lockMain)
+        return;
+    TRY_LOCK(wallet->cs_wallet, lockWallet);
+    if(!lockWallet)
+        return;
+
     QList<uint256> updated;
 
     // Check if there are changes to wallet map
@@ -325,7 +337,6 @@ void ParkTableModel::update()
 
     bool updateNeeded;
     {
-        LOCK(cs_main);
         if (nBestHeight != lastUpdateBestHeight)
         {
             lastUpdateBestHeight = nBestHeight;

@@ -13,15 +13,13 @@ BOOST_AUTO_TEST_CASE(reload_vote_from_script_tests)
     CVote vote;
 
     CCustodianVote custodianVote;
-    CBitcoinAddress custodianAddress;
-    custodianAddress.SetHash160(123465, 'B');
+    CBitcoinAddress custodianAddress(CKeyID(123465), 'B');
     custodianVote.SetAddress(custodianAddress);
     custodianVote.nAmount = 100 * COIN;
     vote.vCustodianVote.push_back(custodianVote);
 
     CCustodianVote custodianVote2;
-    CBitcoinAddress custodianAddress2;
-    custodianAddress2.SetScriptHash160(555555555, 'B');
+    CBitcoinAddress custodianAddress2(CKeyID(555555555), 'B');
     custodianVote2.SetAddress(custodianAddress2);
     custodianVote2.nAmount = 5.5 * COIN;
     vote.vCustodianVote.push_back(custodianVote2);
@@ -33,7 +31,8 @@ BOOST_AUTO_TEST_CASE(reload_vote_from_script_tests)
     parkRateVote.vParkRate.push_back(CParkRate(15, 13));
     vote.vParkRateVote.push_back(parkRateVote);
 
-    vote.hashMotion = uint160(123456);
+    vote.vMotion.push_back(uint160(123456));
+    vote.vMotion.push_back(uint160(3333));
 
     CScript script = vote.ToScript();
 
@@ -65,7 +64,9 @@ BOOST_AUTO_TEST_CASE(reload_vote_from_script_tests)
         }
     }
 
-    CHECK_VOTE_EQUAL(hashMotion);
+    CHECK_VOTE_EQUAL(vMotion.size());
+    CHECK_VOTE_EQUAL(vMotion[0]);
+    CHECK_VOTE_EQUAL(vMotion[1]);
 #undef CHECK_VOTE_EQUAL
 }
 
@@ -465,12 +466,12 @@ BOOST_AUTO_TEST_CASE(create_currency_coin_bases)
     BOOST_CHECK_EQUAL('B', tx.cUnit);
     BOOST_CHECK_EQUAL(1, tx.vout.size());
     BOOST_CHECK_EQUAL(8 * COIN, tx.vout[0].nValue);
-    CBitcoinAddress address;
-    BOOST_CHECK(ExtractAddress(tx.vout[0].scriptPubKey, address, tx.cUnit));
-    BOOST_CHECK_EQUAL(uint160(1).ToString(), address.GetHash160().ToString());
+    CTxDestination address;
+    BOOST_CHECK(ExtractDestination(tx.vout[0].scriptPubKey, address));
+    BOOST_CHECK_EQUAL(uint160(1).ToString(), boost::get<CKeyID>(address).ToString());
 
     // This custodian has already been elected
-    mapAlreadyElected[address] = new CBlockIndex;
+    mapAlreadyElected[CBitcoinAddress(address, 'B')] = new CBlockIndex;
 
     // He should not receive any new currency
     BOOST_CHECK(GenerateCurrencyCoinBases(vVote, mapAlreadyElected, vCurrencyCoinBase));
@@ -493,11 +494,11 @@ BOOST_AUTO_TEST_CASE(create_currency_coin_bases)
     BOOST_CHECK_EQUAL('B', tx.cUnit);
     BOOST_CHECK_EQUAL(2, tx.vout.size());
     BOOST_CHECK_EQUAL(8 * COIN, tx.vout[0].nValue);
-    BOOST_CHECK(ExtractAddress(tx.vout[0].scriptPubKey, address, tx.cUnit));
-    BOOST_CHECK_EQUAL(uint160(1).ToString(), address.GetHash160().ToString());
+    BOOST_CHECK(ExtractDestination(tx.vout[0].scriptPubKey, address));
+    BOOST_CHECK_EQUAL(uint160(1).ToString(), boost::get<CKeyID>(address).ToString());
     BOOST_CHECK_EQUAL(5 * COIN, tx.vout[1].nValue);
-    BOOST_CHECK(ExtractAddress(tx.vout[1].scriptPubKey, address, tx.cUnit));
-    BOOST_CHECK_EQUAL(uint160(2).ToString(), address.GetHash160().ToString());
+    BOOST_CHECK(ExtractDestination(tx.vout[1].scriptPubKey, address));
+    BOOST_CHECK_EQUAL(uint160(2).ToString(), boost::get<CKeyID>(address).ToString());
 
     // But if they have the same address
     uint160 hashAddress = vVote[1].vCustodianVote.front().hashAddress;
@@ -520,8 +521,8 @@ BOOST_AUTO_TEST_CASE(create_currency_coin_bases)
     BOOST_CHECK_EQUAL('B', tx.cUnit);
     BOOST_CHECK_EQUAL(1, tx.vout.size());
     BOOST_CHECK_EQUAL(5 * COIN, tx.vout[0].nValue);
-    BOOST_CHECK(ExtractAddress(tx.vout[0].scriptPubKey, address, tx.cUnit));
-    BOOST_CHECK_EQUAL(uint160(1).ToString(), address.GetHash160().ToString());
+    BOOST_CHECK(ExtractDestination(tx.vout[0].scriptPubKey, address));
+    BOOST_CHECK_EQUAL(uint160(1).ToString(), boost::get<CKeyID>(address).ToString());
 
     // If any vote is invalid the generation should fail
     vVote[1].vCustodianVote.back().cUnit = 'S';
@@ -597,7 +598,32 @@ BOOST_AUTO_TEST_CASE(vote_v1_unserialization)
     CVote vote;
     BOOST_CHECK(ExtractVote(voteV1Script, vote));
 
-    BOOST_CHECK_EQUAL(CBitcoinAddress(uint160(123465), 'B').ToString(), vote.vCustodianVote[0].GetAddress().ToString());
+    BOOST_CHECK_EQUAL(CBitcoinAddress(CKeyID(123465), 'B').ToString(), vote.vCustodianVote[0].GetAddress().ToString());
+}
+
+BOOST_AUTO_TEST_CASE(vote_before_multi_motion_unserialization)
+{
+    // Serialized with v0.4.2 vote code:
+    /* {
+    CVote vote;
+    CCustodianVote custodianVote;
+    custodianVote.cUnit = 'B';
+    custodianVote.hashAddress = uint160(123465);
+    custodianVote.nAmount = 100 * COIN;
+    vote.vCustodianVote.push_back(custodianVote);
+    vote.hashMotion = uint160("3f786850e387550fdab836ed7e6dc881de23001b");
+    printf("%s\n", vote.ToScript().ToString().c_str());
+    printf("%s\n", HexStr(vote.ToScript()).c_str());
+    } */
+    vector<unsigned char> oldVoteString = ParseHex("6a5138089d000001420049e201000000000000000000000000000000000040420f0000000000001b0023de81c86d7eed36b8da0f5587e35068783f");
+
+    CScript oldVoteScript(oldVoteString.begin(), oldVoteString.end());
+
+    CVote vote;
+    BOOST_CHECK(ExtractVote(oldVoteScript, vote));
+
+    BOOST_CHECK_EQUAL(1, vote.vMotion.size());
+    BOOST_CHECK_EQUAL(uint160("3f786850e387550fdab836ed7e6dc881de23001b").ToString(), vote.vMotion[0].ToString());
 }
 
 BOOST_AUTO_TEST_SUITE_END()

@@ -258,14 +258,17 @@ void DistributeDivDialog::on_exportButton_clicked()
     }
     fprintf(fp,"%s,%s,%s,%s\n", columnHeadings[0], columnHeadings[1], columnHeadings[2], columnHeadings[3]);
 
+    string locale(setlocale(LC_NUMERIC, NULL));
+    setlocale(LC_NUMERIC, "C"); // we want posix (aka "C") decimals
     for (unsigned int i=0; i < vDistribution.size(); i++)
     {
-        fprintf(fp, "%s,%lld,%s,%f\n",
+        fprintf(fp, "%s,%f,%s,%f\n",
                 vDistribution[i].GetPeershareAddress().ToString().c_str(),
-                vDistribution[i].GetBalance(),
+                (double)vDistribution[i].GetBalance() / COIN,
                 vDistribution[i].GetPeercoinAddress().ToString().c_str(),
                 vDistribution[i].GetDividendAmount());
     }
+    setlocale(LC_NUMERIC, locale.c_str());
 
     fclose(fp);
     QMessageBox::about(this, "OK", "Successfully saved to file: " + fn);

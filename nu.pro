@@ -1,6 +1,6 @@
 TEMPLATE = app
 TARGET = nu
-VERSION = 0.3.0
+VERSION = 0.5.2
 INCLUDEPATH += src src/json src/qt
 DEFINES += QT_GUI BOOST_THREAD_USE_LIB BOOST_SPIRIT_THREADSAFE
 CONFIG += no_include_pwd
@@ -117,8 +117,10 @@ HEADERS += src/qt/bitcoingui.h \
     src/qt/addresstablemodel.h \
     src/qt/optionsdialog.h \
     src/qt/sendcoinsdialog.h \
+    src/qt/coincontroldialog.h \
+    src/qt/coincontroltreewidget.h \
     src/qt/addressbookpage.h \
-    src/qt/messagepage.h \
+    src/qt/signverifymessagedialog.h \
     src/qt/aboutdialog.h \
     src/qt/editaddressdialog.h \
     src/qt/bitcoinaddressvalidator.h \
@@ -126,6 +128,7 @@ HEADERS += src/qt/bitcoingui.h \
     src/base58.h \
     src/bignum.h \
     src/checkpoints.h \
+    src/coincontrol.h \
     src/compat.h \
     src/util.h \
     src/uint256.h \
@@ -196,8 +199,10 @@ SOURCES += src/qt/bitcoin.cpp src/qt/bitcoingui.cpp \
     src/qt/addresstablemodel.cpp \
     src/qt/optionsdialog.cpp \
     src/qt/sendcoinsdialog.cpp \
+    src/qt/coincontroldialog.cpp \
+    src/qt/coincontroltreewidget.cpp \
     src/qt/addressbookpage.cpp \
-    src/qt/messagepage.cpp \
+    src/qt/signverifymessagedialog.cpp \
     src/qt/aboutdialog.cpp \
     src/qt/editaddressdialog.cpp \
     src/qt/bitcoinaddressvalidator.cpp \
@@ -264,8 +269,9 @@ RESOURCES += \
 
 FORMS += \
     src/qt/forms/sendcoinsdialog.ui \
+    src/qt/forms/coincontroldialog.ui \
     src/qt/forms/addressbookpage.ui \
-    src/qt/forms/messagepage.ui \
+    src/qt/forms/signverifymessagedialog.ui \
     src/qt/forms/aboutdialog.ui \
     src/qt/forms/editaddressdialog.ui \
     src/qt/forms/transactiondescdialog.ui \

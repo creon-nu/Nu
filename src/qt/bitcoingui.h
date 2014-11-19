@@ -11,7 +11,7 @@ class TransactionView;
 class OverviewPage;
 class AddressBookPage;
 class SendCoinsDialog;
-class MessagePage;
+class SignVerifyMessageDialog;
 class ParkPage;
 class VotePage;
 class Notificator;
@@ -69,7 +69,7 @@ private:
     AddressBookPage *addressBookPage;
     AddressBookPage *receiveCoinsPage;
     SendCoinsDialog *sendCoinsPage;
-    MessagePage *messagePage;
+    SignVerifyMessageDialog *messagePage;
     ParkPage *parkPage;
     VotePage *votePage;
 
@@ -80,6 +80,7 @@ private:
     QProgressBar *progressBar;
 
     QMenuBar *appMenuBar;
+    QMenu *sharesMenu;
     QAction *overviewAction;
     QAction *historyAction;
     QAction *quitAction;
@@ -101,6 +102,7 @@ private:
     QAction *distributeDividendsAction;
     QAction *parkAction;
     QAction *voteAction;
+    QAction *switchUnitAction;
     QVector<QAction*> changeUnitActions;
 
     QMenu *unitMenu;
@@ -111,6 +113,8 @@ private:
     RPCConsole *rpcConsole;
 
     QMovie *syncIconMovie;
+
+    QString switchUnitTarget;
 
     /** Create the main UI actions. */
     void createActions();
@@ -146,7 +150,6 @@ public slots:
     void handleURI(QString strURI);
 
     void gotoMessagePage();
-    void gotoMessagePage(QString);
 
 private slots:
     /** Switch to overview (home) page */
@@ -200,6 +203,9 @@ private slots:
 
     /** Switch to another unit */
     void changeUnit(const QString &unit);
+
+    /** Switch wallet units button**/
+    void switchUnitButtonClicked();
 };
 
 #endif

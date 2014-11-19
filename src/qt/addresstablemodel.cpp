@@ -3,6 +3,7 @@
 #include "walletmodel.h"
 
 #include "wallet.h"
+#include "base58.h"
 
 #include <QFont>
 #include <QColor>
@@ -43,13 +44,13 @@ public:
 
         {
             LOCK(wallet->cs_wallet);
-            BOOST_FOREACH(const PAIRTYPE(CBitcoinAddress, std::string)& item, wallet->mapAddressBook)
+            BOOST_FOREACH(const PAIRTYPE(CTxDestination, std::string)& item, wallet->mapAddressBook)
             {
-                const CBitcoinAddress& address = item.first;
+                const CBitcoinAddress address(item.first, wallet->GetUnit());
                 const std::string& strName = item.second;
-                bool fMine = wallet->HaveKey(address);
-                CPeercoinAddress dividendAddress(uint160(0));
-                if (wallet->Unit() == 'S')
+                bool fMine = IsMine(*wallet, address.Get());
+                CPeercoinAddress dividendAddress;
+                if (wallet->GetUnit() == 'S')
                     dividendAddress = CPeercoinAddress(address);
                 cachedAddressTable.append(AddressTableEntry(fMine ? AddressTableEntry::Receiving : AddressTableEntry::Sending,
                                   QString::fromStdString(strName),
@@ -166,7 +167,7 @@ bool AddressTableModel::setData(const QModelIndex & index, const QVariant & valu
         switch(index.column())
         {
         case Label:
-            wallet->SetAddressBookName(rec->address.toStdString(), value.toString().toStdString());
+            wallet->SetAddressBookName(CBitcoinAddress(rec->address.toStdString()).Get(), value.toString().toStdString());
             rec->label = value.toString();
             break;
         case Address:
@@ -182,9 +183,9 @@ bool AddressTableModel::setData(const QModelIndex & index, const QVariant & valu
                 {
                     LOCK(wallet->cs_wallet);
                     // Remove old entry
-                    wallet->DelAddressBookName(rec->address.toStdString());
+                    wallet->DelAddressBookName(CBitcoinAddress(rec->address.toStdString()).Get());
                     // Add new entry with new address
-                    wallet->SetAddressBookName(value.toString().toStdString(), rec->label.toStdString());
+                    wallet->SetAddressBookName(CBitcoinAddress(value.toString().toStdString()).Get(), rec->label.toStdString());
                 }
 
                 rec->address = value.toString();
@@ -270,7 +271,7 @@ QString AddressTableModel::addRow(const QString &type, const QString &label, con
         // Check for duplicate addresses
         {
             LOCK(wallet->cs_wallet);
-            if(wallet->mapAddressBook.count(strAddress))
+            if(wallet->mapAddressBook.count(CBitcoinAddress(strAddress).Get()))
             {
                 editStatus = DUPLICATE_ADDRESS;
                 return QString();
@@ -287,13 +288,13 @@ QString AddressTableModel::addRow(const QString &type, const QString &label, con
             editStatus = WALLET_UNLOCK_FAILURE;
             return QString();
         }
-        std::vector<unsigned char> newKey;
+        CPubKey newKey;
         if(!wallet->GetKeyFromPool(newKey, true))
         {
             editStatus = KEY_GENERATION_FAILURE;
             return QString();
         }
-        strAddress = wallet->GetAddress(newKey).ToString();
+        strAddress = CBitcoinAddress(newKey.GetID(), wallet->GetUnit()).ToString();
     }
     else
     {
@@ -302,7 +303,7 @@ QString AddressTableModel::addRow(const QString &type, const QString &label, con
     // Add entry
     {
         LOCK(wallet->cs_wallet);
-        wallet->SetAddressBookName(strAddress, strLabel);
+        wallet->SetAddressBookName(CBitcoinAddress(strAddress).Get(), strLabel);
     }
     return QString::fromStdString(strAddress);
 }
@@ -319,7 +320,7 @@ bool AddressTableModel::removeRows(int row, int count, const QModelIndex & paren
     }
     {
         LOCK(wallet->cs_wallet);
-        wallet->DelAddressBookName(rec->address.toStdString());
+        wallet->DelAddressBookName(CBitcoinAddress(rec->address.toStdString()).Get());
     }
     return true;
 }
@@ -331,7 +332,7 @@ QString AddressTableModel::labelForAddress(const QString &address) const
     {
         LOCK(wallet->cs_wallet);
         CBitcoinAddress address_parsed(address.toStdString());
-        std::map<CBitcoinAddress, std::string>::iterator mi = wallet->mapAddressBook.find(address_parsed);
+        std::map<CTxDestination, std::string>::iterator mi = wallet->mapAddressBook.find(address_parsed.Get());
         if (mi != wallet->mapAddressBook.end())
         {
             return QString::fromStdString(mi->second);

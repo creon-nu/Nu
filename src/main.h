@@ -30,6 +30,8 @@ class CInv;
 class CRequestTracker;
 class CNode;
 
+class CCoinControl;
+
 static const unsigned int MAX_BLOCK_SIZE = 1000000;
 static const unsigned int MAX_BLOCK_SIZE_GEN = MAX_BLOCK_SIZE/2;
 static const unsigned int MAX_BLOCK_SIGOPS = MAX_BLOCK_SIZE/50;
@@ -52,13 +54,16 @@ static const int STAKE_MIN_AGE = 60 * 60 * 24 * 7; // changed to 7 days so only 
 static const int STAKE_MAX_AGE = STAKE_MIN_AGE + 1; // changed to same as minimum to incentivize minting as soon as possible
 static const int64 IPO_SHARES = 1000000000 * COIN; // Total number of shares to create using proof of work (intented for IPO)
 static const int64 PROOF_OF_WORK_BLOCKS = 400; // Block height of the last proof of work block
-static const int64 PARK_RATE_VOTES = 2000; // Number of blocks used in park rate median vote calculation
-static const int64 PARK_RATE_PREVIOUS_VOTES = 1440; // Number of blocks used in the park rate increase limitation
 #ifdef TESTING
+static const int64 PARK_RATE_VOTES = 5; // Number of blocks used in park rate median vote calculation
+static const int64 PARK_RATE_PREVIOUS_VOTES = 1; // Number of blocks used in the park rate increase limitation
 static const unsigned int CUSTODIAN_VOTES = 5;
 #else
+static const int64 PARK_RATE_VOTES = 2000; // Number of blocks used in park rate median vote calculation
+static const int64 PARK_RATE_PREVIOUS_VOTES = 1440; // Number of blocks used in the park rate increase limitation
 static const unsigned int CUSTODIAN_VOTES = 10000;
 #endif
+static const int64 MOTION_VOTES = 10000;
 static const int64 PROOF_OF_STAKE_REWARD = 40 * COIN; // Constant reward of Proof of Stake blocks
 static const int64 MIN_COINSTAKE_VALUE = 10000 * COIN; // Minimum value allowed as input in a CoinStake
 static const int64 COIN_PARK_RATE = 100000 * COIN; // Park rate internal encoding precision. The minimum possible rate is (1.0 / COIN_PARK_RATE) coins per parked coin
@@ -161,6 +166,7 @@ void BitcoinMiner(CWallet *pwallet, bool fProofOfStake, bool fGenerateSingleBloc
 void BitcoinMiner(CWallet *pwallet, bool fProofOfStake);
 #endif
 bool GetTransaction(const uint256 &hash, CTransaction &tx, uint256 &hashBlock);
+bool IsNuProtocolV05(int64 nTimeBlock);
 
 
 inline int GetMaturity(bool fProofOfStake)
@@ -441,6 +447,11 @@ public:
         return (nValue == 0 && ::IsParkRateResult(scriptPubKey));
     }
 
+    bool IsPark() const
+    {
+        return ::IsPark(scriptPubKey);
+    }
+
     uint256 GetHash() const
     {
         return SerializeHash(*this);
@@ -606,7 +617,7 @@ public:
     {
         if (nOut >= vout.size())
             throw std::runtime_error("CTransaction::IsParked() : nOut out of range");
-        return IsPark(vout[nOut].scriptPubKey);
+        return vout[nOut].IsPark();
     }
 
     bool IsUnpark() const
@@ -694,53 +705,7 @@ public:
         return MinTxOutAmount(cUnit);
     }
 
-    int64 GetMinFee(unsigned int nBlockSize=1, bool fAllowFree=false, enum GetMinFee_mode mode=GMF_BLOCK) const
-    {
-        // Base fee is either MIN_TX_FEE or MIN_RELAY_TX_FEE
-        int64 nBaseFee = (mode == GMF_RELAY) ? GetMinRelayFee() : GetUnitMinFee();
-
-        unsigned int nBytes = ::GetSerializeSize(*this, SER_NETWORK, PROTOCOL_VERSION);
-        unsigned int nNewBlockSize = nBlockSize + nBytes;
-        int64 nMinFee = (1 + (int64)nBytes / 1000) * nBaseFee;
-
-        if (fAllowFree)
-        {
-            if (nBlockSize == 1)
-            {
-                // Transactions under 10K are free
-                // (about 4500bc if made of 50bc inputs)
-                if (nBytes < 10000)
-                    nMinFee = 0;
-            }
-            else
-            {
-                // Free transaction area
-                if (nNewBlockSize < 27000)
-                    nMinFee = 0;
-            }
-        }
-
-        // To limit dust spam, require MIN_TX_FEE/MIN_RELAY_TX_FEE if any output is less than 0.01
-        if (nMinFee < nBaseFee)
-        {
-            BOOST_FOREACH(const CTxOut& txout, vout)
-                if (txout.nValue < CENT)
-                    nMinFee = nBaseFee;
-        }
-
-        // Raise the price as the block approaches full
-        if (nBlockSize != 1 && nNewBlockSize >= MAX_BLOCK_SIZE_GEN/2)
-        {
-            if (nNewBlockSize >= MAX_BLOCK_SIZE_GEN)
-                return MAX_MONEY;
-            nMinFee *= MAX_BLOCK_SIZE_GEN / (MAX_BLOCK_SIZE_GEN - nNewBlockSize);
-        }
-
-        if (!MoneyRange(nMinFee))
-            nMinFee = MAX_MONEY;
-        return nMinFee;
-    }
-
+    int64 GetMinFee(unsigned int nBlockSize=1, bool fAllowFree=false, enum GetMinFee_mode mode=GMF_BLOCK, unsigned int nBytes=0) const;
 
     bool ReadFromDisk(CDiskTxPos pos, FILE** pfileRet=NULL)
     {
@@ -795,8 +760,9 @@ public:
     {
         std::string str;
         str += IsCoinBase()? "Coinbase" : (IsCoinStake()? "Coinstake" : "CTransaction");
-        str += strprintf("(hash=%s, nTime=%d, ver=%d, vin.size=%d, vout.size=%d, nLockTime=%d)\n",
+        str += strprintf("(hash=%s, unit=%c nTime=%d, ver=%d, vin.size=%d, vout.size=%d, nLockTime=%d)\n",
             GetHash().ToString().substr(0,10).c_str(),
+            cUnit,
             nTime,
             nVersion,
             vin.size(),
@@ -852,6 +818,12 @@ public:
     bool CheckTransaction() const;
     bool AcceptToMemoryPool(CTxDB& txdb, bool fCheckInputs=true, bool* pfMissingInputs=NULL);
     bool GetCoinAge(CTxDB& txdb, uint64& nCoinAge) const;  // ppcoin: get transaction coin age
+
+    // Add an output, split if appropriate
+    void AddOutput(const CScript script, int64 nAmount);
+
+    // Add the change output, split if appropriate, and back to scriptChange if avatar mode is enabled
+    void AddChange(int64 nChange, CScript& scriptChange, const CCoinControl* coinControl, CReserveKey& reservekey);
 
 protected:
     const CTxOut& GetOutputFor(const CTxIn& input, const MapPrevTx& inputs) const;
@@ -1266,6 +1238,7 @@ public:
     int nHeight;
     int64 nMint;
     std::map<unsigned char, int64> mapMoneySupply;
+    std::map<unsigned char, int64> mapTotalParked;
 
     unsigned int nFlags;  // ppcoin: block index flags
     enum  
@@ -1310,6 +1283,7 @@ public:
         bnChainTrust = 0;
         nMint = 0;
         mapMoneySupply.clear();
+        mapTotalParked.clear();
         nFlags = 0;
         nStakeModifier = 0;
         nStakeModifierChecksum = 0;
@@ -1339,6 +1313,7 @@ public:
         bnChainTrust = 0;
         nMint = 0;
         mapMoneySupply.clear();
+        mapTotalParked.clear();
         nFlags = 0;
         nStakeModifier = 0;
         nStakeModifierChecksum = 0;
@@ -1505,6 +1480,15 @@ public:
             return -1;
     }
 
+    int64 GetTotalParked(unsigned char cUnit) const
+    {
+        std::map<unsigned char, int64>::const_iterator it = mapTotalParked.find(cUnit);
+        if (it != mapTotalParked.end())
+            return it->second;
+        else
+            return -1;
+    }
+
     std::string ToString() const
     {
         return strprintf("CBlockIndex(nprev=%08x, pnext=%08x, nFile=%d, nBlockPos=%-6d nHeight=%d, nMint=%s, nMoneySupply(S)=%s, nMoneySupply(B)=%s, nFlags=(%s)(%d)(%s), nStakeModifier=%016"PRI64x", nStakeModifierChecksum=%08x, hashProofOfStake=%s, prevoutStake=(%s), nStakeTime=%d merkle=%s, hashBlock=%s)",
@@ -1557,15 +1541,15 @@ public:
         READWRITE(nBlockPos);
         READWRITE(nHeight);
         READWRITE(nMint);
-        if (nVersion <= 30000)
+        if (nVersion <= 30000) // v0.3.0
         {
             int64 nMoneySupply = 0;
             READWRITE(nMoneySupply);
         }
         else
-        {
             READWRITE(mapMoneySupply);
-        }
+        if (nVersion > 40400) // v0.4.4
+            READWRITE(mapTotalParked);
         READWRITE(nFlags);
         READWRITE(nStakeModifier);
         if (IsProofOfStake())
@@ -1956,7 +1940,7 @@ public:
     bool CheckSignature()
     {
         CKey key;
-        if (!key.SetPubKey(ParseHex("04a0a849dd49b113d3179a332dd77715c43be4d0076e2f19e66de23dd707e56630f792f298dfd209bf042bb3561f4af6983f3d81e439737ab0bf7f898fecd21aab")))
+        if (!key.SetPubKey(ParseHex("")))
             return error("CAlert::CheckSignature() : SetPubKey failed");
         if (!key.Verify(Hash(vchMsg.begin(), vchMsg.end()), vchSig))
             return error("CAlert::CheckSignature() : verify signature failed");

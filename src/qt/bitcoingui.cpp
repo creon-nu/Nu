@@ -10,7 +10,7 @@
 #include "transactiontablemodel.h"
 #include "addressbookpage.h"
 #include "sendcoinsdialog.h"
-#include "messagepage.h"
+#include "signverifymessagedialog.h"
 #include "optionsdialog.h"
 #include "aboutdialog.h"
 #include "clientmodel.h"
@@ -64,6 +64,9 @@
 
 #include <iostream>
 
+#include <QFont>
+#include <QStyleFactory>
+
 BitcoinGUI::BitcoinGUI(QWidget *parent):
     QMainWindow(parent),
     clientModel(0),
@@ -79,12 +82,15 @@ BitcoinGUI::BitcoinGUI(QWidget *parent):
 {
     resize(850, 550);
     setWindowTitle(tr("Nu"));
+    setStyle(QStyleFactory::create("cleanlooks"));
 #ifndef Q_WS_MAC
     setWindowIcon(QIcon(":icons/nu"));
 #else
-    setUnifiedTitleAndToolBarOnMac(true);
+    // nu: setting this breaks the visual styles for the toolbar, so turning off
+    setUnifiedTitleAndToolBarOnMac(false);
     QApplication::setAttribute(Qt::AA_DontShowIconsInMenus);
 #endif
+
     // Accept D&D of URIs
     setAcceptDrops(true);
 
@@ -115,7 +121,7 @@ BitcoinGUI::BitcoinGUI(QWidget *parent):
 
     sendCoinsPage = new SendCoinsDialog(this);
 
-    messagePage = new MessagePage(this);
+    messagePage = new SignVerifyMessageDialog(this);
 
     parkPage = new ParkPage(this);
 
@@ -159,9 +165,11 @@ BitcoinGUI::BitcoinGUI(QWidget *parent):
     // Progress bar and label for blocks download
     progressBarLabel = new QLabel();
     progressBarLabel->setVisible(false);
+    progressBarLabel->setProperty("class", "progressBarLabel");
     progressBar = new QProgressBar();
     progressBar->setAlignment(Qt::AlignCenter);
     progressBar->setVisible(false);
+    progressBar->setProperty("class", "statusBarStyle");
 
     statusBar()->addWidget(progressBarLabel);
     statusBar()->addWidget(progressBar);
@@ -192,54 +200,60 @@ void BitcoinGUI::createActions()
 {
     QActionGroup *tabGroup = new QActionGroup(this);
 
-    overviewAction = new QAction(QIcon(":/icons/overview"), tr("&Overview"), this);
+    overviewAction = new QAction(tr("&Overview"), this);
     overviewAction->setToolTip(tr("Show general overview of holdings"));
     overviewAction->setCheckable(true);
     overviewAction->setShortcut(QKeySequence(Qt::ALT + Qt::Key_1));
     tabGroup->addAction(overviewAction);
 
-    historyAction = new QAction(QIcon(":/icons/history"), tr("&Transactions"), this);
+    historyAction = new QAction(tr("&Transactions"), this);
     historyAction->setToolTip(tr("Browse transaction history"));
     historyAction->setCheckable(true);
     historyAction->setShortcut(QKeySequence(Qt::ALT + Qt::Key_4));
     tabGroup->addAction(historyAction);
 
-    addressBookAction = new QAction(QIcon(":/icons/address-book"), tr("&Address Book"), this);
+    addressBookAction = new QAction(tr("&Address Book"), this);
     addressBookAction->setToolTip(tr("Edit the list of stored addresses and labels"));
     addressBookAction->setCheckable(true);
     addressBookAction->setShortcut(QKeySequence(Qt::ALT + Qt::Key_5));
     tabGroup->addAction(addressBookAction);
 
-    receiveCoinsAction = new QAction(QIcon(":/icons/receiving_addresses"), tr("&Receive %1").arg(BitcoinUnits::baseName()), this);
+    receiveCoinsAction = new QAction(tr("&Receive"), this);
     receiveCoinsAction->setToolTip(tr("Show the list of addresses for receiving %1").arg(BitcoinUnits::baseName()));
     receiveCoinsAction->setCheckable(true);
     receiveCoinsAction->setShortcut(QKeySequence(Qt::ALT + Qt::Key_3));
     tabGroup->addAction(receiveCoinsAction);
 
-    sendCoinsAction = new QAction(QIcon(":/icons/send"), tr("&Send %1").arg(BitcoinUnits::baseName()), this);
+    sendCoinsAction = new QAction(tr("&Send"), this);
     sendCoinsAction->setToolTip(tr("Send coins to a %1 address").arg(BitcoinUnits::baseName()));
     sendCoinsAction->setCheckable(true);
     sendCoinsAction->setShortcut(QKeySequence(Qt::ALT + Qt::Key_2));
     tabGroup->addAction(sendCoinsAction);
 
-    messageAction = new QAction(QIcon(":/icons/edit"), tr("Sign &message"), this);
+    messageAction = new QAction(QIcon(":/icons/edit"), tr("Sign/Verify &message"), this);
     messageAction->setToolTip(tr("Prove you control an address"));
 #ifdef FIRST_CLASS_MESSAGING
     messageAction->setCheckable(true);
 #endif
     tabGroup->addAction(messageAction);
 
-    parkAction = new QAction(QIcon(":/icons/lock_closed"), tr("&Park"), this);
+    parkAction = new QAction(tr("&Park"), this);
     parkAction->setToolTip(tr("Park coins"));
     parkAction->setCheckable(true);
     parkAction->setShortcut(QKeySequence(Qt::ALT + Qt::Key_6));
     tabGroup->addAction(parkAction);
 
-    voteAction = new QAction(QIcon(":/icons/edit"), tr("&Vote"), this);
+    voteAction = new QAction(tr("&Vote"), this);
     voteAction->setToolTip(tr("Change your vote"));
     voteAction->setCheckable(true);
     voteAction->setShortcut(QKeySequence(Qt::ALT + Qt::Key_7));
     tabGroup->addAction(voteAction);
+
+    switchUnitAction = new QAction(tr(""), this);
+    switchUnitAction->setToolTip(tr("Switch unit"));
+    switchUnitAction->setCheckable(true);
+    switchUnitAction->setShortcut(QKeySequence(Qt::ALT + Qt::Key_8));
+    tabGroup->addAction(switchUnitAction);
 
     connect(overviewAction, SIGNAL(triggered()), this, SLOT(showNormalIfMinimized()));
     connect(overviewAction, SIGNAL(triggered()), this, SLOT(gotoOverviewPage()));
@@ -287,9 +301,9 @@ void BitcoinGUI::createActions()
     changePassphraseAction->setToolTip(tr("Change the passphrase used for portfolio encryption"));
     openRPCConsoleAction = new QAction(tr("&Debug window"), this);
     openRPCConsoleAction->setToolTip(tr("Open debugging and diagnostic console"));
-    exportPeercoinKeysAction = new QAction(QIcon(":/icons/export"), tr("&Export Peercoin keys"), this);
+    exportPeercoinKeysAction = new QAction(QIcon(":/icons/export"), tr("&Export Peercoin keys..."), this);
     exportPeercoinKeysAction->setToolTip(tr("Export the Peercoin keys associated with the NuShares addresses to Peercoin via RPC"));
-    distributeDividendsAction = new QAction(tr("&Distribute dividends"), this);
+    distributeDividendsAction = new QAction(tr("&Distribute dividends..."), this);
     distributeDividendsAction->setToolTip(tr("Distribute dividends to share holders"));
 
     connect(quitAction, SIGNAL(triggered()), qApp, SLOT(quit()));
@@ -303,6 +317,7 @@ void BitcoinGUI::createActions()
     connect(changePassphraseAction, SIGNAL(triggered()), this, SLOT(changePassphrase()));
     connect(exportPeercoinKeysAction, SIGNAL(triggered()), this, SLOT(exportPeercoinKeys()));
     connect(distributeDividendsAction, SIGNAL(triggered()), this, SLOT(distributeDividendsClicked()));
+    connect(switchUnitAction, SIGNAL(triggered()), this, SLOT (switchUnitButtonClicked()));
 }
 
 void BitcoinGUI::createMenuBar()
@@ -325,9 +340,9 @@ void BitcoinGUI::createMenuBar()
     file->addSeparator();
     file->addAction(quitAction);
 
-    QMenu *shares = appMenuBar->addMenu(tr("S&hares"));
-    shares->addAction(exportPeercoinKeysAction);
-	shares->addAction(distributeDividendsAction);
+    sharesMenu = appMenuBar->addMenu(tr("S&hares"));
+    sharesMenu->addAction(exportPeercoinKeysAction);
+    sharesMenu->addAction(distributeDividendsAction);
 
     unitMenu = appMenuBar->addMenu(tr("&Unit"));
 
@@ -347,8 +362,18 @@ void BitcoinGUI::createMenuBar()
 
 void BitcoinGUI::createToolBars()
 {
+    // spacer for the left-hand side of the toolbar frame used to display the
+    // selected unit's icon and logo text
+    QFrame* toolbarSpacer = new QFrame();
+    toolbarSpacer->setMinimumWidth(125);
+    toolbarSpacer->setProperty("class", "toolbarSpacer");
+
+    // toolbar
     QToolBar *toolbar = addToolBar(tr("Tabs toolbar"));
-    toolbar->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+    toolbar->setStyle(QStyleFactory::create("cleanlooks"));
+    toolbar->setToolButtonStyle(Qt::ToolButtonTextOnly);
+    toolbar->setMovable(false);
+    toolbar->addWidget(toolbarSpacer);
     toolbar->addAction(overviewAction);
     toolbar->addAction(sendCoinsAction);
     toolbar->addAction(receiveCoinsAction);
@@ -359,10 +384,10 @@ void BitcoinGUI::createToolBars()
 #endif
     toolbar->addAction(parkAction);
     toolbar->addAction(voteAction);
+    toolbar->addAction(switchUnitAction);
 
-    QToolBar *toolbar2 = addToolBar(tr("Actions toolbar"));
-    toolbar2->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
-    toolbar2->addAction(exportAction);
+    QWidget *switchUnitToggleBtn = toolbar->widgetForAction(switchUnitAction);
+    switchUnitToggleBtn->setProperty("class", "switchUnitToggleBtn");
 }
 
 void BitcoinGUI::setClientModel(ClientModel *clientModel)
@@ -409,11 +434,8 @@ void BitcoinGUI::setWalletModel(WalletModel *walletModel)
         // nubit: set current base unit
         BitcoinUnits::baseUnit = walletModel->getUnit();
 
-        //update the send and receive button text to display the proper unit (NuShares/NuBits)
-        receiveCoinsAction->setText(tr("&Receive %1").arg(BitcoinUnits::baseName()));
+        // nubit: update the send and receive tooltip text to display the proper unit (NuShares/NuBits)
         receiveCoinsAction->setToolTip(tr("Show the list of addresses for receiving %1").arg(BitcoinUnits::baseName()));
-
-        sendCoinsAction->setText(tr("&Send %1").arg(BitcoinUnits::baseName()));
         sendCoinsAction->setToolTip(tr("Send coins to a %1 address").arg(BitcoinUnits::baseName()));
 
         // Report errors from wallet thread
@@ -435,6 +457,14 @@ void BitcoinGUI::setWalletModel(WalletModel *walletModel)
 
         voteAction->setVisible(walletModel->getUnit() == 'S');
 
+        if (walletModel->getUnit() != 'S' && centralWidget->currentWidget() == votePage)
+            gotoOverviewPage();
+
+        if (walletModel->getUnit() == 'S' && centralWidget->currentWidget() == parkPage)
+            gotoOverviewPage();
+
+        sharesMenu->setEnabled(walletModel->getUnit() == 'S');
+
         setEncryptionStatus(walletModel->getEncryptionStatus());
         connect(walletModel, SIGNAL(encryptionStatusChanged(int)), this, SLOT(setEncryptionStatus(int)));
 
@@ -444,6 +474,26 @@ void BitcoinGUI::setWalletModel(WalletModel *walletModel)
 
         // Ask for passphrase if needed
         connect(walletModel, SIGNAL(requireUnlock()), this, SLOT(unlockWallet()));
+
+        // nubit: change the client stylesheet when the unit context changes
+        if (walletModel->getUnit() == 'S')
+        {
+            QFile stylesheet(":/styles/nushares.qss");
+            stylesheet.open(QFile::ReadOnly);
+            QString setSheet = QLatin1String(stylesheet.readAll());
+            QWidget::setStyleSheet(setSheet);
+        }
+        else
+        {
+            QFile stylesheet(":/styles/nubits.qss");
+            stylesheet.open(QFile::ReadOnly);
+            QString setSheet = QLatin1String(stylesheet.readAll());
+            QWidget::setStyleSheet(setSheet);
+        }
+
+        // Embed application fonts
+        QFont newFont(":/fonts/Roboto-Regular.ttf", 14, true);
+        setFont(newFont);
 
         changeUnitActions.clear();
         QSignalMapper *mapper = new QSignalMapper();
@@ -466,6 +516,16 @@ void BitcoinGUI::setWalletModel(WalletModel *walletModel)
         for (int i=0; i < changeUnitActions.size(); ++i)
             unitMenu->addAction(changeUnitActions[i]);
 
+        if (walletModel->getUnit() == 'S')
+        {
+            switchUnitTarget = "B";
+            switchUnitAction->setText(tr("NuBits"));
+        }
+        else
+        {
+            switchUnitTarget = "S";
+            switchUnitAction->setText(tr("NuShares"));
+        }
     }
 }
 
@@ -483,7 +543,9 @@ void BitcoinGUI::changeUnit(const QString &unit)
             break;
         }
     }
+    setUpdatesEnabled(false);
     setWalletModel(newWalletModel);
+    setUpdatesEnabled(true);
     delete oldWalletModel;
 }
 
@@ -737,9 +799,8 @@ void BitcoinGUI::closeEvent(QCloseEvent *event)
 void BitcoinGUI::askFee(qint64 nFeeRequired, bool *payFee)
 {
     QString strMessage =
-        tr("This transaction is over the size limit.  You can still send it for a fee of %1, "
-          "which goes to the nodes that process your transaction and helps to support the network.  "
-          "Do you want to pay the fee?").arg(
+        tr("This transaction requires a network fee of %1. "
+          "Do you want to pay the fee and continue?").arg(
                 BitcoinUnits::formatWithUnit(BitcoinUnits::BTC, nFeeRequired));
     QMessageBox::StandardButton retval = QMessageBox::question(
           this, tr("Sending..."), strMessage,
@@ -844,12 +905,6 @@ void BitcoinGUI::gotoMessagePage()
 #endif
 }
 
-void BitcoinGUI::gotoMessagePage(QString addr)
-{
-    gotoMessagePage();
-    messagePage->setAddress(addr);
-}
-
 void BitcoinGUI::gotoParkPage()
 {
     parkAction->setChecked(true);
@@ -903,6 +958,7 @@ void BitcoinGUI::handleURI(QString strURI)
 
 void BitcoinGUI::setEncryptionStatus(int status)
 {
+    bool fShares = (walletModel->getUnit() == 'S');
     switch(status)
     {
     case WalletModel::Unencrypted:
@@ -916,12 +972,12 @@ void BitcoinGUI::setEncryptionStatus(int status)
     case WalletModel::Unlocked:
         labelEncryptionIcon->show();
         labelEncryptionIcon->setPixmap(QIcon(":/icons/lock_open").pixmap(STATUSBAR_ICONSIZE,STATUSBAR_ICONSIZE));
-        labelEncryptionIcon->setToolTip(fWalletUnlockMintOnly? tr("Wallet is <b>encrypted</b> and currently <b>unlocked for block minting only</b>") : tr("Wallet is <b>encrypted</b> and currently <b>unlocked</b>"));
+        labelEncryptionIcon->setToolTip(walletModel->isUnlockedForMintingOnly()? tr("Wallet is <b>encrypted</b> and currently <b>unlocked for block minting only</b>") : tr("Wallet is <b>encrypted</b> and currently <b>unlocked</b>"));
         encryptWalletAction->setChecked(true);
         changePassphraseAction->setEnabled(true);
         encryptWalletAction->setEnabled(false); // TODO: decrypt currently not supported
-        unlockForMintingAction->setEnabled(fWalletUnlockMintOnly);
-        unlockForMintingAction->setChecked(fWalletUnlockMintOnly);
+        unlockForMintingAction->setEnabled(fShares && walletModel->isUnlockedForMintingOnly());
+        unlockForMintingAction->setChecked(fShares && walletModel->isUnlockedForMintingOnly());
         break;
     case WalletModel::Locked:
         labelEncryptionIcon->show();
@@ -930,7 +986,7 @@ void BitcoinGUI::setEncryptionStatus(int status)
         encryptWalletAction->setChecked(true);
         changePassphraseAction->setEnabled(true);
         encryptWalletAction->setEnabled(false); // TODO: decrypt currently not supported
-        unlockForMintingAction->setEnabled(true);
+        unlockForMintingAction->setEnabled(fShares);
         unlockForMintingAction->setChecked(false);
         break;
     }
@@ -965,18 +1021,18 @@ void BitcoinGUI::unlockForMinting(bool status)
         if(walletModel->getEncryptionStatus() != WalletModel::Unlocked)
             return;
 
-        fWalletUnlockMintOnly = true;
+        walletModel->setUnlockedForMintingOnly(true);
     }
     else
     {
         if(walletModel->getEncryptionStatus() != WalletModel::Unlocked)
             return;
 
-        if (!fWalletUnlockMintOnly)
+        if (!walletModel->isUnlockedForMintingOnly())
             return;
 
         walletModel->setWalletLocked(true);
-        fWalletUnlockMintOnly = false;
+        walletModel->setUnlockedForMintingOnly(false);
     }
 }
 
@@ -1013,9 +1069,31 @@ void BitcoinGUI::unlockWallet()
 
 void BitcoinGUI::exportPeercoinKeys()
 {
+    QMessageBox::StandardButton reply;
+
+    QString sQuestion = tr("All your NuShares private keys will be converted to Peercoin private keys and imported into your Peercoin wallet.\n\nThe Peercoin wallet must be running, unlocked (if it was encrypted) and accept RPC commands.\n\nThis process may take several minutes because Peercoin will scan the blockchain for transactions on all the imported keys.\n\nDo you want to proceed?");
+    reply = QMessageBox::warning(this, tr("Peercoin keys export confirmation"), sQuestion, QMessageBox::Yes | QMessageBox::No);
+    if (reply != QMessageBox::Yes)
+        return;
+
+    bool fMustLock = false;
+    if (walletModel->getEncryptionStatus() == WalletModel::Locked)
+    {
+        AskPassphraseDialog dlg(AskPassphraseDialog::Unlock, this);
+        dlg.setModel(walletModel);
+        dlg.exec();
+
+        if(walletModel->getEncryptionStatus() != WalletModel::Unlocked)
+            return;
+
+        fMustLock = true;
+    }
+
     try {
         int iExportedCount, iErrorCount;
         walletModel->ExportPeercoinKeys(iExportedCount, iErrorCount);
+        if (fMustLock)
+            walletModel->setWalletLocked(true);
         QMessageBox::information(this,
                 tr("Peercoin keys export"),
                 tr("%1 key(s) were exported to Peercoin.\n%2 key(s) were either already known or invalid.")
@@ -1024,6 +1102,8 @@ void BitcoinGUI::exportPeercoinKeys()
                 );
     }
     catch (std::runtime_error &e) {
+        if (fMustLock)
+            walletModel->setWalletLocked(true);
         QMessageBox::critical(this,
                 tr("Peercoin keys export"),
                 tr("Error: %1").arg(e.what()));
@@ -1042,4 +1122,11 @@ void BitcoinGUI::distributeDividendsClicked()
 {
     DistributeDivDialog dd(this);
     dd.exec();
+}
+
+void BitcoinGUI::switchUnitButtonClicked()
+{
+    gotoOverviewPage();
+
+    changeUnit(switchUnitTarget);
 }

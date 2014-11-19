@@ -14,14 +14,14 @@ BOOST_AUTO_TEST_CASE( test_simple_distribution )
 {
     BalanceMap mapBalance;
 
-    mapBalance[CBitcoinAddress(1, 'S')] = 10;
-    mapBalance[CBitcoinAddress(2, 'S')] = 30;
+    mapBalance[CBitcoinAddress(CKeyID(1), 'S')] = 10;
+    mapBalance[CBitcoinAddress(CKeyID(2), 'S')] = 30;
 
     DividendDistributor distributor(mapBalance);
     distributor.Distribute(100, 0.01);
 
-    BOOST_CHECK_EQUAL(25.0, distributor.GetDistribution(CBitcoinAddress(1, 'S')).GetDividendAmount());
-    BOOST_CHECK_EQUAL(75.0, distributor.GetDistribution(CBitcoinAddress(2, 'S')).GetDividendAmount());
+    BOOST_CHECK_EQUAL(25.0, distributor.GetDistribution(CBitcoinAddress(CKeyID(1), 'S')).GetDividendAmount());
+    BOOST_CHECK_EQUAL(75.0, distributor.GetDistribution(CBitcoinAddress(CKeyID(2), 'S')).GetDividendAmount());
     BOOST_CHECK_EQUAL(100.0, distributor.TotalDistributed());
 
 
@@ -31,8 +31,8 @@ BOOST_AUTO_TEST_CASE( test_simple_distribution )
     BOOST_CHECK_EQUAL(1, vTransactionOuts.size());
 
     Object& outs = *vTransactionOuts.begin();
-    BOOST_CHECK_CLOSE(25.0, find_value(outs, CPeercoinAddress(1).ToString()).get_real(), PRECISION);
-    BOOST_CHECK_CLOSE(75.0, find_value(outs, CPeercoinAddress(2).ToString()).get_real(), PRECISION);
+    BOOST_CHECK_CLOSE(25.0, find_value(outs, CPeercoinAddress(CKeyID(1)).ToString()).get_real(), PRECISION);
+    BOOST_CHECK_CLOSE(75.0, find_value(outs, CPeercoinAddress(CKeyID(2)).ToString()).get_real(), PRECISION);
 }
 
 BOOST_AUTO_TEST_CASE( test_empty_distribution )
@@ -47,16 +47,16 @@ BOOST_AUTO_TEST_CASE( test_off_decimal_distribution )
 {
     BalanceMap mapBalance;
 
-    mapBalance[CBitcoinAddress(1, 'S')] = 1;
-    mapBalance[CBitcoinAddress(2, 'S')] = 1;
-    mapBalance[CBitcoinAddress(3, 'S')] = 1;
+    mapBalance[CBitcoinAddress(CKeyID(1), 'S')] = 1;
+    mapBalance[CBitcoinAddress(CKeyID(2), 'S')] = 1;
+    mapBalance[CBitcoinAddress(CKeyID(3), 'S')] = 1;
 
     DividendDistributor distributor(mapBalance);
     distributor.Distribute(10, 1);
 
-    BOOST_CHECK_CLOSE(3.3333333333, distributor.GetDistribution(CBitcoinAddress(1, 'S')).GetDividendAmount(), PRECISION);
-    BOOST_CHECK_CLOSE(3.3333333333, distributor.GetDistribution(CBitcoinAddress(2, 'S')).GetDividendAmount(), PRECISION);
-    BOOST_CHECK_CLOSE(3.3333333333, distributor.GetDistribution(CBitcoinAddress(3, 'S')).GetDividendAmount(), PRECISION);
+    BOOST_CHECK_CLOSE(3.3333333333, distributor.GetDistribution(CBitcoinAddress(CKeyID(1), 'S')).GetDividendAmount(), PRECISION);
+    BOOST_CHECK_CLOSE(3.3333333333, distributor.GetDistribution(CBitcoinAddress(CKeyID(2), 'S')).GetDividendAmount(), PRECISION);
+    BOOST_CHECK_CLOSE(3.3333333333, distributor.GetDistribution(CBitcoinAddress(CKeyID(3), 'S')).GetDividendAmount(), PRECISION);
     BOOST_CHECK_CLOSE(10.0, distributor.TotalDistributed(), PRECISION);
 }
 
@@ -64,21 +64,21 @@ BOOST_AUTO_TEST_CASE( test_not_enough_dividends_to_pay_fee )
 {
     BalanceMap mapBalance;
 
-    mapBalance[CBitcoinAddress(1, 'S')] = 90;
-    mapBalance[CBitcoinAddress(2, 'S')] = 10;
+    mapBalance[CBitcoinAddress(CKeyID(1), 'S')] = 90;
+    mapBalance[CBitcoinAddress(CKeyID(2), 'S')] = 10;
 
     DividendDistributor distributor(mapBalance);
     distributor.Distribute(0.1, 0.010001);
 
-    BOOST_CHECK_CLOSE(0.1, distributor.GetDistribution(CBitcoinAddress(1, 'S')).GetDividendAmount(), PRECISION);
+    BOOST_CHECK_CLOSE(0.1, distributor.GetDistribution(CBitcoinAddress(CKeyID(1), 'S')).GetDividendAmount(), PRECISION);
     BOOST_CHECK_EQUAL(1, distributor.GetDistributions().size());
     BOOST_CHECK_CLOSE(0.1, distributor.TotalDistributed(), PRECISION);
 
 
     distributor.Distribute(0.1, 0.01);
 
-    BOOST_CHECK_CLOSE(0.09, distributor.GetDistribution(CBitcoinAddress(1, 'S')).GetDividendAmount(), PRECISION);
-    BOOST_CHECK_CLOSE(0.01, distributor.GetDistribution(CBitcoinAddress(2, 'S')).GetDividendAmount(), PRECISION);
+    BOOST_CHECK_CLOSE(0.09, distributor.GetDistribution(CBitcoinAddress(CKeyID(1), 'S')).GetDividendAmount(), PRECISION);
+    BOOST_CHECK_CLOSE(0.01, distributor.GetDistribution(CBitcoinAddress(CKeyID(2), 'S')).GetDividendAmount(), PRECISION);
     BOOST_CHECK_CLOSE(0.10, distributor.TotalDistributed(), PRECISION);
 }
 
@@ -86,8 +86,8 @@ BOOST_AUTO_TEST_CASE( test_nobody_has_enough_funds )
 {
     BalanceMap mapBalance;
 
-    mapBalance[CBitcoinAddress(1, 'S')] = 1;
-    mapBalance[CBitcoinAddress(2, 'S')] = 1;
+    mapBalance[CBitcoinAddress(CKeyID(1), 'S')] = 1;
+    mapBalance[CBitcoinAddress(CKeyID(2), 'S')] = 1;
 
     DividendDistributor distributor(mapBalance);
 
@@ -102,9 +102,9 @@ BOOST_AUTO_TEST_CASE( test_split_transaction )
 {
     BalanceMap mapBalance;
 
-    mapBalance[CBitcoinAddress(1, 'S')] = 1;
-    mapBalance[CBitcoinAddress(2, 'S')] = 8;
-    mapBalance[CBitcoinAddress(3, 'S')] = 1;
+    mapBalance[CBitcoinAddress(CKeyID(1), 'S')] = 1;
+    mapBalance[CBitcoinAddress(CKeyID(2), 'S')] = 8;
+    mapBalance[CBitcoinAddress(CKeyID(3), 'S')] = 1;
 
     DividendDistributor distributor(mapBalance);
     distributor.Distribute(10, 0.01);
@@ -119,9 +119,9 @@ BOOST_AUTO_TEST_CASE( test_split_transaction )
 
     iTransaction = vTransactionOuts.begin();
     outs = *iTransaction;
-    BOOST_CHECK_CLOSE(1.0, find_value(outs, CPeercoinAddress(1).ToString()).get_real(), PRECISION);
-    BOOST_CHECK_CLOSE(8.0, find_value(outs, CPeercoinAddress(2).ToString()).get_real(), PRECISION);
-    BOOST_CHECK_CLOSE(1.0, find_value(outs, CPeercoinAddress(3).ToString()).get_real(), PRECISION);
+    BOOST_CHECK_CLOSE(1.0, find_value(outs, CPeercoinAddress(CKeyID(1)).ToString()).get_real(), PRECISION);
+    BOOST_CHECK_CLOSE(8.0, find_value(outs, CPeercoinAddress(CKeyID(2)).ToString()).get_real(), PRECISION);
+    BOOST_CHECK_CLOSE(1.0, find_value(outs, CPeercoinAddress(CKeyID(3)).ToString()).get_real(), PRECISION);
     BOOST_CHECK_EQUAL(3, outs.size());
 
 
@@ -130,13 +130,13 @@ BOOST_AUTO_TEST_CASE( test_split_transaction )
 
     iTransaction = vTransactionOuts.begin();
     outs = *iTransaction;
-    BOOST_CHECK_CLOSE(1.0, find_value(outs, CPeercoinAddress(1).ToString()).get_real(), PRECISION);
-    BOOST_CHECK_CLOSE(1.0, find_value(outs, CPeercoinAddress(3).ToString()).get_real(), PRECISION);
+    BOOST_CHECK_CLOSE(1.0, find_value(outs, CPeercoinAddress(CKeyID(1)).ToString()).get_real(), PRECISION);
+    BOOST_CHECK_CLOSE(1.0, find_value(outs, CPeercoinAddress(CKeyID(3)).ToString()).get_real(), PRECISION);
     BOOST_CHECK_EQUAL(2, outs.size());
 
     iTransaction++;
     outs = *iTransaction;
-    BOOST_CHECK_CLOSE(8.0, find_value(outs, CPeercoinAddress(2).ToString()).get_real(), PRECISION);
+    BOOST_CHECK_CLOSE(8.0, find_value(outs, CPeercoinAddress(CKeyID(2)).ToString()).get_real(), PRECISION);
     BOOST_CHECK_EQUAL(1, outs.size());
 
     distributor.GenerateOutputs(3, vTransactionOuts);
@@ -144,17 +144,17 @@ BOOST_AUTO_TEST_CASE( test_split_transaction )
 
     iTransaction = vTransactionOuts.begin();
     outs = *iTransaction;
-    BOOST_CHECK_CLOSE(1.0, find_value(outs, CPeercoinAddress(1).ToString()).get_real(), PRECISION);
+    BOOST_CHECK_CLOSE(1.0, find_value(outs, CPeercoinAddress(CKeyID(1)).ToString()).get_real(), PRECISION);
     BOOST_CHECK_EQUAL(1, outs.size());
 
     iTransaction++;
     outs = *iTransaction;
-    BOOST_CHECK_CLOSE(8.0, find_value(outs, CPeercoinAddress(2).ToString()).get_real(), PRECISION);
+    BOOST_CHECK_CLOSE(8.0, find_value(outs, CPeercoinAddress(CKeyID(2)).ToString()).get_real(), PRECISION);
     BOOST_CHECK_EQUAL(1, outs.size());
 
     iTransaction++;
     outs = *iTransaction;
-    BOOST_CHECK_CLOSE(1.0, find_value(outs, CPeercoinAddress(3).ToString()).get_real(), PRECISION);
+    BOOST_CHECK_CLOSE(1.0, find_value(outs, CPeercoinAddress(CKeyID(3)).ToString()).get_real(), PRECISION);
     BOOST_CHECK_EQUAL(1, outs.size());
 
     BOOST_CHECK_THROW(distributor.GenerateOutputs(4, vTransactionOuts), runtime_error);

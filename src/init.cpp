@@ -240,8 +240,8 @@ bool AppInit2(int argc, char* argv[])
             "  -rpcallowip=<ip> \t\t  " + _("Allow JSON-RPC connections from specified IP address") + "\n" +
             "  -rpcconnect=<ip> \t  "   + _("Send commands to node running on <ip> (default: 127.0.0.1)") + "\n" +
             "  -blocknotify=<cmd> "     + _("Execute command when the best block changes (%s in cmd is replaced by block hash)") + "\n" +
+            "  -walletnotify=<cmd> "    + _("Execute command when a wallet transaction changes (%s in cmd is replaced by TxID)") + "\n" +
             "  -upgradewallet   \t  "   + _("Upgrade wallet to latest format") + "\n" +
-            "  -walletnotify=<cmd>    " + _("Execute command when a wallet transaction changes (%s in cmd is replaced by TxID)") + "\n" +
             "  -keypool=<n>     \t  "   + _("Set key pool size to <n> (default: 100)") + "\n" +
             "  -rescan          \t  "   + _("Rescan the block chain for missing wallet transactions") + "\n" +
             "  -checkblocks=<n> \t\t  " + _("How many blocks to check at startup (default: 2500, 0 = all)") + "\n" +
@@ -267,6 +267,11 @@ bool AppInit2(int argc, char* argv[])
 #endif
         return false;
     }
+
+#ifdef TESTING
+    if (mapArgs.count("-timetravel"))
+        nTimeShift = GetArg("-timetravel", 0);
+#endif
 
     fTestNet = GetBoolArg("-testnet");
     if (fTestNet)
@@ -405,18 +410,18 @@ bool AppInit2(int argc, char* argv[])
         if (nLoadWalletRet != DB_LOAD_OK)
         {
             if (nLoadWalletRet == DB_CORRUPT)
-                strErrors << _("Error loading wallet.dat: Wallet corrupted") << "\n";
+                strErrors << format(_("Error loading %s: Wallet corrupted")) % walletFilename << "\n";
             else if (nLoadWalletRet == DB_TOO_NEW)
-                strErrors << _("Error loading wallet.dat: Wallet requires newer version of PPCoin") << "\n";
+                strErrors << format(_("Error loading %s: Wallet requires newer version of Nu")) % walletFilename << "\n";
             else if (nLoadWalletRet == DB_NEED_REWRITE)
             {
-                strErrors << _("Wallet needed to be rewritten: restart PPCoin to complete") << "\n";
+                strErrors << _("Wallet needed to be rewritten: restart Nu to complete") << "\n";
                 printf("%s", strErrors.str().c_str());
-                ThreadSafeMessageBox(strErrors.str(), _("PPCoin"), wxOK | wxICON_ERROR | wxMODAL);
+                ThreadSafeMessageBox(strErrors.str(), _("Nu"), wxOK | wxICON_ERROR | wxMODAL);
                 return false;
             }
             else
-                strErrors << _("Error loading wallet.dat") << "\n";
+                strErrors << format(_("Error loading %s")) % walletFilename << "\n";
         }
 
         if (GetBoolArg("-upgradewallet", fFirstRun))
@@ -435,18 +440,18 @@ bool AppInit2(int argc, char* argv[])
             pwalletMain->SetMaxVersion(nMaxVersion);
         }
 
-        if (fFirstRun)
-        {
-            // Create new keyUser and set as default key
-            RandAddSeedPerfmon();
+    if (fFirstRun)
+    {
+        // Create new keyUser and set as default key
+        RandAddSeedPerfmon();
 
-            std::vector<unsigned char> newDefaultKey;
-            if (!pwalletMain->GetKeyFromPool(newDefaultKey, false))
-                strErrors << _("Cannot initialize keypool") << "\n";
-            pwalletMain->SetDefaultKey(newDefaultKey);
-            if (!pwalletMain->SetAddressBookName(CBitcoinAddress(pwalletMain->vchDefaultKey, unit), ""))
-                strErrors << _("Cannot write default address") << "\n";
-        }
+        CPubKey newDefaultKey;
+        if (!pwalletMain->GetKeyFromPool(newDefaultKey, false))
+            strErrors << _("Cannot initialize keypool") << "\n";
+        pwalletMain->SetDefaultKey(newDefaultKey);
+        if (!pwalletMain->SetAddressBookName(pwalletMain->vchDefaultKey.GetID(), ""))
+            strErrors << _("Cannot write default address") << "\n";
+    }
 
         printf("%s", strErrors.str().c_str());
         printf(" wallet      %15"PRI64d"ms\n", GetTimeMillis() - nStart);
@@ -622,11 +627,6 @@ bool AppInit2(int argc, char* argv[])
 
     if (!CreateThread(StartNode, NULL))
         ThreadSafeMessageBox(_("Error: CreateThread(StartNode) failed"), _("Nu"), wxOK | wxMODAL);
-
-#ifdef TESTING
-    if (mapArgs.count("-timetravel"))
-        nTimeShift = GetArg("-timetravel", 0);
-#endif
 
     if (fServer)
     {

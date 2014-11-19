@@ -6,7 +6,7 @@
 
 using namespace std;
 
-CScript CVote::ToScript() const
+CScript CVote::ToScript(int nVersion) const
 {
     CScript voteScript;
 
@@ -14,7 +14,10 @@ CScript CVote::ToScript() const
     voteScript << OP_1;
 
     CDataStream voteStream(SER_NETWORK, PROTOCOL_VERSION);
-    voteStream << *this;
+    if (nVersion == this->nVersion)
+        voteStream << *this;
+    else
+        voteStream << CVote(*this, nVersion);
 
     vector<unsigned char> vchVote(voteStream.begin(), voteStream.end());
     voteScript << vchVote;
@@ -455,7 +458,7 @@ bool GenerateCurrencyCoinBases(const std::vector<CVote> vVote, std::map<CBitcoin
             uint64 amount = grantedAmount.second;
 
             CScript scriptPubKey;
-            scriptPubKey.SetBitcoinAddress(address, cUnit);
+            scriptPubKey.SetDestination(address.Get());
 
             tx.vout.push_back(CTxOut(amount, scriptPubKey));
         }

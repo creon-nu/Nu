@@ -41,7 +41,7 @@ bool CLiquidityInfo::ProcessLiquidityInfo()
         it = mapLiquidityInfo.find(address);
         if (it != mapLiquidityInfo.end())
         {
-            if (it->second.nTime > nTime)
+            if (it->second.nTime >= nTime)
                 return false;
         }
 

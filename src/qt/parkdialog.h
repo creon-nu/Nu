@@ -24,6 +24,7 @@ public:
     qint64 getAmount() const;
     qint64 getBlocks() const;
     QString getUnparkAddress() const;
+    qint64 getEstimatedPremium() const;
 
     QString formatAmount(qint64 amount) const;
     QString formatBlockTime(qint64 blocks) const;
