@@ -162,7 +162,7 @@ void CWallet::SaveVote() const
 void CWallet::SaveDataFeed() const
 {
     CWalletDB walletdb(strWalletFile);
-    walletdb.WriteDataFeed(sDataFeedURL);
+    walletdb.WriteDataFeed(dataFeed);
 }
 
 // This class implements an addrIncoming entry that causes pre-0.4

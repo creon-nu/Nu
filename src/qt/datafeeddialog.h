@@ -2,6 +2,7 @@
 #define DATAFEEDDIALOG_H
 
 #include <QDialog>
+#include "datafeed.h"
 
 namespace Ui {
 class DataFeedDialog;
@@ -17,6 +18,8 @@ public:
     ~DataFeedDialog();
 
     void setModel(WalletModel *model);
+    void setDataFeed(const CDataFeed&);
+    CDataFeed getDataFeed() const;
 
 private:
     Ui::DataFeedDialog *ui;

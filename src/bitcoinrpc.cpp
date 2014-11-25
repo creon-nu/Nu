@@ -4157,15 +4157,24 @@ Value getrawmempool(const Array& params, bool fHelp)
 
 Value setdatafeed(const Array& params, bool fHelp)
 {
-    if (fHelp || params.size() != 1)
+    if (fHelp || (params.size() != 1 && params.size() != 3))
         throw runtime_error(
-            "setdatafeed <url>\n"
-            "Change the vote data feed. Set <url> to an empty string to disable.");
+            "setdatafeed <url> [<signature url> <address>]\n"
+            "Change the vote data feed. Set <url> to an empty string to disable.\n"
+            "If <signature url> and <address> are specified a signature will also be retrieved at <signature url> and verified.");
 
     string sURL = params[0].get_str();
 
+    string sSignatureURL;
+    if (params.size() > 1)
+        sSignatureURL = params[1].get_str();
+
+    string sAddress;
+    if (params.size() > 2)
+        sAddress = params[2].get_str();
+
     CWallet* pwallet = GetWallet('S');
-    pwallet->SetDataFeed(sURL);
+    pwallet->SetDataFeed(CDataFeed(sURL, sSignatureURL, sAddress));
 
     try
     {
@@ -4188,8 +4197,14 @@ Value getdatafeed(const Array& params, bool fHelp)
             "Return the current data feed.");
 
     CWallet* pwallet = GetWallet('S');
+    const CDataFeed& dataFeed(pwallet->GetDataFeed());
 
-    return pwallet->GetDataFeed();
+    Object result;
+    result.push_back(Pair("url", dataFeed.sURL));
+    result.push_back(Pair("signatureurl", dataFeed.sSignatureURL));
+    result.push_back(Pair("signatureaddress", dataFeed.sSignatureAddress));
+
+    return result;
 }
 
 

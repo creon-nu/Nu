@@ -82,7 +82,6 @@ public:
             if (curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code) != CURLE_OK)
                 throw runtime_error("Unable to get data feed response code");
 
-            printf("status: %ld\n", http_code);
             if (http_code != 200)
                 throw runtime_error((boost::format("Data feed failed: Response code %ld") % http_code).str());
 
@@ -106,14 +105,50 @@ public:
     }
 };
 
-bool GetVoteFromDataFeed(string sURL, CVote& voteRet)
+void VerifyDataFeedSignature(const string& strMessage, const string& strSign, const string& strAddress)
+{
+    CBitcoinAddress addr(strAddress);
+    if (!addr.IsValid())
+        throw runtime_error("Invalid data feed address");
+
+    CKeyID keyID;
+    if (!addr.GetKeyID(keyID))
+        throw runtime_error("Data feed address does not refer to key");
+
+    bool fInvalid = false;
+    vector<unsigned char> vchSig = DecodeBase64(strSign.c_str(), &fInvalid);
+
+    if (fInvalid)
+        throw runtime_error("Malformed base64 encoding of data feed signature");
+
+    CDataStream ss(SER_GETHASH, 0);
+    ss << strMessageMagic;
+    ss << strMessage;
+
+    CKey key;
+    if (!key.SetCompactSignature(Hash(ss.begin(), ss.end()), vchSig))
+        throw runtime_error("Unable to set key from data feed signature");
+
+    if (key.GetPubKey().GetID() != keyID)
+        throw runtime_error("Data feed signature check failed");
+}
+
+bool GetVoteFromDataFeed(const CDataFeed& dataFeed, CVote& voteRet)
 {
     bool result = false;
 
     try
     {
-        DataFeedRequest request(sURL);
+        DataFeedRequest request(dataFeed.sURL);
         request.Perform();
+
+        if (dataFeed.sSignatureAddress != "" && dataFeed.sSignatureURL != "")
+        {
+            DataFeedRequest signatureRequest(dataFeed.sSignatureURL);
+            signatureRequest.Perform();
+
+            VerifyDataFeedSignature(request.GetResult(), signatureRequest.GetResult(), dataFeed.sSignatureAddress);
+        }
 
         Value valReply;
         if (!read_string(request.GetResult(), valReply))
@@ -229,19 +264,19 @@ CVote ParseVote(const Object& objVote)
 void UpdateFromDataFeed()
 {
     CWallet* pwallet = GetWallet('S');
-    string url;
+    CDataFeed dataFeed;
     {
         LOCK(pwallet->cs_wallet);
-        url = pwallet->GetDataFeed();
+        dataFeed = pwallet->GetDataFeed();
     }
 
-    if (url == "")
+    if (dataFeed.sURL == "")
         return;
 
-    printf("Updating from data feed %s\n", url.c_str());
+    printf("Updating from data feed %s\n", dataFeed.sURL.c_str());
 
     CVote newVote;
-    if (GetVoteFromDataFeed(url, newVote))
+    if (GetVoteFromDataFeed(dataFeed, newVote))
     {
         LOCK(pwallet->cs_wallet);
         pwallet->vote = newVote;

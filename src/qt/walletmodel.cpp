@@ -504,14 +504,14 @@ CDefaultKey WalletModel::getDefaultKey()
     return CDefaultKey(wallet);
 }
 
-QString WalletModel::getDataFeed() const
+CDataFeed WalletModel::getDataFeed() const
 {
-    return QString::fromStdString(wallet->GetDataFeed());
+    return wallet->GetDataFeed();
 }
 
-void WalletModel::setDataFeed(QString url)
+void WalletModel::setDataFeed(const CDataFeed& dataFeed)
 {
-    wallet->SetDataFeed(url.toUtf8().constData());
+    wallet->SetDataFeed(dataFeed);
 }
 
 void WalletModel::updateFromDataFeed()

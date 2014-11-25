@@ -19,7 +19,23 @@ DataFeedDialog::~DataFeedDialog()
 void DataFeedDialog::setModel(WalletModel *model)
 {
     this->model = model;
-    ui->urlEdit->setText(model->getDataFeed());
+    setDataFeed(model->getDataFeed());
+}
+
+void DataFeedDialog::setDataFeed(const CDataFeed& dataFeed)
+{
+    ui->urlEdit->setText(QString::fromStdString(dataFeed.sURL));
+    ui->signatureUrlEdit->setText(QString::fromStdString(dataFeed.sSignatureURL));
+    ui->signatureAddressEdit->setText(QString::fromStdString(dataFeed.sSignatureAddress));
+}
+
+CDataFeed DataFeedDialog::getDataFeed() const
+{
+    CDataFeed dataFeed;
+    dataFeed.sURL = ui->urlEdit->text().toUtf8().constData();
+    dataFeed.sSignatureURL = ui->signatureUrlEdit->text().toUtf8().constData();
+    dataFeed.sSignatureAddress = ui->signatureAddressEdit->text().toUtf8().constData();
+    return dataFeed;
 }
 
 bool DataFeedDialog::confirmAfterError(QString error)
@@ -33,8 +49,8 @@ bool DataFeedDialog::confirmAfterError(QString error)
 
 void DataFeedDialog::accept()
 {
-    QString previousDataFeed = model->getDataFeed();
-    model->setDataFeed(ui->urlEdit->text());
+    CDataFeed previousDataFeed = model->getDataFeed();
+    model->setDataFeed(getDataFeed());
     try
     {
         model->updateFromDataFeed();
@@ -45,7 +61,7 @@ void DataFeedDialog::accept()
         model->setDataFeed(previousDataFeed);
         if (confirmAfterError(e.what()))
         {
-            model->setDataFeed(ui->urlEdit->text());
+            model->setDataFeed(getDataFeed());
             QDialog::accept();
         }
     }
