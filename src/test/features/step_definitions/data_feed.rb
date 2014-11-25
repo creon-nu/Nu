@@ -115,37 +115,25 @@ Given(/^the data feed "(.*?)" returns:$/) do |arg1, string|
   @data_feeds[arg1].set(string)
 end
 
+Given(/^sample vote "(.*?)" is:$/) do |arg1, string|
+  @sample_votes ||= {}
+  @sample_votes[arg1] = string
+end
+
+Given(/^the data feed "(.*?)" returns sample vote "(.*?)"$/) do |arg1, arg2|
+  @data_feeds[arg1].set @sample_votes[arg2]
+end
+
 Given(/^the data feed "(.*?)" returns a status (\d+) with the body:$/) do |arg1, arg2, string|
   @data_feeds[arg1].set(string)
   @data_feeds[arg1].set_status(arg2)
 end
 
-Given(/^the data feed "(.*?)" returns a valid vote of (\d+) bytes$/) do |arg1, arg2|
+Given(/^the data feed "(.*?)" returns sample vote "(.*?)" padded with spaces to (\d+) bytes$/) do |arg1, arg2, arg3|
   data_feed = @data_feeds[arg1]
-  size = arg2.to_i
+  vote = @sample_votes[arg2]
+  size = arg3.to_i
 
-  vote = %q(
-      {
-         "custodians":[
-            {"address":"bPwdoprYd3SRHqUCG5vCcEY68g8UfGC1d9", "amount":100.00000000},
-            {"address":"bxmgMJVaniUDbtiMVC7g5RuSy46LTVCLBT", "amount":5.50000000}
-         ],
-         "parkrates":[
-            {
-               "unit":"B",
-               "rates":[
-                  {"blocks":8192, "rate":0.00030000},
-                  {"blocks":16384, "rate":0.00060000},
-                  {"blocks":32768, "rate":0.00130000}
-               ]
-            }
-         ],
-         "motions":[
-            "8151325dcdbae9e0ff95f9f9658432dbedfdb209",
-            "3f786850e387550fdab836ed7e6dc881de23001b"
-         ]
-      }
-  )
   vote += " " * (size - vote.size)
   data_feed.set(vote)
 end
@@ -161,9 +149,13 @@ Then(/^the vote of node "(.*?)" (?:should be|is|should become):$/) do |arg1, str
     end
   rescue
     errors = @nodes[arg1].info["errors"]
-    puts errors unless errors.blank?
+    puts errors unless errors.nil?
     raise
   end
+end
+
+Then(/^the vote of node "(.*?)" should be sample vote "(.*?)"$/) do |arg1, arg2|
+  step "the vote of node \"#{arg1}\" should be:", @sample_votes[arg2]
 end
 
 Then(/^node "(.*?)" should use the data feed "(.*?)"$/) do |arg1, arg2|
@@ -173,3 +165,16 @@ end
 Given(/^data feed "(.*?)" shuts down$/) do |arg1|
   @data_feeds[arg1].stop
 end
+
+When(/^the vote of node "(.*?)" (?:is|should become) sample vote "(.*?)"$/) do |arg1, arg2|
+  step "the vote of node \"#{arg1}\" is:", @sample_votes[arg2]
+end
+
+Given(/^node "(.*?)" sets (?:his|her) vote to sample vote "(.*?)"$/) do |arg1, arg2|
+  step "node \"#{arg1}\" sets his vote to:", @sample_votes[arg2]
+end
+
+Given(/^the data feed "(.*?)" returns a status (\d+) with sample vote "(.*?)"$/) do |arg1, arg2, arg3|
+  step "the data feed \"#{arg1}\" returns a status #{arg2} with the body:", @sample_votes[arg3]
+end
+

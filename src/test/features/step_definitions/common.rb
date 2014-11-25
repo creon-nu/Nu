@@ -537,6 +537,6 @@ When(/^the error on node "(.*?)" should be "(.*?)"$/) do |arg1, arg2|
   end
 end
 
-Given(/^node "(.*?)" sets her vote to:$/) do |arg1, string|
+Given(/^node "(.*?)" sets (?:his|her) vote to:$/) do |arg1, string|
   @nodes[arg1].rpc("setvote", JSON.parse(string))
 end
