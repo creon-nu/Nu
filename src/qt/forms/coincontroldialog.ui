@@ -38,8 +38,11 @@
        </property>
        <item row="0" column="0">
         <widget class="QLabel" name="labelCoinControlQuantityText">
-         <property name="styleSheet">
-          <string notr="true">font-weight:bold;</string>
+         <property name="font">
+          <font>
+           <weight>75</weight>
+           <bold>true</bold>
+          </font>
          </property>
          <property name="text">
           <string>Quantity:</string>
@@ -70,8 +73,11 @@
        </item>
        <item row="1" column="0">
         <widget class="QLabel" name="labelCoinControlBytesText">
-         <property name="styleSheet">
-          <string notr="true">font-weight:bold;</string>
+         <property name="font">
+          <font>
+           <weight>75</weight>
+           <bold>true</bold>
+          </font>
          </property>
          <property name="text">
           <string>Bytes:</string>
@@ -118,8 +124,11 @@
        </property>
        <item row="0" column="0">
         <widget class="QLabel" name="labelCoinControlAmountText">
-         <property name="styleSheet">
-          <string notr="true">font-weight:bold;</string>
+         <property name="font">
+          <font>
+           <weight>75</weight>
+           <bold>true</bold>
+          </font>
          </property>
          <property name="text">
           <string>Amount:</string>
@@ -150,8 +159,11 @@
        </item>
        <item row="1" column="0">
         <widget class="QLabel" name="labelCoinControlPriorityText">
-         <property name="styleSheet">
-          <string notr="true">font-weight:bold;</string>
+         <property name="font">
+          <font>
+           <weight>75</weight>
+           <bold>true</bold>
+          </font>
          </property>
          <property name="text">
           <string>Priority:</string>
@@ -198,8 +210,11 @@
        </property>
        <item row="0" column="0">
         <widget class="QLabel" name="labelCoinControlFeeText">
-         <property name="styleSheet">
-          <string notr="true">font-weight:bold;</string>
+         <property name="font">
+          <font>
+           <weight>75</weight>
+           <bold>true</bold>
+          </font>
          </property>
          <property name="text">
           <string>Fee:</string>
@@ -233,8 +248,11 @@
          <property name="enabled">
           <bool>false</bool>
          </property>
-         <property name="styleSheet">
-          <string notr="true">font-weight:bold;</string>
+         <property name="font">
+          <font>
+           <weight>75</weight>
+           <bold>true</bold>
+          </font>
          </property>
          <property name="text">
           <string>Low Output:</string>
@@ -284,8 +302,11 @@
        </property>
        <item row="0" column="0">
         <widget class="QLabel" name="labelCoinControlAfterFeeText">
-         <property name="styleSheet">
-          <string notr="true">font-weight:bold;</string>
+         <property name="font">
+          <font>
+           <weight>75</weight>
+           <bold>true</bold>
+          </font>
          </property>
          <property name="text">
           <string>After Fee:</string>
@@ -319,8 +340,11 @@
          <property name="enabled">
           <bool>false</bool>
          </property>
-         <property name="styleSheet">
-          <string notr="true">font-weight:bold;</string>
+         <property name="font">
+          <font>
+           <weight>75</weight>
+           <bold>true</bold>
+          </font>
          </property>
          <property name="text">
           <string>Change:</string>
