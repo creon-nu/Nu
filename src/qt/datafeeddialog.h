@@ -2,6 +2,7 @@
 #define DATAFEEDDIALOG_H
 
 #include <QDialog>
+#include <QMessageBox>
 #include "datafeed.h"
 
 namespace Ui {
@@ -26,10 +27,15 @@ private:
 
     WalletModel *model;
 
+    CDataFeed previousDataFeed;
+    QMessageBox waitDialog;
+
     bool confirmAfterError(QString error);
 
 private slots:
     void accept();
+    void close();
+    void revertAndAskForConfirmation(QString error);
 };
 
 #endif // DATAFEEDDIALOG_H

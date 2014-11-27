@@ -1,4 +1,5 @@
 #include <QMessageBox>
+#include <QThread>
 
 #include "datafeeddialog.h"
 #include "ui_datafeeddialog.h"
@@ -6,9 +7,15 @@
 
 DataFeedDialog::DataFeedDialog(QWidget *parent) :
     QDialog(parent),
-    ui(new Ui::DataFeedDialog)
+    ui(new Ui::DataFeedDialog),
+    waitDialog(this)
 {
     ui->setupUi(this);
+
+    waitDialog.setWindowTitle(tr("Data feed update"));
+    waitDialog.setText(tr("Fetching feed, please wait..."));
+    waitDialog.setStandardButtons(QMessageBox::NoButton);
+    waitDialog.setIcon(QMessageBox::Information);
 }
 
 DataFeedDialog::~DataFeedDialog()
@@ -47,22 +54,68 @@ bool DataFeedDialog::confirmAfterError(QString error)
     return reply == QMessageBox::Yes;
 }
 
-void DataFeedDialog::accept()
+class UpdateDataFeedThread : public QThread
 {
-    CDataFeed previousDataFeed = model->getDataFeed();
-    model->setDataFeed(getDataFeed());
-    try
+    Q_OBJECT
+
+    WalletModel *model;
+
+public:
+    UpdateDataFeedThread(QObject* parent, WalletModel *model) :
+        QThread(parent),
+        model(model)
     {
-        model->updateFromDataFeed();
-        QDialog::accept();
     }
-    catch (std::exception& e)
+
+protected:
+    void run()
     {
-        model->setDataFeed(previousDataFeed);
-        if (confirmAfterError(e.what()))
+        try
         {
-            model->setDataFeed(getDataFeed());
-            QDialog::accept();
+            model->updateFromDataFeed();
+            emit success();
+        }
+        catch (std::exception& e)
+        {
+            emit failure(QString::fromStdString(e.what()));
         }
     }
+
+signals:
+    void success();
+    void failure(QString error);
+};
+
+void DataFeedDialog::close()
+{
+    waitDialog.setVisible(false);
+    QDialog::accept();
 }
+
+void DataFeedDialog::revertAndAskForConfirmation(QString error)
+{
+    waitDialog.setVisible(false);
+    model->setDataFeed(previousDataFeed);
+    if (confirmAfterError(error))
+    {
+        model->setDataFeed(getDataFeed());
+        close();
+    }
+}
+
+void DataFeedDialog::accept()
+{
+    waitDialog.setVisible(true);
+
+    previousDataFeed = model->getDataFeed();
+    model->setDataFeed(getDataFeed());
+
+    UpdateDataFeedThread *thread = new UpdateDataFeedThread(this, model);
+    connect(thread, SIGNAL(success()), this, SLOT(close()));
+    connect(thread, SIGNAL(failure(QString)), this, SLOT(revertAndAskForConfirmation(QString)));
+    connect(thread, SIGNAL(finished()), thread, SLOT(deleteLater()));
+    thread->start();
+}
+
+#include "datafeeddialog.moc"
+
