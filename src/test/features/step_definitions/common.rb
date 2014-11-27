@@ -71,7 +71,7 @@ Given(/^a node "(.*?)" with an empty wallet$/) do |arg1|
   node.wait_for_boot
 end
 
-Given(/^a node "(.*?)"$/) do |arg1|
+Given(/^a node "([^"]*?)"$/) do |arg1|
   step "a node \"#{arg1}\" with an empty wallet"
 end
 
