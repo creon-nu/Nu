@@ -494,9 +494,9 @@ uint64 GetPremium(uint64 nValue, uint64 nDuration, unsigned char cUnit, const st
                 const CParkRate& prevParkRate = vSortedParkRate[i-1];
 
                 uint64 rate =
-                    prevParkRate.nRate +
-                    (nDuration - prevParkRate.GetDuration()) *
-                    (parkRate.nRate - prevParkRate.nRate) / (parkRate.GetDuration() - prevParkRate.GetDuration());
+                    (int64)prevParkRate.nRate +
+                    ((int64)nDuration - (int64)prevParkRate.GetDuration()) *
+                    ((int64)parkRate.nRate - (int64)prevParkRate.nRate) / ((int64)parkRate.GetDuration() - (int64)prevParkRate.GetDuration());
                 return nValue * rate / COIN_PARK_RATE;
             }
         }
