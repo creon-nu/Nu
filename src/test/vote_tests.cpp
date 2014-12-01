@@ -542,6 +542,8 @@ BOOST_AUTO_TEST_CASE(premium_calculation)
     parkRateResult.vParkRate.push_back(CParkRate(12,  2 * COIN_PARK_RATE));
     parkRateResult.vParkRate.push_back(CParkRate(13,  5 * COIN_PARK_RATE));
     parkRateResult.vParkRate.push_back(CParkRate(15, 50 * COIN_PARK_RATE));
+    parkRateResult.vParkRate.push_back(CParkRate(16, 40 * COIN_PARK_RATE));
+    parkRateResult.vParkRate.push_back(CParkRate(17, 50 * COIN_PARK_RATE));
     vParkRateResult.push_back(parkRateResult);
 
     // Below minimum rate
@@ -551,9 +553,9 @@ BOOST_AUTO_TEST_CASE(premium_calculation)
     BOOST_CHECK_EQUAL( 0, GetPremium(10 * COIN, 3, 'B', vParkRateResult));
 
     // Above maximum rate
-    BOOST_CHECK_EQUAL( 0, GetPremium(   1 * COIN,   32769, 'B', vParkRateResult));
-    BOOST_CHECK_EQUAL( 0, GetPremium(1000 * COIN,   32769, 'B', vParkRateResult));
-    BOOST_CHECK_EQUAL( 0, GetPremium(   1 * COIN, 1000000, 'B', vParkRateResult));
+    BOOST_CHECK_EQUAL( 0, GetPremium(   1 * COIN, (1<<17)+1, 'B', vParkRateResult));
+    BOOST_CHECK_EQUAL( 0, GetPremium(1000 * COIN, (1<<17)+1, 'B', vParkRateResult));
+    BOOST_CHECK_EQUAL( 0, GetPremium(   1 * COIN,   1000000, 'B', vParkRateResult));
 
     // Exact durations
     BOOST_CHECK_EQUAL( 5, GetPremium(1   * COIN,  4, 'B', vParkRateResult));
@@ -565,7 +567,9 @@ BOOST_AUTO_TEST_CASE(premium_calculation)
     BOOST_CHECK_EQUAL( 1 * COIN, GetPremium(1 * COIN,  1024, 'B', vParkRateResult));
     BOOST_CHECK_EQUAL( 2 * COIN, GetPremium(1 * COIN,  4096, 'B', vParkRateResult));
     BOOST_CHECK_EQUAL( 5 * COIN, GetPremium(1 * COIN,  8192, 'B', vParkRateResult));
-    BOOST_CHECK_EQUAL(50 * COIN, GetPremium(1 * COIN, 32768, 'B', vParkRateResult));
+    BOOST_CHECK_EQUAL(50 * COIN, GetPremium(1 * COIN, 1<<15, 'B', vParkRateResult));
+    BOOST_CHECK_EQUAL(40 * COIN, GetPremium(1 * COIN, 1<<16, 'B', vParkRateResult));
+    BOOST_CHECK_EQUAL(50 * COIN, GetPremium(1 * COIN, 1<<17, 'B', vParkRateResult));
 
     // Intermediate durations
     BOOST_CHECK_EQUAL( 6, GetPremium(1   * COIN,  5, 'B', vParkRateResult));
@@ -576,6 +580,7 @@ BOOST_AUTO_TEST_CASE(premium_calculation)
     BOOST_CHECK_EQUAL(21, GetPremium(1   * COIN, 15, 'B', vParkRateResult));
     BOOST_CHECK_EQUAL(38, GetPremium(1   * COIN, 25, 'B', vParkRateResult));
     BOOST_CHECK_EQUAL((uint64)(3.39453125 * COIN), GetPremium(1 * COIN, 6000, 'B', vParkRateResult));
+    BOOST_CHECK_EQUAL((uint64)(49.69482421875 * COIN), GetPremium(1 * COIN, (1<<15) + 1000, 'B', vParkRateResult));
 }
 
 BOOST_AUTO_TEST_CASE(vote_v1_unserialization)
