@@ -263,6 +263,8 @@ public:
     uint64 nCoinAgeDestroyed;
 
     bool IsValid() const;
+
+    void Upgrade();
 };
 
 bool IsVote(const CScript& scriptPubKey);
