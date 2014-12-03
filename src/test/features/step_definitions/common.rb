@@ -71,11 +71,30 @@ Given(/^a node "(.*?)" with an empty wallet$/) do |arg1|
   node.wait_for_boot
 end
 
+Given(/^a node "(.*?)" connected only to node "(.*?)"$/) do |arg1, arg2|
+  other_node = @nodes[arg2]
+  name = arg1
+  options = {
+    image: "nunet/a",
+    links: [other_node.name],
+    link_with_connect: true,
+    args: {
+      debug: true,
+      timetravel: timeshift,
+    },
+    remove_wallet_before_startup: true,
+  }
+  node = CoinContainer.new(options)
+  @nodes[name] = node
+  node.wait_for_boot
+end
+
 Given(/^a node "(.*?)" with an empty wallet and with avatar mode disabled$/) do |arg1|
   name = arg1
   options = {
     image: "nunet/a",
     links: @nodes.values.map(&:name),
+    link_with_connect: true,
     args: {
       debug: true,
       timetravel: timeshift,
@@ -152,6 +171,12 @@ When(/^node "(.*?)" finds a block "([^"]*?)"$/) do |node, block|
   @blocks[block] = @nodes[node].generate_stake
 end
 
+When(/^node "(.*?)" finds a block "([^"]*?)" not received by node "([^"]*?)"$/) do |node, block, other|
+  time_travel(5)
+  @nodes[other].rpc("ignorenextblock")
+  @blocks[block] = @nodes[node].generate_stake
+end
+
 When(/^node "(.*?)" finds a block$/) do |node|
   time_travel(5)
   @nodes[node].generate_stake
@@ -177,7 +202,21 @@ Then(/^all nodes should (?:be at|reach) block "(.*?)"$/) do |block|
       main.all? { |hash| hash == @blocks[block] }
     end
   rescue
+    require 'pp'
+    pp @blocks
     raise "Not at block #{block}: #{@nodes.values.map(&:top_hash).map { |hash| @blocks.key(hash) || hash }.inspect}"
+  end
+end
+
+Then(/^nodes? (.+) (?:should be at|should reach|reach|reaches|is at|are at) block "(.*?)"$/) do |node_names, block|
+  nodes = node_names.scan(/"(.*?)"/).map { |name, | @nodes[name] }
+  begin
+    wait_for do
+      main = nodes.map(&:top_hash)
+      main.all? { |hash| hash == @blocks[block] }
+    end
+  rescue
+    raise "Not at block #{block}: #{nodes.map(&:top_hash).map { |hash| @blocks.key(hash) || hash }.inspect}"
   end
 end
 
@@ -521,4 +560,8 @@ end
 
 When(/^node "(.*?)" finds a block "(.*?)" on top of(?: block|) "(.*?)"$/) do |node, block, parent|
   @blocks[block] = @nodes[node].generate_stake(@blocks[parent])
+end
+
+Then(/^node "(.*?)" should have (\d+) connection$/) do |arg1, arg2|
+  expect(@nodes[arg1].info["connections"]).to eq(arg2.to_i)
 end

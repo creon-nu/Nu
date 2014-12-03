@@ -116,10 +116,12 @@ extern int64 nTimeBestReceived;
 extern CCriticalSection cs_setpwalletRegistered;
 extern std::set<CWallet*> setpwalletRegistered;
 extern std::map<uint256, CBlock*> mapOrphanBlocks;
+extern std::map<uint256, CBlock*> mapDuplicateStakeBlocks;
 extern std::map<CBitcoinAddress, CBlockIndex*> mapElectedCustodian;
 extern CCriticalSection cs_mapElectedCustodian;
 #ifdef TESTING
 extern uint256 hashSingleStakeBlock;
+extern int nBlocksToIgnore;
 #endif
 
 // Settings
@@ -161,7 +163,7 @@ std::string GetWarnings(std::string strFor);
 uint256 WantedByOrphan(const CBlock* pblockOrphan);
 const CBlockIndex* GetLastBlockIndex(const CBlockIndex* pindex, bool fProofOfStake);
 #ifdef TESTING
-void BitcoinMiner(CWallet *pwallet, bool fProofOfStake, bool fGenerateSingleBlock = false, CBlockIndex* parent = NULL);
+void BitcoinMiner(CWallet *pwallet, bool fProofOfStake, bool fGenerateSingleBlock = false);
 #else
 void BitcoinMiner(CWallet *pwallet, bool fProofOfStake);
 #endif
