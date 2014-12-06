@@ -4157,11 +4157,12 @@ Value getrawmempool(const Array& params, bool fHelp)
 
 Value setdatafeed(const Array& params, bool fHelp)
 {
-    if (fHelp || (params.size() != 1 && params.size() != 3))
+    if (fHelp || (params.size() != 1 && params.size() != 3 && params.size() != 4))
         throw runtime_error(
-            "setdatafeed <url> [<signature url> <address>]\n"
+            "setdatafeed <url> [<signature url> <address>] [<parts>]\n"
             "Change the vote data feed. Set <url> to an empty string to disable.\n"
-            "If <signature url> and <address> are specified a signature will also be retrieved at <signature url> and verified.");
+            "If <signature url> and <address> are specified and not empty strings a signature will also be retrieved at <signature url> and verified.\n"
+            "Parts is the list of the top level vote parts that will be taken from the feed, separated by a coma. The other parts will not affect the vote. Default is \"custodians,parkrates,motions\".");
 
     string sURL = params[0].get_str();
 
@@ -4173,8 +4174,20 @@ Value setdatafeed(const Array& params, bool fHelp)
     if (params.size() > 2)
         sAddress = params[2].get_str();
 
+    string sParts("custodians,parkrates,motions");
+    if (params.size() > 3)
+        sParts = params[3].get_str();
+    vector<string> vParts;
+    boost::split(vParts, sParts, boost::is_any_of(","));
+
+    BOOST_FOREACH(const string sPart, vParts)
+    {
+        if (sPart != "custodians" && sPart != "parkrates" && sPart != "motions")
+            throw runtime_error("Invalid parts");
+    }
+
     CWallet* pwallet = GetWallet('S');
-    pwallet->SetDataFeed(CDataFeed(sURL, sSignatureURL, sAddress));
+    pwallet->SetDataFeed(CDataFeed(sURL, sSignatureURL, sAddress, vParts));
 
     try
     {

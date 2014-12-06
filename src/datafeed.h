@@ -14,15 +14,17 @@ public:
     std::string sURL;
     std::string sSignatureURL;
     std::string sSignatureAddress;
+    std::vector<std::string> vParts;
 
     CDataFeed()
     {
     }
 
-    CDataFeed(const std::string sURL, const std::string sSignatureURL, const std::string sSignatureAddress) :
+    CDataFeed(const std::string sURL, const std::string sSignatureURL, const std::string sSignatureAddress, std::vector<std::string> vParts) :
         sURL(sURL),
         sSignatureURL(sSignatureURL),
-        sSignatureAddress(sSignatureAddress)
+        sSignatureAddress(sSignatureAddress),
+        vParts(vParts)
     {
     }
 
@@ -33,6 +35,7 @@ public:
         READWRITE(sURL);
         READWRITE(sSignatureURL);
         READWRITE(sSignatureAddress);
+        READWRITE(vParts);
     )
 
 };

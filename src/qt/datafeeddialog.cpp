@@ -34,6 +34,10 @@ void DataFeedDialog::setDataFeed(const CDataFeed& dataFeed)
     ui->urlEdit->setText(QString::fromStdString(dataFeed.sURL));
     ui->signatureUrlEdit->setText(QString::fromStdString(dataFeed.sSignatureURL));
     ui->signatureAddressEdit->setText(QString::fromStdString(dataFeed.sSignatureAddress));
+    const std::vector<std::string>& vParts = dataFeed.vParts;
+    ui->custodiansCheckBox->setChecked(std::find(vParts.begin(), vParts.end(), "custodians") != vParts.end());
+    ui->parkRatesCheckBox->setChecked(std::find(vParts.begin(), vParts.end(), "parkrates") != vParts.end());
+    ui->motionsCheckBox->setChecked(std::find(vParts.begin(), vParts.end(), "motions") != vParts.end());
 }
 
 CDataFeed DataFeedDialog::getDataFeed() const
@@ -42,6 +46,14 @@ CDataFeed DataFeedDialog::getDataFeed() const
     dataFeed.sURL = ui->urlEdit->text().toUtf8().constData();
     dataFeed.sSignatureURL = ui->signatureUrlEdit->text().toUtf8().constData();
     dataFeed.sSignatureAddress = ui->signatureAddressEdit->text().toUtf8().constData();
+    std::vector<std::string> vParts;
+    if (ui->custodiansCheckBox->isChecked())
+        vParts.push_back("custodians");
+    if (ui->parkRatesCheckBox->isChecked())
+        vParts.push_back("parkrates");
+    if (ui->motionsCheckBox->isChecked())
+        vParts.push_back("motions");
+    dataFeed.vParts = vParts;
     return dataFeed;
 }
 
