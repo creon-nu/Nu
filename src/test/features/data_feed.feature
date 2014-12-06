@@ -77,6 +77,16 @@ Feature: The user can define a data feed URL to automatically update his vote fr
     And node "Alice" restarts
     Then node "Alice" should use the data feed "Bob"
 
+  Scenario: A data feed is set with signature and the client is restarted
+    Given a network with node "Alice" able to mint
+    And a node "Bob"
+    And node "Bob" generates a NSR address "bob"
+    And a data feed "Bob"
+    And the data feed "Bob" returns sample vote "full"
+    When node "Alice" sets her data feed to the URL of "Bob" with address "bob"
+    And node "Alice" restarts
+    Then node "Alice" should use the data feed "Bob" with address "bob"
+
   Scenario: A data feed sends too many data
     Given a network with node "Alice" able to mint
     And a data feed "Bob"
@@ -137,3 +147,35 @@ Feature: The user can define a data feed URL to automatically update his vote fr
     When node "Alice" sets her data feed to the URL of "Bob"
     Then the vote of node "Alice" should be sample vote "full"
     And the error on node "Alice" should be "Data feed failed: Response code 500"
+
+  Scenario: An user sets a data feed with an address and gets a signed vote
+    Given a network with node "Alice" able to mint
+    And a node "Bob"
+    And node "Bob" generates a NSR address "bob"
+    And a data feed "Bob"
+    And the data feed "Bob" returns sample vote "full"
+    And the data feed "Bob" is signed by node "Bob" with address "bob"
+    When node "Alice" sets her data feed to the URL of "Bob" with address "bob"
+    Then the vote of node "Alice" should be sample vote "full"
+
+  Scenario: An user sets a data feed with an address and gets an unsigned vote
+    Given a network with node "Alice" able to mint
+    And a node "Bob"
+    And node "Bob" generates a NSR address "bob"
+    And a data feed "Bob"
+    And the data feed "Bob" returns sample vote "full"
+    When node "Alice" sets her data feed to the URL of "Bob" with address "bob"
+    Then the vote of node "Alice" should be sample vote "blank"
+
+  Scenario: An user sets a data feed with an address and gets an incorrectly signed vote
+    Given a network with node "Alice" able to mint
+    And a node "Bob"
+    And node "Bob" generates a NSR address "bob"
+    And node "Bob" generates a NSR address "wrong"
+    And a data feed "Bob"
+    And the data feed "Bob" returns sample vote "full"
+    And the data feed "Bob" is signed by node "Bob" with address "wrong"
+    When node "Alice" sets her data feed to the URL of "Bob" with address "bob"
+    Then the vote of node "Alice" should be sample vote "blank"
+
+  Scenario: Set data feed and address and restart

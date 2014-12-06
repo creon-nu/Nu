@@ -11,6 +11,7 @@
 #include "keystore.h"
 #include "script.h"
 #include "walletdb.h"
+#include "datafeed.h"
 
 class CWalletTx;
 class CReserveKey;
@@ -79,8 +80,6 @@ private:
     int64 nNextTimeCheckUnparkableOutputs;
     int64 nLastTimeCheckUnparkableOutputs;
 
-    std::string sDataFeedURL;
-
 public:
     mutable CCriticalSection cs_wallet;
 
@@ -90,6 +89,8 @@ public:
     std::set<int64> setKeyPool;
 
     CVote vote;
+
+    CDataFeed dataFeed;
 
     // ppcoin: optional setting to unlock wallet for block minting only;
     //         serves to disable the trivial sendmoney when OS account compromised
@@ -113,7 +114,6 @@ public:
         nNextTimeCheckUnparkableOutputs = 0;
         nLastTimeCheckUnparkableOutputs = 0;
         fWalletUnlockMintOnly = false;
-        sDataFeedURL = "";
     }
     CWallet(std::string strWalletFileIn)
     {
@@ -129,7 +129,6 @@ public:
         nNextTimeCheckUnparkableOutputs = 0;
         nLastTimeCheckUnparkableOutputs = 0;
         fWalletUnlockMintOnly = false;
-        sDataFeedURL = "";
     }
 
     std::map<uint256, CWalletTx> mapWallet;
@@ -340,15 +339,15 @@ public:
         return MinTxOutAmount(cUnit);
     }
 
-    void SetDataFeed(const std::string sURL, bool fSave = true)
+    void SetDataFeed(const CDataFeed& dataFeed, bool fSave = true)
     {
-        sDataFeedURL = sURL;
+        this->dataFeed = dataFeed;
         if (fSave)
             SaveDataFeed();
     }
-    std::string GetDataFeed() const
+    const CDataFeed& GetDataFeed() const
     {
-        return sDataFeedURL;
+        return dataFeed;
     }
     void SaveDataFeed() const;
 };

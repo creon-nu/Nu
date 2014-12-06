@@ -91,13 +91,22 @@ class DataFeedContainer
   def set(value)
     response = HTTParty.post(url('vote.json'), body: value)
     raise "Set vote failed" unless response.code == 200
+    raise "Set vote mismatch" unless get == value
+  end
+
+  def get
     response = HTTParty.get(url('vote.json'))
     raise "Unable to retreive set vote" unless response.code == 200
-    raise "Set vote mismatch" unless response.body == value
+    response.body
   end
 
   def set_status(value)
     response = HTTParty.post(url('status'), body: value)
+    raise "Set status failed" unless response.code == 200
+  end
+
+  def set_signature(value)
+    response = HTTParty.post(url('vote.json.signature'), body: value)
     raise "Set status failed" unless response.code == 200
   end
 end
@@ -138,8 +147,12 @@ Given(/^the data feed "(.*?)" returns sample vote "(.*?)" padded with spaces to 
   data_feed.set(vote)
 end
 
-When(/^node "(.*?)" sets her data feed to the URL of "(.*?)"$/) do |arg1, arg2|
+When(/^node "(.*?)" sets her data feed to the URL of "([^"]*?)"$/) do |arg1, arg2|
   @nodes[arg1].rpc("setdatafeed", @data_feeds[arg2].url("vote.json"))
+end
+
+When(/^node "(.*?)" sets her data feed to the URL of "(.*?)" with address "(.*?)"$/) do |arg1, arg2, arg3|
+  @nodes[arg1].rpc("setdatafeed", @data_feeds[arg2].url("vote.json"), @data_feeds[arg2].url("vote.json.signature"), @addresses[arg3])
 end
 
 Then(/^the vote of node "(.*?)" (?:should be|is|should become):$/) do |arg1, string|
@@ -158,8 +171,16 @@ Then(/^the vote of node "(.*?)" should be sample vote "(.*?)"$/) do |arg1, arg2|
   step "the vote of node \"#{arg1}\" should be:", @sample_votes[arg2]
 end
 
-Then(/^node "(.*?)" should use the data feed "(.*?)"$/) do |arg1, arg2|
-  expect(@nodes[arg1].rpc("getdatafeed")).to eq(@data_feeds[arg2].url("vote.json"))
+Then(/^node "(.*?)" should use the data feed "([^"]*?)"$/) do |arg1, arg2|
+  result = @nodes[arg1].rpc("getdatafeed")
+  expect(result["url"]).to eq(@data_feeds[arg2].url("vote.json"))
+end
+
+Then(/^node "(.*?)" should use the data feed "(.*?)" with address "(.*?)"$/) do |arg1, arg2, arg3|
+  result = @nodes[arg1].rpc("getdatafeed")
+  expect(result["url"]).to eq(@data_feeds[arg2].url("vote.json"))
+  expect(result["signatureurl"]).to eq(@data_feeds[arg2].url("vote.json.signature"))
+  expect(result["signatureaddress"]).to eq(@addresses[arg3])
 end
 
 Given(/^data feed "(.*?)" shuts down$/) do |arg1|
@@ -178,3 +199,12 @@ Given(/^the data feed "(.*?)" returns a status (\d+) with sample vote "(.*?)"$/)
   step "the data feed \"#{arg1}\" returns a status #{arg2} with the body:", @sample_votes[arg3]
 end
 
+Given(/^the data feed "(.*?)" is signed by node "(.*?)" with address "(.*?)"$/) do |arg1, arg2, arg3|
+  data_feed = @data_feeds[arg1]
+  node = @nodes[arg2]
+  address = @addresses[arg3]
+
+  vote = data_feed.get
+  signature = node.rpc("signmessage", address, vote)
+  @data_feeds[arg1].set_signature(signature)
+end

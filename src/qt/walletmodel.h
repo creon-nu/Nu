@@ -152,8 +152,8 @@ public:
 
     CDefaultKey getDefaultKey();
 
-    QString getDataFeed() const;
-    void setDataFeed(QString url);
+    CDataFeed getDataFeed() const;
+    void setDataFeed(const CDataFeed&);
     void updateFromDataFeed();
     QString getDataFeedError() const;
 
