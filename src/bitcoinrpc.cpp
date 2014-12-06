@@ -1461,6 +1461,25 @@ Value park(const Array& params, bool fHelp)
     return wtx.GetHash().GetHex();
 }
 
+Value getpremium(const Array& params, bool fHelp)
+{
+    if (fHelp || params.size() != 2)
+        throw runtime_error(
+            "park <amount> <duration>\n"
+            "<amount> is a real and is rounded to the nearest 0.000001\n"
+            "<duration> is the number of blocks during which the amount will be parked");
+
+    int64 nAmount = AmountFromValue(params[0]);
+
+    int64 nDuration = params[1].get_int();
+    if (nDuration <= 0)
+        throw JSONRPCError(-5, "Invalid duration");
+
+    uint64 nPremium = pindexBest->GetPremium(nAmount, nDuration, pwalletMain->GetUnit());
+
+    return FormatMoney(nPremium);
+}
+
 Value unpark(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() > 0)
@@ -4464,6 +4483,7 @@ static const CRPCCommand vRPCCommands[] =
     { "sendmany",               &sendmany,               false },
     { "park",                   &park,                   false },
     { "unpark",                 &unpark,                 false },
+    { "getpremium",             &getpremium,             true },
     { "distribute",             &distribute,             true },
     { "addmultisigaddress",     &addmultisigaddress,     false },
     { "createmultisig",         &createmultisig,         true },
@@ -5265,6 +5285,8 @@ Array RPCConvertValues(const std::string &strMethod, const std::vector<std::stri
     if (strMethod == "park"                   && n > 0) ConvertTo<double>(params[0]);
     if (strMethod == "park"                   && n > 1) ConvertTo<boost::int64_t>(params[1]);
     if (strMethod == "park"                   && n > 4) ConvertTo<boost::int64_t>(params[4]);
+    if (strMethod == "getpremium"             && n > 0) ConvertTo<double>(params[0]);
+    if (strMethod == "getpremium"             && n > 1) ConvertTo<boost::int64_t>(params[1]);
     if (strMethod == "listtransactions"       && n > 1) ConvertTo<boost::int64_t>(params[1]);
     if (strMethod == "listtransactions"       && n > 2) ConvertTo<boost::int64_t>(params[2]);
     if (strMethod == "listaccounts"           && n > 0) ConvertTo<boost::int64_t>(params[0]);

@@ -544,3 +544,7 @@ end
 Given(/^node "(.*?)" sets (?:his|her) vote to:$/) do |arg1, string|
   @nodes[arg1].rpc("setvote", JSON.parse(string))
 end
+
+When(/^node "(.*?)" finds a block "(.*?)" on top of(?: block|) "(.*?)"$/) do |node, block, parent|
+  @blocks[block] = @nodes[node].generate_stake(@blocks[parent])
+end

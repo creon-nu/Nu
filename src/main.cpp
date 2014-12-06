@@ -304,12 +304,19 @@ unsigned int LimitOrphanTxSize(unsigned int nMaxOrphans)
 // CTransaction and CTxIndex
 //
 
-bool CTransaction::ReadFromDisk(CTxDB& txdb, COutPoint prevout, CTxIndex& txindexRet)
+bool CTransaction::ReadFromDisk(CTxDB& txdb, const uint256& hash, CTxIndex& txindexRet)
 {
     SetNull();
-    if (!txdb.ReadTxIndex(prevout.hash, txindexRet))
+    if (!txdb.ReadTxIndex(hash, txindexRet))
         return false;
     if (!ReadFromDisk(txindexRet.pos))
+        return false;
+    return true;
+}
+
+bool CTransaction::ReadFromDisk(CTxDB& txdb, COutPoint prevout, CTxIndex& txindexRet)
+{
+    if (!ReadFromDisk(txdb, prevout.hash, txindexRet))
         return false;
     if (prevout.n >= vout.size())
     {
@@ -1033,12 +1040,30 @@ bool GetTransaction(const uint256 &hash, CTransaction &tx, uint256 &hashBlock)
         }
         CTxDB txdb("r");
         CTxIndex txindex;
-        if (tx.ReadFromDisk(txdb, COutPoint(hash, 0), txindex))
+        if (tx.ReadFromDisk(txdb, hash, txindex))
         {
             CBlock block;
             if (block.ReadFromDisk(txindex.pos.nFile, txindex.pos.nBlockPos, false))
                 hashBlock = block.GetHash();
             return true;
+        }
+        // nu: look for transaction in disconnected blocks to find orphaned CoinBase and CoinStake transactions
+        BOOST_FOREACH(PAIRTYPE(const uint256, CBlockIndex*)& item, mapBlockIndex)
+        {
+            CBlockIndex* pindex = item.second;
+            if (pindex == pindexBest || pindex->pnext != 0)
+                continue;
+            CBlock block;
+            if (!block.ReadFromDisk(pindex))
+                continue;
+            BOOST_FOREACH(const CTransaction& txOrphan, block.vtx)
+            {
+                if (txOrphan.GetHash() == hash)
+                {
+                    tx = txOrphan;
+                    return true;
+                }
+            }
         }
     }
     return false;
@@ -1447,43 +1472,43 @@ bool CTransaction::ConnectInputs(CTxDB& txdb, MapPrevTx inputs,
             if (IsUnpark())
             {
                 if (!txPrev.IsParked(prevout.n))
-                    return error("ConnectInputs() : prevout is not parked");
+                    return DoS(100, "ConnectInputs() : prevout is not parked");
 
                 if (vin.size() != 1)
-                    return error("ConnectInputs() : unpark transaction with too many inputs");
+                    return DoS(100, "ConnectInputs() : unpark transaction with too many inputs");
 
                 if (vout.size() != 1)
-                    return error("ConnectInputs() : unpark transaction with too many outputs");
+                    return DoS(100, "ConnectInputs() : unpark transaction with too many outputs");
 
                 uint64 nDuration;
                 CTxDestination unparkDestination;
                 if (!ExtractPark(txPrev.vout[prevout.n].scriptPubKey, nDuration, unparkDestination))
-                    return error("ConnectInputs() : ExtractPark failed");
+                    return DoS(100, "ConnectInputs() : ExtractPark failed");
                 CBitcoinAddress unparkAddress(unparkDestination, txPrev.cUnit);
 
                 CBlockIndex *pindex = NULL;
                 if (txindex.GetDepthInMainChain(pindex) < nDuration)
-                    return error("ConnectInputs() : parking duration has not passed");
+                    return DoS(100, "ConnectInputs() : parking duration has not passed");
 
                 if (!pindex)
-                    return error("ConnectInputs() : parked transaction not in main chain");
+                    return DoS(100, "ConnectInputs() : parked transaction not in main chain");
 
                 uint64 nValue = txPrev.vout[prevout.n].nValue;
                 uint64 nPremium = pindex->GetPremium(nValue, nDuration, cUnit);
                 uint64 nMaxValueOut = nValue + nPremium;
 
                 if (GetValueOut() > nMaxValueOut)
-                    return error("ConnectInputs() : invalid unpark value");
+                    return DoS(100, "ConnectInputs() : invalid unpark value");
 
                 CTxDestination outDestination;
                 if (!ExtractDestination(vout[0].scriptPubKey, outDestination))
-                    return error("ConnectInputs() : ExtractAddress failed");
+                    return DoS(100, "ConnectInputs() : ExtractAddress failed");
                 CBitcoinAddress outAddress(outDestination, cUnit);
 
                 const CKeyID& outID = get<CKeyID>(outDestination);
                 const CKeyID& unparkID = get<CKeyID>(unparkDestination);
                 if (outID != unparkID)
-                    return error("ConnectInputs() : invalid unpark address");
+                    return DoS(100, "ConnectInputs() : invalid unpark address");
 
                 fValidUnpark = true;
             }
