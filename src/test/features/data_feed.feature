@@ -27,19 +27,19 @@ Feature: The user can define a data feed URL to automatically update his vote fr
       """
       {
          "custodians":[
-            {"address":"bPwdoprYd3SRHqUCG5vCcEY68g8UfGC1d9", "amount":100.00000000},
+            {"address":"bPwdoprYd3SRHqUCG5vCcEY68g8UfGC1d9", "amount":100.00000000}
          ],
          "parkrates":[
             {
                "unit":"B",
                "rates":[
                   {"blocks":8192, "rate":0.00040000},
-                  {"blocks":16384, "rate":0.00080000},
+                  {"blocks":16384, "rate":0.00080000}
                ]
             }
          ],
          "motions":[
-            "3f786850e387550fdab836ed7e6dc881de23001b"
+            "3f786850e387550fdab836ed7e6dc881de23001b",
             "1111111111111111111111111111111111111111"
          ]
       }
@@ -178,4 +178,17 @@ Feature: The user can define a data feed URL to automatically update his vote fr
     When node "Alice" sets her data feed to the URL of "Bob" with address "bob"
     Then the vote of node "Alice" should be sample vote "blank"
 
-  Scenario: Set data feed and address and restart
+  Scenario Outline: Set data feed to only specific parts
+    Given a network with node "Alice" able to mint
+    And a data feed "Bob"
+    When the data feed "Bob" returns sample vote "full"
+    And node "Alice" sets her vote to sample vote "another full"
+    And node "Alice" sets her data feed to the URL of "Bob" only on <parts>
+    Then the vote of node "Alice" should be sample vote "another full" with <parts> replaced from sample "full"
+
+    Examples:
+      | parts                  |
+      | custodians             |
+      | custodians and motions |
+      | parkrates              |
+      | motions                |

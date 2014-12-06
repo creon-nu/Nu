@@ -155,6 +155,11 @@ When(/^node "(.*?)" sets her data feed to the URL of "(.*?)" with address "(.*?)
   @nodes[arg1].rpc("setdatafeed", @data_feeds[arg2].url("vote.json"), @data_feeds[arg2].url("vote.json.signature"), @addresses[arg3])
 end
 
+When(/^node "(.*?)" sets her data feed to the URL of "([^"]*?)" only on (.+)$/) do |arg1, arg2, parts|
+  parts = parts.split(/,|and/).map(&:strip)
+  @nodes[arg1].rpc("setdatafeed", @data_feeds[arg2].url("vote.json"), "", "", parts.join(","))
+end
+
 Then(/^the vote of node "(.*?)" (?:should be|is|should become):$/) do |arg1, string|
   begin
     wait_for do
@@ -167,8 +172,20 @@ Then(/^the vote of node "(.*?)" (?:should be|is|should become):$/) do |arg1, str
   end
 end
 
-Then(/^the vote of node "(.*?)" should be sample vote "(.*?)"$/) do |arg1, arg2|
-  step "the vote of node \"#{arg1}\" should be:", @sample_votes[arg2]
+Then(/^the vote of node "(.*?)" should be sample vote "([^"]*?)"$/) do |arg1, arg2|
+  step "the vote of node \"#{arg1}\" should be:", @sample_votes.fetch(arg2)
+end
+
+Then(/^the vote of node "(.*?)" should be sample vote "([^"]*?)" with (.+) replaced from sample "(.*?)"$/) do |arg1, arg2, arg3, arg4|
+  expected_vote = JSON.parse(@sample_votes.fetch(arg2))
+  parts = arg3.split(/,|and/).map(&:strip)
+  replacement_vote = JSON.parse(@sample_votes.fetch(arg4))
+
+  parts.each do |part|
+    expected_vote[part] = replacement_vote[part]
+  end
+
+  step "the vote of node \"#{arg1}\" should be:", expected_vote.to_json
 end
 
 Then(/^node "(.*?)" should use the data feed "([^"]*?)"$/) do |arg1, arg2|

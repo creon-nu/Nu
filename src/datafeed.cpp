@@ -275,10 +275,22 @@ void UpdateFromDataFeed()
 
     printf("Updating from data feed %s\n", dataFeed.sURL.c_str());
 
-    CVote newVote;
-    if (GetVoteFromDataFeed(dataFeed, newVote))
+    CVote feedVote;
+    if (GetVoteFromDataFeed(dataFeed, feedVote))
     {
         LOCK(pwallet->cs_wallet);
+        CVote newVote = pwallet->vote;
+        BOOST_FOREACH(const string& sPart, dataFeed.vParts)
+        {
+            if (sPart == "custodians")
+                newVote.vCustodianVote = feedVote.vCustodianVote;
+            else if (sPart == "parkrates")
+                newVote.vParkRateVote = feedVote.vParkRateVote;
+            else if (sPart == "motions")
+                newVote.vMotion = feedVote.vMotion;
+            else
+                throw runtime_error("Invalid part");
+        }
         pwallet->vote = newVote;
         pwallet->SaveVote();
         printf("Vote updated from data feed\n");

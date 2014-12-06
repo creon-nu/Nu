@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>400</width>
-    <height>359</height>
+    <height>413</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -48,9 +48,9 @@
    </item>
    <item>
     <layout class="QFormLayout" name="formLayout">
-     <item row="0" column="1">
-      <widget class="QLineEdit" name="urlEdit"/>
-     </item>
+     <property name="fieldGrowthPolicy">
+      <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
+     </property>
      <item row="0" column="0">
       <widget class="QLabel" name="label_2">
        <property name="text">
@@ -61,8 +61,21 @@
        </property>
       </widget>
      </item>
-     <item row="2" column="1">
-      <widget class="QLineEdit" name="signatureAddressEdit"/>
+     <item row="0" column="1">
+      <widget class="QLineEdit" name="urlEdit"/>
+     </item>
+     <item row="1" column="0">
+      <widget class="QLabel" name="label_4">
+       <property name="text">
+        <string>Signature URL</string>
+       </property>
+       <property name="buddy">
+        <cstring>signatureUrlEdit</cstring>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="1">
+      <widget class="QLineEdit" name="signatureUrlEdit"/>
      </item>
      <item row="2" column="0">
       <widget class="QLabel" name="label_3">
@@ -74,16 +87,42 @@
        </property>
       </widget>
      </item>
-     <item row="1" column="1">
-      <widget class="QLineEdit" name="signatureUrlEdit"/>
+     <item row="2" column="1">
+      <widget class="QLineEdit" name="signatureAddressEdit"/>
      </item>
-     <item row="1" column="0">
-      <widget class="QLabel" name="label_4">
+     <item row="3" column="1">
+      <layout class="QVBoxLayout" name="verticalLayout_2">
+       <item>
+        <widget class="QCheckBox" name="custodiansCheckBox">
+         <property name="text">
+          <string>Custodians</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QCheckBox" name="parkRatesCheckBox">
+         <property name="text">
+          <string>Park rates</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QCheckBox" name="motionsCheckBox">
+         <property name="text">
+          <string>Motions</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+     <item row="3" column="0">
+      <widget class="QLabel" name="label_5">
        <property name="text">
-        <string>Signature URL</string>
+        <string>Parts of the vote
+to update</string>
        </property>
-       <property name="buddy">
-        <cstring>signatureUrlEdit</cstring>
+       <property name="alignment">
+        <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
        </property>
       </widget>
      </item>
