@@ -6,3 +6,4 @@ RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selectio
 RUN apt-get install -y libboost-filesystem1.54.0 libboost-program-options1.54.0 libboost-thread1.54.0
 RUN apt-get install -y libdb4.8++
 RUN apt-get install -y libcurl4-openssl-dev
+COPY nu.conf /root/.nu/

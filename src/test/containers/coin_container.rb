@@ -44,10 +44,8 @@ class CoinContainer
     end
 
     default_args = {
-      testnet: true,
+      # testnet, user and password are already set in nu.conf
       printtoconsole: true,
-      rpcuser: 'bob',
-      rpcpassword: 'bar',
       rpcallowip: '*.*.*.*',
       logtimestamps: true,
       keypool: 1,
@@ -203,8 +201,8 @@ class CoinContainer
     rpc_port = @rpc_ports.fetch(unit)
     url = "http://localhost:#{rpc_port}/"
     auth = {
-      username: "bob",
-      password: "bar",
+      username: "user",
+      password: "pass",
     }
     response = HTTParty.post url, body: body, headers: { 'Content-Type' => 'application/json' }, basic_auth: auth
     JSON.parse(response.body)

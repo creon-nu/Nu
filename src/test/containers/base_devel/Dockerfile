@@ -7,3 +7,4 @@ RUN apt-get install -y git build-essential g++
 RUN apt-get install -y libboost-all-dev libdb4.8++-dev libqrencode-dev
 RUN apt-get install -y libssl-dev
 RUN apt-get install -y libcurl4-openssl-dev
+COPY nu.conf /root/.nu/
