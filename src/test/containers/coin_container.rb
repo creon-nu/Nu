@@ -71,6 +71,8 @@ class CoinContainer
 
     bash_cmds = []
 
+    bash_cmds += ["set -x"]
+
     if options[:show_environment]
       bash_cmds += ["echo Environment:", "env"]
     end
