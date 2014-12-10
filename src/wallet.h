@@ -327,6 +327,7 @@ public:
     void AddParked(const COutPoint& outpoint);
     void RemoveParked(const COutPoint& outpoint);
 
+    void SetVote(const CVote& vote);
     void SaveVote() const;
 
     int64 GetMinTxFee() const

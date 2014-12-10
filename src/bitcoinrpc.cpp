@@ -3136,8 +3136,7 @@ Value setvote(const Array& params, bool fHelp)
     Object objVote = params[0].get_obj();
     CVote vote = ParseVote(objVote);
 
-    pwalletMain->vote = vote;
-    pwalletMain->SaveVote();
+    pwalletMain->SetVote(vote);
 
     return voteToJSON(pwalletMain->vote);
 }

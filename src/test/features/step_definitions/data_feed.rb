@@ -147,15 +147,15 @@ Given(/^the data feed "(.*?)" returns sample vote "(.*?)" padded with spaces to 
   data_feed.set(vote)
 end
 
-When(/^node "(.*?)" sets her data feed to the URL of "([^"]*?)"$/) do |arg1, arg2|
+When(/^node "(.*?)" sets (?:her|his) data feed to the URL of "([^"]*?)"$/) do |arg1, arg2|
   @nodes[arg1].rpc("setdatafeed", @data_feeds[arg2].url("vote.json"))
 end
 
-When(/^node "(.*?)" sets her data feed to the URL of "(.*?)" with address "(.*?)"$/) do |arg1, arg2, arg3|
+When(/^node "(.*?)" sets (?:her|his) data feed to the URL of "(.*?)" with address "(.*?)"$/) do |arg1, arg2, arg3|
   @nodes[arg1].rpc("setdatafeed", @data_feeds[arg2].url("vote.json"), @data_feeds[arg2].url("vote.json.signature"), @addresses[arg3])
 end
 
-When(/^node "(.*?)" sets her data feed to the URL of "([^"]*?)" only on (.+)$/) do |arg1, arg2, parts|
+When(/^node "(.*?)" sets (?:her|his) data feed to the URL of "([^"]*?)" only on (.+)$/) do |arg1, arg2, parts|
   parts = parts.split(/,|and/).map(&:strip)
   @nodes[arg1].rpc("setdatafeed", @data_feeds[arg2].url("vote.json"), "", "", parts.join(","))
 end

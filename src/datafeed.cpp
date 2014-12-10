@@ -291,8 +291,7 @@ void UpdateFromDataFeed()
             else
                 throw runtime_error("Invalid part");
         }
-        pwallet->vote = newVote;
-        pwallet->SaveVote();
+        pwallet->SetVote(newVote);
         printf("Vote updated from data feed\n");
     }
 }
