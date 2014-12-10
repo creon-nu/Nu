@@ -72,12 +72,12 @@ amount_string = amount.to_s.reverse.gsub(/(\d{3})(?=\d)/, '\\1,').reverse
 recipient_nodes = (nodes + old_nodes)
 
 recipient_nodes.each_with_index do |node, i|
-    node.wait_for_boot
+  node.wait_for_boot
 
-    address = node.rpc("getaccountaddress", "")
+  address = node.rpc("getaccountaddress", "")
 
-    puts "Sending #{amount_string} to node #{node_names[i]}"
-    seed.rpc("sendtoaddress", address, amount)
+  puts "Sending #{amount_string} to node #{node_names[i]}"
+  seed.rpc("sendtoaddress", address, amount)
 end
 
 puts "Waiting for confirmations"
