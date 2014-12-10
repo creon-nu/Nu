@@ -28,9 +28,8 @@ Given(/^the votenotify script of node "(.*?)" is written to dump the vote and si
     SIGNATURE_PATH=#{node.shared_path_in_container("vote.json.signature")}
     ADDRESS=#{@addresses[arg2]}
 
-    echo -n "`$NUD $ARGS getvote`" >$VOTE_PATH # echo -n is used here to remove the trailing newline
-                                               # because it will be removed later when we will sign the message
-    $NUD $ARGS signmessage $ADDRESS "`cat $VOTE_PATH`" >$SIGNATURE_PATH
+    $NUD $ARGS getvote >$VOTE_PATH
+    $NUD $ARGS signmessage $ADDRESS <$VOTE_PATH >$SIGNATURE_PATH
   EOF
   script_path = node.shared_path("votenotify.sh")
   File.open(script_path, "w") { |f| f.write(script) }

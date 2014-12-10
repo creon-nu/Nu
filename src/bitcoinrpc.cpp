@@ -1071,8 +1071,9 @@ Value signmessage(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 2)
         throw runtime_error(
-            "signmessage <address> <message>\n"
-            "Sign a message with the private key of an address");
+            "signmessage <address> [<message>]\n"
+            "Sign a message with the private key of an address.\n"
+            "If <message> is omitted the message is read from the standard input.");
 
     if (pwalletMain->IsLocked())
         throw JSONRPCError(-13, "Error: Please enter the portfolio passphrase with walletpassphrase first.");
@@ -5361,6 +5362,14 @@ Array RPCConvertValues(const std::string &strMethod, const std::vector<std::stri
 #ifdef TESTING
     if (strMethod == "timetravel"              && n > 0) ConvertTo<boost::int64_t>(params[0]);
 #endif
+
+    if (strMethod == "signmessage"             && n == 1)
+    {
+        // get params[1] from stdin
+        string message((std::istreambuf_iterator<char>)cin, std::istreambuf_iterator<char>());
+        params.push_back(message);
+    }
+
     return params;
 }
 
