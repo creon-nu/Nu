@@ -112,6 +112,7 @@ class CoinContainer
     }
     node_container = Docker::Container.create(create_options)
     @container = node_container
+    @json = @container.json
 
     sleep 0.1
     start
@@ -142,9 +143,11 @@ class CoinContainer
       'Links' => links.map { |link_name, alias_name| "#{link_name}:#{alias_name}" },
     }
 
+    start_options['Binds'] = []
     if options[:bind_code]
-      start_options['Binds'] = ["#{File.expand_path('../../..', __FILE__)}:/code"]
+      start_options['Binds'] << "#{File.expand_path('../../..', __FILE__)}:/code"
     end
+    start_options['Binds'] << "#{shared_root}:/shared"
 
     node_container.start(start_options)
 
@@ -264,6 +267,28 @@ class CoinContainer
   def new_address(account = "")
     rpc "getnewaddress", account
   end
+
+  def shared_path(filename)
+    File.join(shared_root, filename)
+  end
+
+  def shared_path_in_container(filename)
+    File.join("/shared", filename)
+  end
+
+  def shared_root
+    shared_root = File.expand_path("../tmp", __FILE__)
+    Dir.mkdir(shared_root) unless File.exist?(shared_root)
+    container_shared_root = File.join(shared_root, self.id)
+    unless File.exist?(container_shared_root)
+      Dir.mkdir(container_shared_root)
+      at_exit do
+        begin
+          Dir.rmdir(container_shared_root)
+        rescue Errno::ENOTEMPTY
+        end
+      end
+    end
+    container_shared_root
+  end
 end
-
-
