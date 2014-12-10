@@ -44,6 +44,7 @@ class CoinContainer
     end
 
     default_args = {
+      datadir: "/root/.nu",
       # testnet, user and password are already set in nu.conf
       printtoconsole: true,
       rpcallowip: '*.*.*.*',
@@ -78,17 +79,17 @@ class CoinContainer
     end
 
     if options[:remove_wallet_before_startup]
-      bash_cmds += ["rm -f ~/.nu/testnet/wallet*.dat"]
+      bash_cmds += ["rm -f /root/.nu/testnet/wallet*.dat"]
     end
 
     bash_cmds += ["./nud " + cmd_args.join(" ")]
 
     if options[:remove_addr_after_shutdown]
-      bash_cmds += ["rm ~/.nu/testnet/addr.dat"]
+      bash_cmds += ["rm /root/.nu/testnet/addr.dat"]
     end
 
     if options[:remove_wallet_after_shutdown]
-      bash_cmds += ["rm ~/.nu/testnet/wallet*.dat"]
+      bash_cmds += ["rm /root/.nu/testnet/wallet*.dat"]
     end
 
     command = [
