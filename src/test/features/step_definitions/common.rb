@@ -58,13 +58,12 @@ end
 Given(/^a node "(.*?)" with an empty wallet$/) do |arg1|
   name = arg1
   options = {
-    image: "nunet/a",
+    image: "nunet/empty",
     links: @nodes.values.map(&:name),
     args: {
       debug: true,
       timetravel: timeshift,
     },
-    remove_wallet_before_startup: true,
   }
   node = CoinContainer.new(options)
   @nodes[name] = node
@@ -78,14 +77,13 @@ end
 Given(/^a node "(.*?)" with an empty wallet and with avatar mode disabled$/) do |arg1|
   name = arg1
   options = {
-    image: "nunet/a",
+    image: "nunet/empty",
     links: @nodes.values.map(&:name),
     args: {
       debug: true,
       timetravel: timeshift,
       avatar: false,
     },
-    remove_wallet_before_startup: true,
   }
   node = CoinContainer.new(options)
   @nodes[name] = node

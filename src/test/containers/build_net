@@ -52,7 +52,19 @@ old_nodes = OLD_VERSIONS.map do |version|
   node
 end
 
-all = [seed] + nodes + old_nodes
+puts "Starting empty node"
+empty_node = CoinContainer.new(
+  image: 'nubit/node',
+  bind_code: false,
+  links: [seed.name],
+  delete_at_exit: true,
+  remove_wallet_after_shutdown: true,
+  args: {
+    timetravel: start_time_shift,
+  },
+)
+
+all = [seed] + nodes + old_nodes + [empty_node]
 
 amount = 10e6
 amount_string = amount.to_s.reverse.gsub(/(\d{3})(?=\d)/, '\\1,').reverse
@@ -133,3 +145,11 @@ old_nodes.each do |node|
   node.wait_for_shutdown
   node.commit(image_name)
 end
+
+node = empty_node
+name = "empty"
+image_name = "nunet/#{name}"
+puts "Creating image #{image_name}"
+node.shutdown
+node.wait_for_shutdown
+node.commit(image_name)
