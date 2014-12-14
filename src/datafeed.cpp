@@ -63,6 +63,13 @@ public:
         curl_easy_setopt(curl, CURLOPT_URL, sURL.c_str());
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)this);
+
+        if (fUseProxy)
+        {
+            curl_easy_setopt(curl, CURLOPT_PROXY, addrProxy.ToStringIP().c_str());
+            curl_easy_setopt(curl, CURLOPT_PROXYPORT, addrProxy.GetPort());
+            curl_easy_setopt(curl, CURLOPT_PROXYTYPE, CURLPROXY_SOCKS4);
+        }
     }
 
     ~DataFeedRequest()

@@ -11,6 +11,7 @@ class CoinContainer
       remove_addr_after_shutdown: true,
       remove_wallet_after_shutdown: false,
       remove_wallet_before_startup: false,
+      before_start_commands: [],
     }
 
     options = default_options.merge(options)
@@ -82,6 +83,8 @@ class CoinContainer
       bash_cmds += ["rm -f /root/.nu/testnet/wallet*.dat"]
     end
 
+    bash_cmds += options[:before_start_commands]
+
     bash_cmds += ["./nud " + cmd_args.join(" ")]
 
     if options[:remove_addr_after_shutdown]
@@ -142,6 +145,10 @@ class CoinContainer
       },
       'Links' => links.map { |link_name, alias_name| "#{link_name}:#{alias_name}" },
     }
+    if options[:netadmin]
+      start_options["CapAdd"] ||= []
+      start_options["CapAdd"] << "NET_ADMIN"
+    end
 
     start_options['Binds'] = []
     if options[:bind_code]

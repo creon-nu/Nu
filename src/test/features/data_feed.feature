@@ -192,3 +192,11 @@ Feature: The user can define a data feed URL to automatically update his vote fr
       | custodians and motions |
       | parkrates              |
       | motions                |
+
+  Scenario: An user sets a data feed through a proxy
+    Given a proxy
+    And a node "Alice" connected through the proxy
+    And a data feed "Bob"
+    And the data feed "Bob" returns sample vote "full"
+    When node "Alice" sets her data feed to the URL of "Bob"
+    Then the vote of node "Alice" should be sample vote "full"
