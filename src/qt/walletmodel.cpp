@@ -284,7 +284,7 @@ void WalletModel::setVote(const CVote& vote)
     {
         LOCK(wallet->cs_wallet);
 
-        wallet->SetVote(vote)
+        wallet->SetVote(vote);
     }
 }
 

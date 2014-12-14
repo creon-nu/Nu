@@ -2,6 +2,6 @@
 
 TMP_ROOT=$(dirname $0)/tmp/
 for i in $(docker ps -a  | tail -n +1 | egrep ' nu(bit|net)/' | awk '{print $1}'); do
-  rm -r "$TMP_ROOT/$i"
-  docker rm -rf "$i"
+  rm -rf "$TMP_ROOT/$i"
+  docker rm -f "$i"
 done
