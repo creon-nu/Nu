@@ -328,6 +328,12 @@ bool CVote::IsValid() const
     return true;
 }
 
+void CVote::Upgrade()
+{
+    if (nVersion < 50000)
+        nVersion = 50000;
+}
+
 bool ExtractVotes(const CBlock& block, CBlockIndex *pindexprev, unsigned int nCount, std::vector<CVote> &vVoteRet)
 {
     CVote vote;
