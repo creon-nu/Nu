@@ -12,6 +12,7 @@
 #include "strlcpy.h"
 #include "addrman.h"
 #include "ui_interface.h"
+#include "datafeed.h"
 
 #ifdef WIN32
 #include <string.h>
@@ -1666,6 +1667,8 @@ void StartNode(void* parg)
 
     // Generate coins in the background
     GenerateBitcoins(GetBoolArg("-gen", false), GetWallet('S'));
+
+    StartUpdateFromDataFeed();
 
     // ppcoin: mint proof-of-stake blocks in the background
 #ifdef TESTING

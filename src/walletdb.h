@@ -7,6 +7,7 @@
 
 #include "db.h"
 #include "base58.h"
+#include "datafeed.h"
 
 class CKeyPool;
 class CAccount;
@@ -153,6 +154,17 @@ public:
     bool ReadVote(CVote& vote)
     {
         return Read(std::string("vote"), vote);
+    }
+
+    bool WriteDataFeed(const CDataFeed& dataFeed)
+    {
+        nWalletDBUpdated++;
+        return Write(std::string("datafeed"), dataFeed);
+    }
+
+    bool ReadDataFeed(CDataFeed& dataFeed)
+    {
+        return Read(std::string("datafeed"), dataFeed);
     }
 
     // Settings are no longer stored in wallet.dat; these are

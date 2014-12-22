@@ -34,7 +34,8 @@ LIBS += \
    -l db_cxx$(BDB_LIB_SUFFIX) \
    -l ssl \
    -l crypto \
-   -l rt
+   -l rt \
+   -l curl
 
 ifndef USE_UPNP
 	override USE_UPNP = -
@@ -114,7 +115,8 @@ OBJS= \
     obj/kernel.o \
     obj/distribution.o \
     obj/vote.o \
-    obj/liquidityinfo.o
+    obj/liquidityinfo.o \
+    obj/datafeed.o
 
 
 all: nud

@@ -11,6 +11,7 @@
 #include "keystore.h"
 #include "script.h"
 #include "walletdb.h"
+#include "datafeed.h"
 
 class CWalletTx;
 class CReserveKey;
@@ -88,6 +89,8 @@ public:
     std::set<int64> setKeyPool;
 
     CVote vote;
+
+    CDataFeed dataFeed;
 
     // ppcoin: optional setting to unlock wallet for block minting only;
     //         serves to disable the trivial sendmoney when OS account compromised
@@ -324,6 +327,7 @@ public:
     void AddParked(const COutPoint& outpoint);
     void RemoveParked(const COutPoint& outpoint);
 
+    void SetVote(const CVote& vote);
     void SaveVote() const;
 
     int64 GetMinTxFee() const
@@ -335,6 +339,18 @@ public:
     {
         return MinTxOutAmount(cUnit);
     }
+
+    void SetDataFeed(const CDataFeed& dataFeed, bool fSave = true)
+    {
+        this->dataFeed = dataFeed;
+        if (fSave)
+            SaveDataFeed();
+    }
+    const CDataFeed& GetDataFeed() const
+    {
+        return dataFeed;
+    }
+    void SaveDataFeed() const;
 };
 
 /** A key allocated from the key pool. */

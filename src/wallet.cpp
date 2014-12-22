@@ -14,6 +14,7 @@
 #include "bitcoinrpc.h"
 #include "script.h"
 #include "vote.h"
+#include "datafeed.h"
 #include <boost/algorithm/string/replace.hpp>
 
 using namespace std;
@@ -152,10 +153,31 @@ void CWallet::SetBestChain(const CBlockLocator& loc)
     walletdb.WriteBestBlock(loc);
 }
 
+void CWallet::SetVote(const CVote& vote)
+{
+    if (this->vote != vote)
+    {
+        this->vote = vote;
+        SaveVote();
+
+        std::string strCmd = GetArg("-votenotify", "");
+        printf("votenotify: %s\n", strCmd.c_str());
+        if (!strCmd.empty())
+            boost::thread t(runCommand, strCmd); // thread runs free
+
+    }
+}
+
 void CWallet::SaveVote() const
 {
     CWalletDB walletdb(strWalletFile);
     walletdb.WriteVote(vote);
+}
+
+void CWallet::SaveDataFeed() const
+{
+    CWalletDB walletdb(strWalletFile);
+    walletdb.WriteDataFeed(dataFeed);
 }
 
 // This class implements an addrIncoming entry that causes pre-0.4

@@ -11,9 +11,11 @@ class CoinContainer
       remove_addr_after_shutdown: true,
       remove_wallet_after_shutdown: false,
       remove_wallet_before_startup: false,
+      before_start_commands: [],
     }
 
     options = default_options.merge(options)
+    @options = options
 
     links = options[:links]
     case links
@@ -33,6 +35,8 @@ class CoinContainer
     else
       raise "Invalid links"
     end
+    @links = links
+
     name = options[:name]
 
     connects = links.map do |linked_name, alias_name|
@@ -41,10 +45,9 @@ class CoinContainer
     end
 
     default_args = {
-      testnet: true,
+      datadir: "/root/.nu",
+      # testnet, user and password are already set in nu.conf
       printtoconsole: true,
-      rpcuser: 'bob',
-      rpcpassword: 'bar',
       rpcallowip: '*.*.*.*',
       logtimestamps: true,
       keypool: 1,
@@ -70,22 +73,26 @@ class CoinContainer
 
     bash_cmds = []
 
+    bash_cmds += ["set -x"]
+
     if options[:show_environment]
       bash_cmds += ["echo Environment:", "env"]
     end
 
     if options[:remove_wallet_before_startup]
-      bash_cmds += ["rm -f ~/.nu/testnet/wallet*.dat"]
+      bash_cmds += ["rm -f /root/.nu/testnet/wallet*.dat"]
     end
+
+    bash_cmds += options[:before_start_commands]
 
     bash_cmds += ["./nud " + cmd_args.join(" ")]
 
     if options[:remove_addr_after_shutdown]
-      bash_cmds += ["rm ~/.nu/testnet/addr.dat"]
+      bash_cmds += ["rm /root/.nu/testnet/addr.dat"]
     end
 
     if options[:remove_wallet_after_shutdown]
-      bash_cmds += ["rm ~/.nu/testnet/wallet*.dat"]
+      bash_cmds += ["rm /root/.nu/testnet/wallet*.dat"]
     end
 
     command = [
@@ -107,6 +114,17 @@ class CoinContainer
       'name' => name,
     }
     node_container = Docker::Container.create(create_options)
+    @container = node_container
+    @json = @container.json
+
+    sleep 0.1
+    start
+  end
+
+  def start
+    node_container = @container
+    options = @options
+    links = @links
 
     if options[:shutdown_at_exit]
       at_exit do
@@ -127,15 +145,19 @@ class CoinContainer
       },
       'Links' => links.map { |link_name, alias_name| "#{link_name}:#{alias_name}" },
     }
-
-    if options[:bind_code]
-      start_options['Binds'] = ["#{File.expand_path('../../..', __FILE__)}:/code"]
+    if options[:netadmin]
+      start_options["CapAdd"] ||= []
+      start_options["CapAdd"] << "NET_ADMIN"
     end
 
-    sleep 0.1
+    start_options['Binds'] = []
+    if options[:bind_code]
+      start_options['Binds'] << "#{File.expand_path('../../..', __FILE__)}:/code"
+    end
+    start_options['Binds'] << "#{shared_root}:/shared"
+
     node_container.start(start_options)
 
-    @container = node_container
     @json = @container.json
     @name = @json["Name"]
 
@@ -192,8 +214,8 @@ class CoinContainer
     rpc_port = @rpc_ports.fetch(unit)
     url = "http://localhost:#{rpc_port}/"
     auth = {
-      username: "bob",
-      password: "bar",
+      username: "user",
+      password: "pass",
     }
     response = HTTParty.post url, body: body, headers: { 'Content-Type' => 'application/json' }, basic_auth: auth
     JSON.parse(response.body)
@@ -219,6 +241,10 @@ class CoinContainer
 
   def wait_for_shutdown
     container.wait
+  end
+
+  def restart
+    @container.restart
   end
 
   def block_count
@@ -248,6 +274,28 @@ class CoinContainer
   def new_address(account = "")
     rpc "getnewaddress", account
   end
+
+  def shared_path(filename)
+    File.join(shared_root, filename)
+  end
+
+  def shared_path_in_container(filename)
+    File.join("/shared", filename)
+  end
+
+  def shared_root
+    shared_root = File.expand_path("../tmp", __FILE__)
+    Dir.mkdir(shared_root) unless File.exist?(shared_root)
+    container_shared_root = File.join(shared_root, self.id)
+    unless File.exist?(container_shared_root)
+      Dir.mkdir(container_shared_root)
+      at_exit do
+        begin
+          Dir.rmdir(container_shared_root)
+        rescue Errno::ENOTEMPTY
+        end
+      end
+    end
+    container_shared_root
+  end
 end
-
-

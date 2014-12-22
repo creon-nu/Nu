@@ -71,7 +71,8 @@ LIBS= \
  -l boost_thread-mgw48-mt-s-1_55 \
  -l db_cxx \
  -l ssl \
- -l crypto
+ -l crypto \
+ -l curl
 
 DEFS=-DWIN32 -D_WINDOWS -DBOOST_THREAD_USE_LIB -DBOOST_SPIRIT_THREADSAFE
 DEBUGFLAGS=-g
@@ -116,7 +117,8 @@ OBJS= \
     obj/kernel.o \
     obj/distribution.o \
     obj/vote.o \
-    obj/liquidityinfo.o
+    obj/liquidityinfo.o \
+    obj/datafeed.o
 
 
 all: nud.exe

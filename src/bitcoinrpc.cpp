@@ -18,6 +18,7 @@
 #include "distribution.h"
 #include "scanbalance.h"
 #include "liquidityinfo.h"
+#include "datafeed.h"
 
 #undef printf
 #include <boost/asio.hpp>
@@ -1070,8 +1071,9 @@ Value signmessage(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 2)
         throw runtime_error(
-            "signmessage <address> <message>\n"
-            "Sign a message with the private key of an address");
+            "signmessage <address> [<message>]\n"
+            "Sign a message with the private key of an address.\n"
+            "If <message> is omitted the message is read from the standard input.");
 
     if (pwalletMain->IsLocked())
         throw JSONRPCError(-13, "Error: Please enter the portfolio passphrase with walletpassphrase first.");
@@ -3133,98 +3135,9 @@ Value setvote(const Array& params, bool fHelp)
             );
 
     Object objVote = params[0].get_obj();
-    CVote vote;
+    CVote vote = ParseVote(objVote);
 
-    BOOST_FOREACH(const Pair& voteAttribute, objVote)
-    {
-        if (voteAttribute.name_ == "motions")
-        {
-            BOOST_FOREACH(const Value& motionVoteObject, voteAttribute.value_.get_array())
-                vote.vMotion.push_back(uint160(motionVoteObject.get_str()));
-        }
-        else if (voteAttribute.name_ == "custodians")
-        {
-            BOOST_FOREACH(const Value& custodianVoteObject, voteAttribute.value_.get_array())
-            {
-                CCustodianVote custodianVote;
-                BOOST_FOREACH(const Pair& custodianVoteAttribute, custodianVoteObject.get_obj())
-                {
-                    if (custodianVoteAttribute.name_ == "address")
-                    {
-                        CBitcoinAddress address(custodianVoteAttribute.value_.get_str());
-                        if (!address.IsValid())
-                            throw runtime_error("Invalid address\n");
-
-                        custodianVote.SetAddress(address);
-                        if (custodianVote.cUnit == 'S' || !ValidUnit(custodianVote.cUnit))
-                            throw runtime_error("Invalid custodian unit\n");
-                    }
-                    else if (custodianVoteAttribute.name_ == "amount")
-                        custodianVote.nAmount = AmountFromValue(custodianVoteAttribute.value_);
-                    else
-                        throw runtime_error("Invalid custodian vote object\n");
-                }
-                vote.vCustodianVote.push_back(custodianVote);
-            }
-        }
-        else if (voteAttribute.name_ == "parkrates")
-        {
-            BOOST_FOREACH(const Value& parkRateVoteObject, voteAttribute.value_.get_array())
-            {
-                CParkRateVote parkRateVote;
-                BOOST_FOREACH(const Pair& parkRateVoteAttribute, parkRateVoteObject.get_obj())
-                {
-                    if (parkRateVoteAttribute.name_ == "unit")
-                    {
-                        parkRateVote.cUnit = parkRateVoteAttribute.value_.get_str()[0];
-                        if (parkRateVote.cUnit == 'S' || !ValidUnit(parkRateVote.cUnit))
-                            throw runtime_error("Invalid park rate unit\n");
-                    }
-                    else if (parkRateVoteAttribute.name_ == "rates")
-                    {
-                        BOOST_FOREACH(const Value& parkRateObject, parkRateVoteAttribute.value_.get_array())
-                        {
-                            CParkRate parkRate;
-                            BOOST_FOREACH(const Pair& parkRateAttribute, parkRateObject.get_obj())
-                            {
-                                if (parkRateAttribute.name_ == "blocks")
-                                {
-                                   int blocks = parkRateAttribute.value_.get_int();
-                                   double compactDuration = log2(blocks);
-                                   double integerPart;
-                                   if (modf(compactDuration, &integerPart) != 0.0)
-                                       throw runtime_error("Park duration is not a power of 2\n");
-                                   if (compactDuration < 0 || compactDuration > 255)
-                                       throw runtime_error("Park duration out of range\n");
-                                   parkRate.nCompactDuration = compactDuration;
-                                }
-                                else if (parkRateAttribute.name_ == "rate")
-                                {
-                                    double dAmount = parkRateAttribute.value_.get_real();
-                                    if (dAmount < 0.0 || dAmount > MAX_MONEY)
-                                        throw runtime_error("Invalid park rate amount\n");
-                                    parkRate.nRate = roundint64(dAmount * COIN_PARK_RATE);
-                                    if (!MoneyRange(parkRate.nRate))
-                                        throw runtime_error("Invalid park rate amount\n");
-                                }
-                                else
-                                    throw runtime_error("Invalid park rate object\n");
-                            }
-                            parkRateVote.vParkRate.push_back(parkRate);
-                        }
-                    }
-                    else
-                        throw runtime_error("Invalid custodian vote object\n");
-                }
-                vote.vParkRateVote.push_back(parkRateVote);
-            }
-        }
-        else
-            throw runtime_error("Invalid vote object\n");
-    }
-
-    pwalletMain->vote = vote;
-    pwalletMain->SaveVote();
+    pwalletMain->SetVote(vote);
 
     return voteToJSON(pwalletMain->vote);
 }
@@ -4261,6 +4174,71 @@ Value getrawmempool(const Array& params, bool fHelp)
     return a;
 }
 
+Value setdatafeed(const Array& params, bool fHelp)
+{
+    if (fHelp || (params.size() != 1 && params.size() != 3 && params.size() != 4))
+        throw runtime_error(
+            "setdatafeed <url> [<signature url> <address>] [<parts>]\n"
+            "Change the vote data feed. Set <url> to an empty string to disable.\n"
+            "If <signature url> and <address> are specified and not empty strings a signature will also be retrieved at <signature url> and verified.\n"
+            "Parts is the list of the top level vote parts that will be taken from the feed, separated by a coma. The other parts will not affect the vote. Default is \"custodians,parkrates,motions\".");
+
+    string sURL = params[0].get_str();
+
+    string sSignatureURL;
+    if (params.size() > 1)
+        sSignatureURL = params[1].get_str();
+
+    string sAddress;
+    if (params.size() > 2)
+        sAddress = params[2].get_str();
+
+    string sParts("custodians,parkrates,motions");
+    if (params.size() > 3)
+        sParts = params[3].get_str();
+    vector<string> vParts;
+    boost::split(vParts, sParts, boost::is_any_of(","));
+
+    BOOST_FOREACH(const string sPart, vParts)
+    {
+        if (sPart != "custodians" && sPart != "parkrates" && sPart != "motions")
+            throw runtime_error("Invalid parts");
+    }
+
+    CWallet* pwallet = GetWallet('S');
+    pwallet->SetDataFeed(CDataFeed(sURL, sSignatureURL, sAddress, vParts));
+
+    try
+    {
+        UpdateFromDataFeed();
+    }
+    catch (std::exception& e)
+    {
+        strDataFeedError = e.what();
+        return (boost::format("Warning: data feed was changed but the initial fetch failed: %1%") % e.what()).str();
+    }
+
+    return "";
+}
+
+Value getdatafeed(const Array& params, bool fHelp)
+{
+    if (fHelp || params.size() != 0)
+        throw runtime_error(
+            "getdatafeed\n"
+            "Return the current data feed.");
+
+    CWallet* pwallet = GetWallet('S');
+    const CDataFeed& dataFeed(pwallet->GetDataFeed());
+
+    Object result;
+    result.push_back(Pair("url", dataFeed.sURL));
+    result.push_back(Pair("signatureurl", dataFeed.sSignatureURL));
+    result.push_back(Pair("signatureaddress", dataFeed.sSignatureAddress));
+
+    return result;
+}
+
 
 #ifdef TESTING
 
@@ -4546,6 +4524,8 @@ static const CRPCCommand vRPCCommands[] =
     { "sendrawtransaction",     &sendrawtransaction,     false},
     { "gettxout",               &gettxout,               true },
     { "getrawmempool",          &getrawmempool,          true },
+    { "setdatafeed",            &setdatafeed,            true },
+    { "getdatafeed",            &getdatafeed,            true },
 #ifdef TESTING
     { "generatestake",          &generatestake,          true },
     { "duplicateblock",         &duplicateblock,         true },
@@ -5382,6 +5362,14 @@ Array RPCConvertValues(const std::string &strMethod, const std::vector<std::stri
 #ifdef TESTING
     if (strMethod == "timetravel"              && n > 0) ConvertTo<boost::int64_t>(params[0]);
 #endif
+
+    if (strMethod == "signmessage"             && n == 1)
+    {
+        // get params[1] from stdin
+        string message((std::istreambuf_iterator<char>)cin, std::istreambuf_iterator<char>());
+        params.push_back(message);
+    }
+
     return params;
 }
 

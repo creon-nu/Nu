@@ -58,30 +58,32 @@ end
 Given(/^a node "(.*?)" with an empty wallet$/) do |arg1|
   name = arg1
   options = {
-    image: "nunet/a",
+    image: "nunet/empty",
     links: @nodes.values.map(&:name),
     args: {
       debug: true,
       timetravel: timeshift,
     },
-    remove_wallet_before_startup: true,
   }
   node = CoinContainer.new(options)
   @nodes[name] = node
   node.wait_for_boot
 end
 
+Given(/^a node "([^"]*?)"$/) do |arg1|
+  step "a node \"#{arg1}\" with an empty wallet"
+end
+
 Given(/^a node "(.*?)" with an empty wallet and with avatar mode disabled$/) do |arg1|
   name = arg1
   options = {
-    image: "nunet/a",
+    image: "nunet/empty",
     links: @nodes.values.map(&:name),
     args: {
       debug: true,
       timetravel: timeshift,
       avatar: false,
     },
-    remove_wallet_before_startup: true,
   }
   node = CoinContainer.new(options)
   @nodes[name] = node
@@ -144,6 +146,15 @@ After do
         #end
       end
     end.each(&:join)
+  end
+end
+
+When(/^node "(.*?)" restarts$/) do |arg1|
+  @nodes[arg1].tap do |node|
+    node.shutdown
+    node.wait_for_shutdown
+    node.start
+    node.wait_for_boot
   end
 end
 
@@ -517,6 +528,19 @@ end
 
 Then(/^(\d+) seconds? pass(?:es|)$/) do |arg1|
   time_travel(arg1.to_i)
+end
+
+When(/^the error on node "(.*?)" should be "(.*?)"$/) do |arg1, arg2|
+  node = @nodes[arg1]
+  error = arg2
+
+  wait_for do
+    expect(node.info["errors"]).to eq(error)
+  end
+end
+
+Given(/^node "(.*?)" sets (?:his|her) vote to:$/) do |arg1, string|
+  @nodes[arg1].rpc("setvote", JSON.parse(string))
 end
 
 When(/^node "(.*?)" finds a block "(.*?)" on top of(?: block|) "(.*?)"$/) do |node, block, parent|

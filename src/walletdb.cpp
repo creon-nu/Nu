@@ -314,6 +314,10 @@ int CWalletDB::LoadWallet(CWallet* pwallet)
                 ssValue >> pwallet->vote;
                 pwallet->vote.Upgrade();
             }
+            else if (strType == "datafeed")
+            {
+                ssValue >> pwallet->dataFeed;
+            }
             else if (strType == "unit")
             {
                 ssValue >> cUnit;

@@ -14,6 +14,7 @@
 #include "wallet.h"
 #include "liquidityinfo.h"
 #include "coincontrol.h"
+#include "datafeed.h"
 #include <boost/algorithm/string/replace.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>
@@ -3031,6 +3032,12 @@ string GetWarnings(string strFor)
     string strRPC;
     if (GetBoolArg("-testsafemode"))
         strRPC = "test";
+
+    if (strDataFeedError != "")
+    {
+        nPriority = 0;
+        strStatusBar = strDataFeedError;
+    }
 
     // ppcoin: wallet lock warning for minting
     if (strMintWarning != "")
