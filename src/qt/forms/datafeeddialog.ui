@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>400</width>
-    <height>413</height>
+    <height>430</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -23,7 +23,7 @@
       </sizepolicy>
      </property>
      <property name="text">
-      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Enter the URL from which you want to download your vote.&lt;/p&gt;&lt;p&gt;The URL will be fetched every 60 seconds (unless you change that with the &amp;quot;datafeeddelay&amp;quot; configuration) and the result will overwrite your current vote. If the download fails your vote will not be changed. Each result provided by the data feed will be logged into debug.log.&lt;/p&gt;&lt;p&gt;To disable the data feed system leave the URL blank.&lt;/p&gt;&lt;p&gt;You can also specify a signature URL and address to require a valid signature from the data feed. If one of these two fields is blank the signature check is disabled and the process is vulnerable to various man-in-the-middle attacks.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Enter the URL from which you want to download your vote.&lt;/p&gt;&lt;p&gt;The URL will be fetched every 60 seconds (unless you change that with the &amp;quot;datafeeddelay&amp;quot; configuration) and the result will overwrite your current vote. If the download fails your vote will not be changed. Each result provided by the data feed will be logged into debug.log.&lt;/p&gt;&lt;p&gt;To disable the data feed system leave the URL blank.&lt;/p&gt;&lt;p&gt;You can also specify a signature URL and address to require a valid signature from the data feed. If these fields are left blank the signature check is disabled and the process is vulnerable to various man-in-the-middle attacks.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
      </property>
      <property name="alignment">
       <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>

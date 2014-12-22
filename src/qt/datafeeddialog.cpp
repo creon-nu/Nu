@@ -115,8 +115,19 @@ void DataFeedDialog::revertAndAskForConfirmation(QString error)
     }
 }
 
+void DataFeedDialog::error(const QString& message)
+{
+    QMessageBox::critical(this, tr("Error"), message);
+}
+
 void DataFeedDialog::accept()
 {
+    if (ui->signatureUrlEdit->text().isEmpty() != ui->signatureAddressEdit->text().isEmpty())
+    {
+        error(tr("The signature URL and address fields must be both filled or both empty."));
+        return;
+    }
+
     waitDialog.setVisible(true);
 
     previousDataFeed = model->getDataFeed();

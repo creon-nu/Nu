@@ -31,6 +31,7 @@ private:
     QMessageBox waitDialog;
 
     bool confirmAfterError(QString error);
+    void error(const QString& message);
 
 private slots:
     void accept();
