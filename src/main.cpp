@@ -30,6 +30,12 @@ bool IsNuProtocolV05(int64 nTimeBlock)
     return (nTimeBlock >= (fTestNet? nNuProtocolV05TestSwitchTime : nNuProtocolV05SwitchTime));
 }
 
+bool IsNuProtocolV06(const CBlockIndex* pindex)
+{
+    return (pindex->nTime >= 1425218400); // 2015-03-01 14:00:00 UTC
+}
+
+
 CCriticalSection cs_setpwalletRegistered;
 set<CWallet*> setpwalletRegistered;
 
