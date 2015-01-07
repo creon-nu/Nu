@@ -1494,9 +1494,9 @@ bool CTransaction::ConnectInputs(CTxDB& txdb, MapPrevTx inputs,
 
                 uint64 nValue = txPrev.vout[prevout.n].nValue;
                 uint64 nPremium = pindex->GetPremium(nValue, nDuration, cUnit);
-                uint64 nMaxValueOut = nValue + nPremium;
+                uint64 nExpectedValueOut = nValue + nPremium;
 
-                if (GetValueOut() > nMaxValueOut)
+                if (GetValueOut() != nExpectedValueOut)
                     return DoS(100, "ConnectInputs() : invalid unpark value");
 
                 CTxDestination outDestination;
