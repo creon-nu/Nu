@@ -3,6 +3,8 @@
 
 #include <QDialog>
 #include <QMessageBox>
+#include <QFuture>
+#include <QFutureWatcher>
 #include "datafeed.h"
 
 namespace Ui {
@@ -29,14 +31,15 @@ private:
 
     CDataFeed previousDataFeed;
     QMessageBox waitDialog;
+    QFuture<void> updateResult;
+    QFutureWatcher<void> updateWatcher;
 
     bool confirmAfterError(QString error);
     void error(const QString& message);
 
 private slots:
     void accept();
-    void close();
-    void revertAndAskForConfirmation(QString error);
+    void updateFinished();
 };
 
 #endif // DATAFEEDDIALOG_H

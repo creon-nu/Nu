@@ -1,5 +1,5 @@
 #include <QMessageBox>
-#include <QThread>
+#include <QtConcurrentRun>
 
 #include "datafeeddialog.h"
 #include "ui_datafeeddialog.h"
@@ -8,7 +8,8 @@
 DataFeedDialog::DataFeedDialog(QWidget *parent) :
     QDialog(parent),
     ui(new Ui::DataFeedDialog),
-    waitDialog(this)
+    waitDialog(this),
+    updateWatcher(this)
 {
     ui->setupUi(this);
 
@@ -16,6 +17,8 @@ DataFeedDialog::DataFeedDialog(QWidget *parent) :
     waitDialog.setText(tr("Fetching feed, please wait..."));
     waitDialog.setStandardButtons(QMessageBox::NoButton);
     waitDialog.setIcon(QMessageBox::Information);
+
+    connect(&updateWatcher, SIGNAL(finished()), this, SLOT(updateFinished()));
 }
 
 DataFeedDialog::~DataFeedDialog()
@@ -66,55 +69,6 @@ bool DataFeedDialog::confirmAfterError(QString error)
     return reply == QMessageBox::Yes;
 }
 
-class UpdateDataFeedThread : public QThread
-{
-    Q_OBJECT
-
-    WalletModel *model;
-
-public:
-    UpdateDataFeedThread(QObject* parent, WalletModel *model) :
-        QThread(parent),
-        model(model)
-    {
-    }
-
-protected:
-    void run()
-    {
-        try
-        {
-            model->updateFromDataFeed();
-            emit success();
-        }
-        catch (std::exception& e)
-        {
-            emit failure(QString::fromStdString(e.what()));
-        }
-    }
-
-signals:
-    void success();
-    void failure(QString error);
-};
-
-void DataFeedDialog::close()
-{
-    waitDialog.setVisible(false);
-    QDialog::accept();
-}
-
-void DataFeedDialog::revertAndAskForConfirmation(QString error)
-{
-    waitDialog.setVisible(false);
-    model->setDataFeed(previousDataFeed);
-    if (confirmAfterError(error))
-    {
-        model->setDataFeed(getDataFeed());
-        close();
-    }
-}
-
 void DataFeedDialog::error(const QString& message)
 {
     QMessageBox::critical(this, tr("Error"), message);
@@ -133,12 +87,25 @@ void DataFeedDialog::accept()
     previousDataFeed = model->getDataFeed();
     model->setDataFeed(getDataFeed());
 
-    UpdateDataFeedThread *thread = new UpdateDataFeedThread(this, model);
-    connect(thread, SIGNAL(success()), this, SLOT(close()));
-    connect(thread, SIGNAL(failure(QString)), this, SLOT(revertAndAskForConfirmation(QString)));
-    connect(thread, SIGNAL(finished()), thread, SLOT(deleteLater()));
-    thread->start();
+    updateResult = QtConcurrent::run(model, &WalletModel::updateFromDataFeed);
+    updateWatcher.setFuture(updateResult);
 }
 
-#include "datafeeddialog.moc"
-
+void DataFeedDialog::updateFinished()
+{
+    waitDialog.setVisible(false);
+    try
+    {
+        updateResult.waitForFinished();
+        QDialog::accept();
+    }
+    catch (WalletModelException& e)
+    {
+        model->setDataFeed(previousDataFeed);
+        if (confirmAfterError(e.message))
+        {
+            model->setDataFeed(getDataFeed());
+            QDialog::accept();
+        }
+    }
+}
