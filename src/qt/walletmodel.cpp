@@ -515,7 +515,14 @@ void WalletModel::setDataFeed(const CDataFeed& dataFeed)
 
 void WalletModel::updateFromDataFeed()
 {
-    UpdateFromDataFeed();
+    try
+    {
+        UpdateFromDataFeed();
+    }
+    catch (std::exception& e)
+    {
+        throw WalletModelException(e.what());
+    }
 }
 
 QString WalletModel::getDataFeedError() const
