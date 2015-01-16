@@ -4,14 +4,12 @@ From the Nu repository root build the nugitian/base image:
 
 Then the nugitian/setup image:
 
-    ID=`docker run --privileged -d -v $PWD:/nubit -t nugitian/base /setup.sh`
-    docker attach $ID
+    ID=`docker run --privileged -d -v $PWD:/nubit -t nugitian/base /setup.sh` && docker attach $ID
     docker commit $ID nugitian/setup
 
 If the setup fails you should still commit the container to save the current state. Then you can start the container to complete the jobs manually and commit again:
 
-    ID=`docker run --privileged -d -v $PWD:/nubit -ti nugitian/setup bash`
-    docker attach $ID
+    ID=`docker run --privileged -d -v $PWD:/nubit -ti nugitian/setup bash` && docker attach $ID
     service apt-cacher-ng start
     cd gitian-builder
     # finish the setup process manually and exit the container
