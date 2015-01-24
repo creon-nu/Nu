@@ -127,13 +127,15 @@ script: |
       --disable-cookies \
       --disable-sspi \
       --disable-ntlm-wb \
+      --disable-smb \
       --without-libssh2 \
       --without-librtmp \
       --without-winssl \
       --without-winidn \
       --without-libidn \
       --without-darwinssl \
-      --without-curl
+      --without-curl \
+      --with-ssl=$INSTALLPREFIX
     # Workaround to prevent re-configuring by make; make all files have a date in the past
     find . -print0 | xargs -r0 touch -t 200001010000
     make $MAKEOPTS install
