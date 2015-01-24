@@ -64,6 +64,8 @@ public:
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)this);
 
+        curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0);
+
         if (fUseProxy)
         {
             curl_easy_setopt(curl, CURLOPT_PROXY, addrProxy.ToStringIP().c_str());
