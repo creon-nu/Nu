@@ -34,6 +34,7 @@ private slots:
     void on_custodianVote_clicked();
     void on_parkRateVote_clicked();
     void on_motionVote_clicked();
+    void on_feeVote_clicked();
     void on_dataFeedButton_clicked();
     void update();
     void updateLiquidity();

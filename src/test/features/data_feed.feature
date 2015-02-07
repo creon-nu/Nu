@@ -20,7 +20,11 @@ Feature: The user can define a data feed URL to automatically update his vote fr
          "motions":[
             "8151325dcdbae9e0ff95f9f9658432dbedfdb209",
             "3f786850e387550fdab836ed7e6dc881de23001b"
-         ]
+         ],
+         "fees": {
+           "B": 0.02,
+           "S": 0.5
+         }
       }
       """
     And sample vote "another full" is:
@@ -41,7 +45,11 @@ Feature: The user can define a data feed URL to automatically update his vote fr
          "motions":[
             "3f786850e387550fdab836ed7e6dc881de23001b",
             "1111111111111111111111111111111111111111"
-         ]
+         ],
+         "fees": {
+           "B": 0.01,
+           "S": 2.0
+         }
       }
       """
     And sample vote "blank" is:
@@ -49,7 +57,8 @@ Feature: The user can define a data feed URL to automatically update his vote fr
       {
          "custodians":[],
          "parkrates":[],
-         "motions":[]
+         "motions":[],
+         "fees": {}
       }
       """
 
@@ -115,7 +124,8 @@ Feature: The user can define a data feed URL to automatically update his vote fr
          "parkrates":[],
          "motions":[
             "1111111111111111111111111111111111111111"
-         ]
+         ],
+         "fees": {}
       }
       """
 
@@ -192,6 +202,7 @@ Feature: The user can define a data feed URL to automatically update his vote fr
       | custodians and motions |
       | parkrates              |
       | motions                |
+      | fees                   |
 
   Scenario: An user sets a data feed through a proxy
     Given a proxy

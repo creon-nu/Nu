@@ -192,6 +192,7 @@ public:
     std::vector<CCustodianVote> vCustodianVote;
     std::vector<CParkRateVote> vParkRateVote;
     std::vector<uint160> vMotion;
+    std::map<unsigned char, uint32_t> mapFeeVote;
 
     CVote() :
         nVersion(PROTOCOL_VERSION)
@@ -203,6 +204,7 @@ public:
         vCustodianVote(original.vCustodianVote),
         vParkRateVote(original.vParkRateVote),
         vMotion(original.vMotion),
+        mapFeeVote(original.mapFeeVote),
         nCoinAgeDestroyed(original.nCoinAgeDestroyed)
     {
     }
@@ -213,6 +215,7 @@ public:
         vCustodianVote.clear();
         vParkRateVote.clear();
         vMotion.clear();
+        mapFeeVote.clear();
     }
 
     template<typename Stream>
@@ -263,6 +266,8 @@ public:
             READWRITE(vMotion);
         else
             ReadWriteSingleMotion(s, nType, nVersion, ser_action);
+        if (nVersion >= 60000)
+            READWRITE(mapFeeVote);
     )
 
     CScript ToScript(int nVersion) const;
@@ -282,7 +287,8 @@ public:
         return (nVersion == other.nVersion &&
                 vCustodianVote == other.vCustodianVote &&
                 vParkRateVote == other.vParkRateVote &&
-                vMotion == other.vMotion);
+                vMotion == other.vMotion &&
+                mapFeeVote == other.mapFeeVote);
     }
     inline bool operator!=(const CVote& other) const
     {
@@ -306,5 +312,7 @@ uint64 GetPremium(uint64 nValue, uint64 nDuration, unsigned char cUnit, const st
 bool CheckVote(const CBlock& block, CBlockIndex *pindexprev);
 
 bool GenerateCurrencyCoinBases(const std::vector<CVote> vVote, std::map<CBitcoinAddress, CBlockIndex*> mapAlreadyElected, std::vector<CTransaction>& vCurrencyCoinBaseRet);
+
+bool CalculateVotedFees(CBlockIndex* pindex);
 
 #endif

@@ -66,8 +66,17 @@ bool ThreadSafeAskFee(int64 nFeeRequired, const std::string& strCaption, unsigne
 {
     if(!guiref)
         return false;
-    if(nFeeRequired < MinTxFee(cUnit) || fDaemon)
+    if (fDaemon)
         return true;
+
+    int64 nMinFee;
+    {
+        LOCK(cs_main);
+        nMinFee = pindexBest->GetSafeMinFee(cUnit);
+    }
+    if(nFeeRequired < nMinFee)
+        return true;
+
     bool payFee = false;
 
     QMetaObject::invokeMethod(guiref, "askFee", GUIUtil::blockingGUIThreadConnection(),

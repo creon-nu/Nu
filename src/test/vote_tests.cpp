@@ -631,4 +631,132 @@ BOOST_AUTO_TEST_CASE(vote_before_multi_motion_unserialization)
     BOOST_CHECK_EQUAL(uint160("3f786850e387550fdab836ed7e6dc881de23001b").ToString(), vote.vMotion[0].ToString());
 }
 
+BOOST_AUTO_TEST_CASE(vote_v50000_unserialization)
+{
+    // Serialized with v0.5.2 vote code:
+    /* {
+    CVote vote;
+    CCustodianVote custodianVote;
+    custodianVote.cUnit = 'B';
+    custodianVote.hashAddress = uint160(123465);
+    custodianVote.nAmount = 100 * COIN;
+    vote.vCustodianVote.push_back(custodianVote);
+    vote.vMotion.push_back(uint160(123456));
+    vote.vMotion.push_back(uint160(3333));
+    printf("%s\n", vote.ToScript().ToString().c_str());
+    printf("%s\n", HexStr(vote.ToScript()).c_str());
+    } */
+    vector<unsigned char> oldVoteString = ParseHex("6a514c4d50c3000001420049e201000000000000000000000000000000000040420f0000000000000240e2010000000000000000000000000000000000050d000000000000000000000000000000000000");
+
+    CScript oldVoteScript(oldVoteString.begin(), oldVoteString.end());
+
+    CVote vote;
+    BOOST_CHECK(ExtractVote(oldVoteScript, vote));
+
+    BOOST_CHECK_EQUAL(0, vote.mapFeeVote.size());
+}
+
+vector<CBlockIndex*> feeVoteIndexes;
+int lastFeeVoteIndex = -1;
+
+void AddFeeVoteBlocks(int nCount, int64 nFeeVoteS, int64 nFeeVoteB)
+{
+    for (int i = 0; i < nCount; i++)
+    {
+        CBlockIndex* pindex = new CBlockIndex();
+        if (lastFeeVoteIndex >= 0)
+        {
+            pindex->pprev = feeVoteIndexes[lastFeeVoteIndex];
+            pindex->pprev->pnext = pindex;
+        }
+        feeVoteIndexes.push_back(pindex);
+        lastFeeVoteIndex++;
+        pindex->nHeight = lastFeeVoteIndex;
+        if (nFeeVoteS != -1)
+            pindex->vote.mapFeeVote['S'] = nFeeVoteS;
+        if (nFeeVoteB != -1)
+            pindex->vote.mapFeeVote['B'] = nFeeVoteB;
+        BOOST_CHECK(CalculateVotedFees(pindex));
+    }
+}
+
+#define CHECK_VOTED_MIN_FEE(nIndex, nExpectedSFee, nExpectedBFee) { \
+    BOOST_CHECK_EQUAL(nExpectedSFee, feeVoteIndexes[nIndex]->GetVotedMinFee('S')); \
+    BOOST_CHECK_EQUAL(nExpectedBFee, feeVoteIndexes[nIndex]->GetVotedMinFee('B')); \
+}
+
+#define CHECK_EFFECTIVE_MIN_FEE(nIndex, nExpectedSFee, nExpectedBFee) { \
+    BOOST_CHECK_EQUAL(nExpectedSFee, feeVoteIndexes[nIndex]->GetMinFee('S')); \
+    BOOST_CHECK_EQUAL(nExpectedBFee, feeVoteIndexes[nIndex]->GetMinFee('B')); \
+}
+
+#define CHECK_SAFE_MIN_FEE(nIndex, nExpectedSFee, nExpectedBFee) { \
+    BOOST_CHECK_EQUAL(nExpectedSFee, feeVoteIndexes[nIndex]->GetSafeMinFee('S')); \
+    BOOST_CHECK_EQUAL(nExpectedBFee, feeVoteIndexes[nIndex]->GetSafeMinFee('B')); \
+}
+
+void ResetFeeVoteBlocks()
+{
+    BOOST_FOREACH(CBlockIndex* pindex, feeVoteIndexes)
+        delete pindex;
+    feeVoteIndexes.clear();
+    lastFeeVoteIndex = -1;
+}
+
+BOOST_AUTO_TEST_CASE(fee_vote_calculation)
+{
+    // 3000 blocks not including any fee vote
+    AddFeeVoteBlocks(3000,     -1, -1);
+    // 3500 blocks voting for a new NSR fee and no vote for the NBT fee
+    AddFeeVoteBlocks( 500, 2*COIN, -1);
+    AddFeeVoteBlocks(1000, 3*COIN, -1);
+    AddFeeVoteBlocks(2000, 1*CENT, -1);
+
+    // The first blocks have the default fee
+    for (int i = 0; i < 4000; i++)
+    {
+        CHECK_VOTED_MIN_FEE    (i, COIN, CENT);
+        CHECK_EFFECTIVE_MIN_FEE(i, COIN, CENT);
+        CHECK_SAFE_MIN_FEE     (i, COIN, CENT);
+    }
+
+    // The votes started at block 3000, so at block 4000 there are 1001 votes so the voted fee changes
+    CHECK_VOTED_MIN_FEE    (4000, 2*COIN, CENT);
+    // But not the other ones
+    CHECK_EFFECTIVE_MIN_FEE(4000,   COIN, CENT);
+    CHECK_SAFE_MIN_FEE     (4000,   COIN, CENT);
+
+    // The effective fee doesn't change until 60 blocks have passed
+    for (int i = 4000; i < 4060; i++)
+        CHECK_EFFECTIVE_MIN_FEE(i, COIN, CENT);
+    CHECK_EFFECTIVE_MIN_FEE(4060, 2*COIN, CENT);
+
+    // The safe fee changes 10 blocks before the effective fee
+    for (int i = 4000; i < 4050; i++)
+        CHECK_SAFE_MIN_FEE(i, COIN, CENT);
+    CHECK_SAFE_MIN_FEE(4050, 2*COIN, CENT);
+
+
+    ResetFeeVoteBlocks();
+
+    AddFeeVoteBlocks(1001, -1, 10*CENT);
+    AddFeeVoteBlocks( 500, -1,  3*CENT);
+    AddFeeVoteBlocks( 500, -1,  5*CENT);
+    AddFeeVoteBlocks(1000, -1,  1*CENT);
+
+    CHECK_VOTED_MIN_FEE(2000, 1*COIN, 5*CENT);
+    CHECK_VOTED_MIN_FEE(2499, 1*COIN, 5*CENT);
+    CHECK_VOTED_MIN_FEE(2500, 1*COIN, 3*CENT);
+
+    CHECK_EFFECTIVE_MIN_FEE(2559, 1*COIN, 5*CENT);
+    CHECK_EFFECTIVE_MIN_FEE(2560, 1*COIN, 3*CENT);
+
+    CHECK_SAFE_MIN_FEE(2549, 1*COIN, 5*CENT);
+    CHECK_SAFE_MIN_FEE(2550, 1*COIN, 5*CENT);
+    CHECK_SAFE_MIN_FEE(2558, 1*COIN, 5*CENT); // the next block still has a 5 cents fee
+    CHECK_SAFE_MIN_FEE(2559, 1*COIN, 3*CENT); // there's no more 5 cents blocks
+
+    ResetFeeVoteBlocks();
+}
+
 BOOST_AUTO_TEST_SUITE_END()

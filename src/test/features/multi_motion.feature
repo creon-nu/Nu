@@ -25,7 +25,8 @@ Feature: Shareholders can vote for multiple motions
       {
         "custodians": [],
         "parkrates": [],
-        "motions": ["89e6c98d92887913cadf06b2adb97f26cde4849b"]
+        "motions": ["89e6c98d92887913cadf06b2adb97f26cde4849b"],
+        "fees": {}
       }
       """
     And all nodes should reach block "X"
@@ -59,7 +60,8 @@ Feature: Shareholders can vote for multiple motions
       {
         "custodians": [],
         "parkrates": [],
-        "motions": ["2b66fd261ee5c6cfc8de7fa466bab600bcfe4f69"]
+        "motions": ["2b66fd261ee5c6cfc8de7fa466bab600bcfe4f69"],
+        "fees": {}
       }
       """
     And motion "2b66fd261ee5c6cfc8de7fa466bab600bcfe4f69" should have 1 block

@@ -64,7 +64,8 @@ qint64 WalletModel::getParked() const
 
 qint64 WalletModel::getMinTxFee() const
 {
-    return wallet->GetMinTxFee();
+    LOCK(cs_main);
+    return wallet->GetMinTxFee(pindexBest);
 }
 
 qint64 WalletModel::getMinTxOutAmount() const

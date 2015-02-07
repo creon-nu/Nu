@@ -403,6 +403,13 @@ Object voteToJSON(const CVote& vote)
     }
     result.push_back(Pair("motions", motionVotes));
 
+    Object feeVotes;
+    BOOST_FOREACH(const PAIRTYPE(unsigned char, uint32_t)& feeVote, vote.mapFeeVote)
+    {
+        feeVotes.push_back(Pair(string(1, feeVote.first), (double)feeVote.second / COIN));
+    }
+    result.push_back(Pair("fees", feeVotes));
+
     return result;
 }
 
@@ -766,7 +773,7 @@ Value getinfo(const Array& params, bool fHelp)
     obj.push_back(Pair("testnet",       fTestNet));
     obj.push_back(Pair("keypoololdest", (boost::int64_t)pwalletMain->GetOldestKeyPoolTime()));
     obj.push_back(Pair("keypoolsize",   pwalletMain->GetKeyPoolSize()));
-    obj.push_back(Pair("paytxfee",      ValueFromAmount(pwalletMain->GetMinTxFee())));
+    obj.push_back(Pair("paytxfee",      ValueFromAmount(pwalletMain->GetSafeMinTxFee(pindexBest))));
     if (pwalletMain->IsCrypted())
         obj.push_back(Pair("unlocked_until", (boost::int64_t)nWalletUnlockTime / 1000));
     obj.push_back(Pair("errors",        GetWarnings("statusbar")));
@@ -4181,7 +4188,7 @@ Value setdatafeed(const Array& params, bool fHelp)
             "setdatafeed <url> [<signature url> <address>] [<parts>]\n"
             "Change the vote data feed. Set <url> to an empty string to disable.\n"
             "If <signature url> and <address> are specified and not empty strings a signature will also be retrieved at <signature url> and verified.\n"
-            "Parts is the list of the top level vote parts that will be taken from the feed, separated by a coma. The other parts will not affect the vote. Default is \"custodians,parkrates,motions\".");
+            "Parts is the list of the top level vote parts that will be taken from the feed, separated by a coma. The other parts will not affect the vote. Default is \"custodians,parkrates,motions,fees\".");
 
     string sURL = params[0].get_str();
 
@@ -4193,7 +4200,7 @@ Value setdatafeed(const Array& params, bool fHelp)
     if (params.size() > 2)
         sAddress = params[2].get_str();
 
-    string sParts("custodians,parkrates,motions");
+    string sParts("custodians,parkrates,motions,fees");
     if (params.size() > 3)
         sParts = params[3].get_str();
     vector<string> vParts;
@@ -4201,7 +4208,7 @@ Value setdatafeed(const Array& params, bool fHelp)
 
     BOOST_FOREACH(const string sPart, vParts)
     {
-        if (sPart != "custodians" && sPart != "parkrates" && sPart != "motions")
+        if (sPart != "custodians" && sPart != "parkrates" && sPart != "motions" && sPart != "fees")
             throw runtime_error("Invalid parts");
     }
 

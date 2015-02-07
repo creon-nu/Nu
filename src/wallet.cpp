@@ -1282,7 +1282,7 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, int64> >& vecSend, CW
         // txdb must be opened before the mapWallet lock
         CTxDB txdb("r");
         {
-            nFeeRet = GetMinTxFee();
+            nFeeRet = GetSafeMinTxFee(pindexBest);
             loop
             {
                 wtxNew.vin.clear();
@@ -1316,9 +1316,9 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, int64> >& vecSend, CW
                 // if sub-cent change is required, the fee must be raised to at least MIN_TX_FEE
                 // or until nChange becomes zero
                 // NOTE: this depends on the exact behaviour of GetMinFee
-                if (nFeeRet < wtxNew.GetUnitMinFee() && nChange > 0 && nChange < CENT)
+                if (nFeeRet < wtxNew.GetSafeUnitMinFee(pindexBest) && nChange > 0 && nChange < CENT)
                 {
-                    int64 nMoveToFee = min(nChange, wtxNew.GetUnitMinFee() - nFeeRet);
+                    int64 nMoveToFee = min(nChange, wtxNew.GetSafeUnitMinFee(pindexBest) - nFeeRet);
                     nChange -= nMoveToFee;
                     nFeeRet += nMoveToFee;
                 }
@@ -1352,8 +1352,8 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, int64> >& vecSend, CW
                 dPriority /= nBytes;
 
                 // Check that enough fee is included
-                int64 nPayFee = wtxNew.GetUnitMinFee() * (1 + (int64)nBytes / 1000);
-                int64 nMinFee = wtxNew.GetMinFee(1, false, GMF_SEND, nBytes);
+                int64 nPayFee = wtxNew.GetSafeUnitMinFee(pindexBest) * (1 + (int64)nBytes / 1000);
+                int64 nMinFee = wtxNew.GetSafeMinFee(pindexBest, 1, false, GMF_SEND, nBytes);
 
                 if (nFeeRet < max(nPayFee, nMinFee))
                 {
@@ -1595,10 +1595,16 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
         nCredit += GetProofOfStakeReward(nCoinAge);
     }
 
+    CBlockIndex pindexdummy;
+    pindexdummy.pprev = pindexprev;
+    pindexdummy.nTime = txNew.nTime;
+
     // nubit: Add current vote
     int nVersion;
-    if (IsNuProtocolV05(txNew.nTime))
-        nVersion = PROTOCOL_VERSION;
+    if (IsNuProtocolV06(&pindexdummy))
+        nVersion = 60000;
+    else if (IsNuProtocolV05(txNew.nTime))
+        nVersion = 50000;
     else
         nVersion = 40500;
     txNew.vout.push_back(CTxOut(0, vote.ToScript(nVersion)));
@@ -1613,6 +1619,8 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
 
     BOOST_FOREACH(const CParkRateVote& parkRateResult, vParkRateResult)
         txNew.vout.push_back(CTxOut(0, parkRateResult.ToParkRateResultScript()));
+
+    CalculateVotedFees(&pindexdummy);
 
     int64 nMinFee = 0;
     loop
@@ -1641,9 +1649,9 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
             return error("CreateCoinStake : exceeded coinstake size limit");
 
         // Check enough fee is paid
-        if (nMinFee < txNew.GetMinFee() - txNew.GetUnitMinFee())
+        if (nMinFee < txNew.GetMinFee(&pindexdummy) - txNew.GetUnitMinFee(&pindexdummy))
         {
-            nMinFee = txNew.GetMinFee() - txNew.GetUnitMinFee();
+            nMinFee = txNew.GetMinFee(&pindexdummy) - txNew.GetUnitMinFee(&pindexdummy);
             continue; // try signing again
         }
         else
@@ -1838,7 +1846,7 @@ string CWallet::SendMoneyToDestination(const CTxDestination& address, int64 nVal
     // Check amount
     if (nValue <= 0)
         return _("Invalid amount");
-    if (nValue + MinTxFee(cUnit) > GetBalance())
+    if (nValue + GetSafeMinTxFee(pindexBest) > GetBalance())
         return _("Insufficient funds");
 
     // Parse bitcoin address
@@ -1860,7 +1868,7 @@ std::string CWallet::Park(int64 nValue, int64 nDuration, const CBitcoinAddress& 
     // Check amount
     if (nValue <= 0)
         return _("Invalid amount");
-    if (nValue + GetMinTxFee() > GetBalance())
+    if (nValue + GetSafeMinTxFee(pindexBest) > GetBalance())
         return _("Insufficient funds");
 
     uint64 nPremium = pindexBest->GetPremium(nValue, nDuration, cUnit);

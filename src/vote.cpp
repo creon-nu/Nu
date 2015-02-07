@@ -320,13 +320,20 @@ bool CVote::IsValid() const
             return false;
         seenCustodianVotes.insert(custodianVote);
     }
+
+    BOOST_FOREACH(const PAIRTYPE(unsigned char, uint32_t)& pair, mapFeeVote)
+    {
+        if (!IsValidUnit(pair.first))
+            return false;
+    }
+
     return true;
 }
 
 void CVote::Upgrade()
 {
-    if (nVersion < 50000)
-        nVersion = 50000;
+    if (nVersion < PROTOCOL_VERSION)
+        nVersion = PROTOCOL_VERSION;
 }
 
 bool ExtractVotes(const CBlock& block, CBlockIndex *pindexprev, unsigned int nCount, std::vector<CVote> &vVoteRet)
@@ -507,4 +514,61 @@ uint64 GetPremium(uint64 nValue, uint64 nDuration, unsigned char cUnit, const st
         }
     }
     return 0;
+}
+
+bool CalculateVotedFees(CBlockIndex* pindex)
+{
+    // pindex data should not be used here because it may be a dummy index (for example on new blocks)
+    // pindex->pprev is the first valid block index
+
+    pindex->mapVotedFee.clear();
+
+    CBlockIndex* pvoteindex = pindex;
+
+    map<unsigned char, map<uint32_t, int> > mapFeeVoteCount;
+
+    for (int i = 0; i < FEE_VOTES; i++)
+    {
+        BOOST_FOREACH(const unsigned char cUnit, sAvailableUnits)
+        {
+            uint32_t vote;
+            if (pvoteindex)
+            {
+                const map<unsigned char, uint32_t>& mapFeeVote = pvoteindex->vote.mapFeeVote;
+                map<unsigned char, uint32_t>::const_iterator it = mapFeeVote.find(cUnit);
+                if (it == mapFeeVote.end())
+                    vote = GetDefaultFee(cUnit);
+                else
+                    vote = it->second;
+            }
+            else
+                vote = GetDefaultFee(cUnit);
+
+            mapFeeVoteCount[cUnit][vote]++;
+        }
+        if (pvoteindex)
+            pvoteindex = pvoteindex->pprev;
+    }
+
+    BOOST_FOREACH(const unsigned char cUnit, sAvailableUnits)
+    {
+        // calculate the median fee
+        const int half = FEE_VOTES / 2;
+        int total = 0;
+
+        BOOST_FOREACH(PAIRTYPE(const uint32_t, int)& item, mapFeeVoteCount[cUnit])
+        {
+            const uint32_t& vote = item.first;
+            const int& count = item.second;
+
+            total += count;
+            if (total >= half)
+            {
+                pindex->mapVotedFee[cUnit] = vote;
+                break;
+            }
+        }
+    }
+
+    return true;
 }

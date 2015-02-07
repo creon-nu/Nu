@@ -261,6 +261,25 @@ CVote ParseVote(const Object& objVote)
                 vote.vParkRateVote.push_back(parkRateVote);
             }
         }
+        else if (voteAttribute.name_ == "fees")
+        {
+            map<unsigned char, uint32_t> feeVotes;
+            BOOST_FOREACH(const Pair& feeVoteAttribute, voteAttribute.value_.get_obj())
+            {
+                string unitString = feeVoteAttribute.name_;
+                if (unitString.size() != 1)
+                    throw runtime_error("Invalid fee unit");
+
+                unsigned char cUnit = unitString[0];
+                double feeAsCoin = feeVoteAttribute.value_.get_real();
+                if (feeAsCoin < 0 || feeAsCoin * COIN > numeric_limits<uint32_t>::max())
+                    throw runtime_error("Invalid fee amount");
+                uint32_t feeAsSatoshi = feeAsCoin * COIN;
+
+                feeVotes[cUnit] = feeAsSatoshi;
+            }
+            vote.mapFeeVote = feeVotes;
+        }
         else
             throw runtime_error("Invalid vote object\n");
     }
@@ -295,6 +314,8 @@ void UpdateFromDataFeed()
                 newVote.vParkRateVote = feedVote.vParkRateVote;
             else if (sPart == "motions")
                 newVote.vMotion = feedVote.vMotion;
+            else if (sPart == "fees")
+                newVote.mapFeeVote = feedVote.mapFeeVote;
             else
                 throw runtime_error("Invalid part");
         }

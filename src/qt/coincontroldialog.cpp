@@ -421,6 +421,11 @@ void CoinControlDialog::updateLabels(WalletModel *model, QDialog* dialog)
     bool fDust = false;
     CTransaction txDummy;
     txDummy.cUnit = model->getUnit();
+    CBlockIndex *pindex;
+    {
+        LOCK(cs_main);
+        pindex = pindexBest;
+    }
 
     BOOST_FOREACH(const PAIRTYPE(QString, qint64) &payee, CoinControlDialog::payAddresses)
     {
@@ -451,7 +456,7 @@ void CoinControlDialog::updateLabels(WalletModel *model, QDialog* dialog)
     coinControl->ListSelected(vCoinControl);
     model->getOutputs(vCoinControl, vOutputs);
 
-    nPayFee = txDummy.GetUnitMinFee();
+    nPayFee = txDummy.GetUnitMinFee(pindex);
     loop
     {
         txDummy.vin.clear();
@@ -518,9 +523,9 @@ void CoinControlDialog::updateLabels(WalletModel *model, QDialog* dialog)
             // if sub-cent change is required, the fee must be raised to at least unit's min fee
             // or until nChange becomes zero
             // NOTE: this depends on the exact behaviour of GetMinFee
-            if (nPayFee < txDummy.GetUnitMinFee() && nChange > 0 && nChange < model->getMinTxOutAmount())
+            if (nPayFee < txDummy.GetUnitMinFee(pindex) && nChange > 0 && nChange < model->getMinTxOutAmount())
             {
-                int64 nMoveToFee = min(nChange, txDummy.GetUnitMinFee() - nPayFee);
+                int64 nMoveToFee = min(nChange, txDummy.GetUnitMinFee(pindex) - nPayFee);
                 nChange -= nMoveToFee;
                 nPayFee += nMoveToFee;
             }
@@ -547,10 +552,10 @@ void CoinControlDialog::updateLabels(WalletModel *model, QDialog* dialog)
             sPriorityLabel = CoinControlDialog::getPriorityLabel(dPriority);
 
             // Fee
-            int64 nFee = txDummy.GetUnitMinFee() * (1 + (int64)nBytes / 1000);
+            int64 nFee = txDummy.GetUnitMinFee(pindex) * (1 + (int64)nBytes / 1000);
 
             // Min Fee
-            int64 nMinFee = txDummy.GetMinFee(1, false, GMF_SEND, nBytes);
+            int64 nMinFee = txDummy.GetMinFee(pindex, 1, false, GMF_SEND, nBytes);
 
             if (nPayFee < max(nFee, nMinFee))
             {

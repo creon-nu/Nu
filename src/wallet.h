@@ -330,9 +330,14 @@ public:
     void SetVote(const CVote& vote);
     void SaveVote() const;
 
-    int64 GetMinTxFee() const
+    int64 GetMinTxFee(const CBlockIndex *pindex) const
     {
-        return MinTxFee(cUnit);
+        return pindex->GetMinFee(cUnit);
+    }
+
+    int64 GetSafeMinTxFee(const CBlockIndex *pindex) const
+    {
+        return pindex->GetSafeMinFee(cUnit);
     }
 
     int64 GetMinTxOutAmount() const

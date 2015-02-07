@@ -7,6 +7,7 @@
 #include "custodianvotedialog.h"
 #include "parkratevotedialog.h"
 #include "motionvotedialog.h"
+#include "feevotedialog.h"
 #include "datafeeddialog.h"
 #include "guiconstants.h"
 #include "optionsmodel.h"
@@ -61,6 +62,13 @@ void VotePage::on_parkRateVote_clicked()
 void VotePage::on_motionVote_clicked()
 {
     MotionVoteDialog dlg(this);
+    dlg.setModel(model);
+    dlg.exec();
+}
+
+void VotePage::on_feeVote_clicked()
+{
+    FeeVoteDialog dlg(this);
     dlg.setModel(model);
     dlg.exec();
 }
