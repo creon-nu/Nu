@@ -234,7 +234,7 @@ class CoinContainer
 
   def commit(repo)
     image = container.commit
-    image.tag 'repo' => repo, force: true
+    image.tag 'repo' => repo, 'force' => true
   end
 
   def shutdown

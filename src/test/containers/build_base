@@ -6,5 +6,6 @@ cd $(dirname $0)
 docker build -t nubit/base base/
 docker build -t nubit/devel base_devel/
 docker build -t nubit/0.4.2 old/0.4.2/
+docker build -t nubit/0.5.2 old/0.5.2/
 docker build -t nubit/data_feed data_feed
 docker build -t nubit/proxy proxy
