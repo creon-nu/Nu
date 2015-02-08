@@ -296,9 +296,7 @@ bool CVote::IsValid() const
     set<unsigned char> seenParkVoteUnits;
     BOOST_FOREACH(const CParkRateVote& parkRateVote, vParkRateVote)
     {
-        if (parkRateVote.cUnit == 'S')
-            return false;
-        if (parkRateVote.cUnit != 'B')
+        if (!IsValidCurrency(parkRateVote.cUnit))
             return false;
         if (seenParkVoteUnits.find(parkRateVote.cUnit) != seenParkVoteUnits.end())
             return false;
@@ -316,10 +314,7 @@ bool CVote::IsValid() const
     set<CCustodianVote> seenCustodianVotes;
     BOOST_FOREACH(const CCustodianVote& custodianVote, vCustodianVote)
     {
-        if (custodianVote.cUnit == 'S')
-            return false;
-        if (custodianVote.cUnit != 'B')
-            return false;
+        if (!IsValidCurrency(custodianVote.cUnit))
 
         if (seenCustodianVotes.count(custodianVote))
             return false;

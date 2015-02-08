@@ -13,7 +13,7 @@ int64 nLastLiquidityUpdate = 0;
 
 bool CLiquidityInfo::ProcessLiquidityInfo()
 {
-    if (!ValidUnit(cCustodianUnit) || cCustodianUnit == 'S')
+    if (!IsValidCurrency(cCustodianUnit))
         return false;
 
     CBitcoinAddress address(GetCustodianAddress());

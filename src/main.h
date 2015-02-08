@@ -84,9 +84,14 @@ extern CScript COINBASE_FLAGS;
 
 static const std::string sAvailableUnits("SB");
 
-inline bool ValidUnit(unsigned char cUnit)
+inline bool IsValidUnit(unsigned char cUnit)
 {
-    return sAvailableUnits.find(cUnit) != -1;
+    return sAvailableUnits.find(cUnit) != std::string::npos;
+}
+
+inline bool IsValidCurrency(unsigned char cUnit)
+{
+    return (cUnit != 'S' && IsValidUnit(cUnit));
 }
 
 
