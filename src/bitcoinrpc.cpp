@@ -4235,6 +4235,7 @@ Value getdatafeed(const Array& params, bool fHelp)
     result.push_back(Pair("url", dataFeed.sURL));
     result.push_back(Pair("signatureurl", dataFeed.sSignatureURL));
     result.push_back(Pair("signatureaddress", dataFeed.sSignatureAddress));
+    result.push_back(Pair("parts", boost::algorithm::join(dataFeed.vParts, ",")));
 
     return result;
 }
