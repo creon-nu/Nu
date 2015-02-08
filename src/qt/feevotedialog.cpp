@@ -83,6 +83,11 @@ void FeeVoteDialog::accept()
 
     CVote vote = model->getVote();
     vote.mapFeeVote = mapFee;
+    if (!vote.IsValid())
+    {
+        error(tr("The new vote is invalid"));
+        return;
+    }
     model->setVote(vote);
     QDialog::accept();
 }

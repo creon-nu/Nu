@@ -231,6 +231,11 @@ void ParkRateVoteDialog::accept()
     CVote vote = model->getVote();
     vote.vParkRateVote.clear();
     vote.vParkRateVote.push_back(parkRateVote);
+    if (!vote.IsValid())
+    {
+        error(tr("The new vote is invalid"));
+        return;
+    }
     model->setVote(vote);
     QDialog::accept();
 }

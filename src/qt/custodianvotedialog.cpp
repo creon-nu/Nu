@@ -125,6 +125,11 @@ void CustodianVoteDialog::accept()
 
     CVote vote = model->getVote();
     vote.vCustodianVote = vVote;
+    if (!vote.IsValid())
+    {
+        error(tr("The new vote is invalid"));
+        return;
+    }
     model->setVote(vote);
     QDialog::accept();
 }

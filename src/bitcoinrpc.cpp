@@ -3143,6 +3143,8 @@ Value setvote(const Array& params, bool fHelp)
 
     Object objVote = params[0].get_obj();
     CVote vote = ParseVote(objVote);
+    if (!vote.IsValid())
+        throw runtime_error("Vote is invalid\n");
 
     pwalletMain->SetVote(vote);
 

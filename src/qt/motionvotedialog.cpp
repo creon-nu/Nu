@@ -101,6 +101,11 @@ void MotionVoteDialog::accept()
 
     CVote vote = model->getVote();
     vote.vMotion = vVote;
+    if (!vote.IsValid())
+    {
+        error(tr("The new vote is invalid"));
+        return;
+    }
     model->setVote(vote);
     QDialog::accept();
 }
