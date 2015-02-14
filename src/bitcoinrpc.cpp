@@ -3196,7 +3196,10 @@ Value getmotions(const Array& params, bool fHelp)
 
         const CVote& vote = pindex->vote;
 
-        BOOST_FOREACH(const uint160& hashMotion, vote.vMotion)
+        // Converting to set to avoid the possibility of a double vote.
+        const std::set<uint160> setMotion(vote.vMotion.begin(), vote.vMotion.end());
+
+        BOOST_FOREACH(const uint160& hashMotion, setMotion)
         {
             MotionResult& result = mapMotion[hashMotion];
             result.nBlocks++;
