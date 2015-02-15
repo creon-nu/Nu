@@ -80,3 +80,48 @@ Feature: NuBits can be parked
     And node "Bob" should have "0" NuBits parked
     And node "Bob" should have 1 NuBits transactions
     And the transaction should be a receive of "50,000.0005" to "bob"
+
+  Scenario: Unparking with not enough amount sent to a new node
+    Given a network with nodes "Alice" and "Bob" able to mint
+    And node "Alice" grants herself "1,000,000" NuBits
+
+    And a node "Old" running version "0.5.2"
+    And node "Alice" sends "100,000" NSR to node "Old"
+    And node "Alice" finds blocks until just received NSR are able to mint
+
+    And a node "Unparker" only connected to node "Alice"
+
+    And node "Alice" votes a park rate of "0.00000001" NuBits per Nubit parked during 4 blocks
+    And node "Alice" finds blocks until voted park rate becomes effective
+
+    And node "Alice" parks "50,000" NuBits for 4 blocks
+    And node "Alice" finds 4 blocks received by all other nodes
+
+    When node "Unparker" unparks the last park of node "Alice" with an amount of "0.01" NBT
+    Then node "Alice" should stay at 0 transactions in memory pool
+    And node "Old" should stay at 0 transactions in memory pool
+
+  Scenario: Unparking with not enough amount sent to an old node
+    Given a network with nodes "Alice" and "Bob" able to mint
+    And node "Alice" grants herself "1,000,000" NuBits
+
+    And a node "Old" running version "0.5.2"
+    And node "Alice" sends "500,000" NSR to node "Old"
+    And node "Alice" finds blocks until just received NSR are able to mint
+
+    And a node "Unparker" only connected to node "Old"
+
+    And node "Alice" votes a park rate of "0.00000001" NuBits per Nubit parked during 4 blocks
+    And node "Alice" finds blocks until voted park rate becomes effective
+
+    And node "Alice" parks "50,000" NuBits for 4 blocks
+    And node "Alice" finds 4 blocks received by all other nodes
+
+    When node "Unparker" unparks the last park of node "Alice" with an amount of "0.01" NBT
+    Then node "Old" should reach 1 transaction in memory pool
+    And node "Alice" should stay at 0 transactions in memory pool
+
+    When node "Alice" finds a block "X"
+    And node "Old" reaches block "X"
+    And node "Old" finds a block
+    Then node "Alice" should stay at block "X"

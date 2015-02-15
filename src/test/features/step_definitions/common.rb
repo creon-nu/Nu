@@ -29,6 +29,7 @@ Given(/^a network with nodes? (.+)(?: able to mint)?$/) do |node_names|
 
   node_names.each_with_index do |name, i|
     options = {
+      name: name,
       image: "nunet/#{available_nodes[i]}",
       links: @nodes.values.map(&:name),
       args: {
@@ -58,6 +59,7 @@ end
 Given(/^a node "(.*?)" with an empty wallet$/) do |arg1|
   name = arg1
   options = {
+    name: name,
     image: "nunet/empty",
     links: @nodes.values.map(&:name),
     args: {
@@ -77,6 +79,7 @@ end
 Given(/^a node "(.*?)" with an empty wallet and with avatar mode disabled$/) do |arg1|
   name = arg1
   options = {
+    name: name,
     image: "nunet/empty",
     links: @nodes.values.map(&:name),
     args: {
@@ -93,6 +96,7 @@ end
 Given(/^a node "(.*?)" running version "(.*?)"$/) do |arg1, arg2|
   name = arg1
   options = {
+    name: name,
     image: "nunet/#{arg2}",
     bind_code: false,
     links: @nodes.values.map(&:name),
@@ -115,6 +119,7 @@ end
 Given(/^a node "(.*?)" running version "(.*?)" and able to mint$/) do |arg1, arg2|
   name = arg1
   options = {
+    name: name,
     image: "nunet/#{arg2}",
     bind_code: false,
     links: @nodes.values.map(&:name),
@@ -129,6 +134,23 @@ Given(/^a node "(.*?)" running version "(.*?)" and able to mint$/) do |arg1, arg
     puts "Image for version #{arg2.inspect} may be missing."
     raise
   end
+  @nodes[name] = node
+  node.wait_for_boot
+end
+
+Given(/^a node "(.*?)" only connected to node "(.*?)"$/) do |arg1, arg2|
+  name = arg1
+  options = {
+    name: name,
+    image: "nunet/empty",
+    links: [@nodes[arg2]].map(&:name),
+    link_method: "connect",
+    args: {
+      debug: true,
+      timetravel: timeshift,
+    },
+  }
+  node = CoinContainer.new(options)
   @nodes[name] = node
   node.wait_for_boot
 end
@@ -190,6 +212,27 @@ Then(/^all nodes should (?:be at|reach) block "(.*?)"$/) do |block|
   rescue
     raise "Not at block #{block}: #{@nodes.values.map(&:top_hash).map { |hash| @blocks.key(hash) || hash }.inspect}"
   end
+end
+
+When(/^node "(.*?)" reaches block "(.*?)"$/) do |arg1, arg2|
+  node = @nodes[arg1]
+  block = @blocks[arg2]
+  begin
+    wait_for do
+      expect(node.top_hash).to eq(block)
+    end
+  rescue Exception
+    p @blocks
+    raise
+  end
+end
+
+Then(/^node "(.*?)" should stay at block "(.*?)"$/) do |arg1, arg2|
+  node = @nodes[arg1]
+  block = @blocks[arg2]
+  expect(node.top_hash).to eq(block)
+  sleep 2
+  expect(node.top_hash).to eq(block)
 end
 
 Given(/^all nodes (?:should )?reach the same height$/) do
@@ -300,6 +343,16 @@ end
 
 When(/^node "(.*?)" sends "(.*?)" (NuBits|NBT|NuShares|NSR) to "(.*?)"$/) do |arg1, arg2, unit_name, arg3|
   @nodes[arg1].unit_rpc unit(unit_name), "sendtoaddress", @addresses[arg3], parse_number(arg2)
+end
+
+Given(/^node "(.*?)" sends "(.*?)" (\w+) to node "(.*?)"$/) do |arg1, arg2, arg3, arg4|
+  node = @nodes[arg1]
+  amount = parse_number(arg2)
+  unit = unit(arg3)
+  target_node = @nodes[arg4]
+
+  target_address = target_node.unit_rpc(unit, "getaccountaddress", "")
+  node.unit_rpc(unit, "sendtoaddress", target_address, amount)
 end
 
 When(/^node "(.*?)" finds a block received by all other nodes$/) do |arg1|
@@ -545,4 +598,44 @@ end
 
 When(/^node "(.*?)" finds a block "(.*?)" on top of(?: block|) "(.*?)"$/) do |node, block, parent|
   @blocks[block] = @nodes[node].generate_stake(@blocks[parent])
+end
+
+Given(/^node "(.*?)" grants (?:her|him)self "(.*?)" (\w+)$/) do |arg1, arg2, unit_name|
+  address_name = "custodian_#{arg1}"
+  step "node \"#{arg1}\" generates a #{unit_name} address \"#{address_name}\""
+  step "node \"#{arg1}\" votes an amount of \"#{arg2}\" for custodian \"#{address_name}\""
+  step "node \"#{arg1}\" finds blocks until custodian \"#{address_name}\" is elected"
+end
+
+Given(/^node "(.*?)" finds blocks until just received NSR are able to mint$/) do |arg1|
+  node = @nodes[arg1]
+  5.times do
+    node.rpc("generatestake")
+    time_travel(3 * 60)
+  end
+end
+
+Given(/^node "(.*?)" finds blocks until voted park rate becomes effective$/) do |arg1|
+  step "node \"#{arg1}\" finds 5 blocks received by all other nodes"
+end
+
+When(/^node "(.*?)" unparks the last park of node "(.*?)" with an amount of "(.*?)" (\w+)$/) do |arg1, arg2, arg3, arg4|
+  unparking_node = @nodes[arg1]
+  park_node = @nodes[arg2]
+  amount = parse_number(arg3)
+  unit = unit(arg4)
+  parks = park_node.unit_rpc(unit, "listparked")
+  last_park = parks.last
+  hash = last_park["txid"]
+  output = last_park["output"]
+  unpark_address = last_park["unparkaddress"]
+  unparking_node.unit_rpc(unit, "manualunpark", hash, output, unpark_address, amount)
+end
+
+Then(/^node "(.*?)" should stay at (\d+) transactions in memory pool$/) do |arg1, arg2|
+  node = @nodes[arg1]
+  count = arg2.to_i
+  expect(node.rpc("getmininginfo")["pooledtx"]).to eq(count)
+  sleep 2
+  expect(node.rpc("getmininginfo")["pooledtx"]).to eq(count)
 end

@@ -1660,6 +1660,11 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
 
 bool CWallet::CreateUnparkTransaction(CWalletTx& wtxParked, unsigned int nOut, const CBitcoinAddress& unparkAddress, uint64 nAmount, CWalletTx& wtxNew)
 {
+    return CreateUnparkTransaction(wtxParked.GetHash(), nOut, unparkAddress, nAmount, wtxNew);
+}
+
+bool CWallet::CreateUnparkTransaction(const uint256& hashPark, unsigned int nOut, const CBitcoinAddress& unparkAddress, uint64 nAmount, CWalletTx& wtxNew)
+{
     wtxNew.BindWallet(this);
 
     {
@@ -1678,7 +1683,7 @@ bool CWallet::CreateUnparkTransaction(CWalletTx& wtxParked, unsigned int nOut, c
 
             CScript scriptSig;
             scriptSig.SetUnpark();
-            wtxNew.vin.push_back(CTxIn(wtxParked.GetHash(), nOut, scriptSig));
+            wtxNew.vin.push_back(CTxIn(hashPark, nOut, scriptSig));
 
             // Fill vtxPrev by copying from previous transactions vtxPrev
             wtxNew.AddSupportingTransactions(txdb);

@@ -1956,6 +1956,7 @@ Value listparked(const Array& params, bool fHelp)
         park.push_back(Pair("time", DateTimeStrFormat(wtx.GetTxTime())));
         park.push_back(Pair("amount", ValueFromAmount(txo.nValue)));
         park.push_back(Pair("duration", (boost::int64_t)nDuration));
+        park.push_back(Pair("unparkaddress", unparkAddress.ToString()));
 
         CBlockIndex* pindex = NULL;
         uint64 nDepth = wtx.GetDepthInMainChain(pindex);
@@ -4434,6 +4435,32 @@ Value duplicateblock(const Array& params, bool fHelp)
     return result;
 }
 
+Value manualunpark(const Array& params, bool fHelp)
+{
+    if (fHelp || params.size() != 4)
+        throw runtime_error(
+            "manualunpark <park tx hash> <output> <unpark address> <amount>\n"
+            );
+
+    uint256 hash = 0;
+    hash.SetHex(params[0].get_str());
+
+    int nOutput = params[1].get_int();
+
+    CBitcoinAddress unparkAddress(params[2].get_str());
+
+    int64 nAmount = params[3].get_real() * COIN;
+
+    CWalletTx wtx;
+    pwalletMain->CreateUnparkTransaction(hash, nOutput, unparkAddress, nAmount, wtx);
+
+    mempool.addUnchecked(wtx);
+    wtx.RelayWalletTransaction();
+
+    return wtx.GetHash().ToString();
+}
+
+
 #endif
 
 
@@ -4531,6 +4558,7 @@ static const CRPCCommand vRPCCommands[] =
     { "duplicateblock",         &duplicateblock,         true },
     { "shutdown",               &shutdown,               true },
     { "timetravel",             &timetravel,             true },
+    { "manualunpark",           &manualunpark,           true },
 #endif
 };
 
