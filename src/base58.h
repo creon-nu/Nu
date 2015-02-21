@@ -438,7 +438,6 @@ class CPeercoinAddressVisitor : public boost::static_visitor<bool>
 {
 private:
     CPeercoinAddress *addr;
-    unsigned char cUnit;
 public:
     CPeercoinAddressVisitor(CPeercoinAddress *addrIn) : addr(addrIn) { }
     bool operator()(const CKeyID &id) const;
