@@ -86,7 +86,7 @@ static const std::string sAvailableUnits("SB");
 
 inline bool ValidUnit(unsigned char cUnit)
 {
-    return sAvailableUnits.find(cUnit) != -1;
+    return sAvailableUnits.find(cUnit) != std::string::npos;
 }
 
 
