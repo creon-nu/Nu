@@ -37,6 +37,9 @@ bool ExtractVote(const CScript& scriptPubKey, CVote& voteRet)
 
     CScript voteScript(scriptPubKey.begin() + 2, scriptPubKey.end());
 
+    if (!voteScript.IsPushOnly())
+        return false;
+
     vector<vector<unsigned char> > stack;
     CTransaction fakeTx;
     EvalScript(stack, voteScript, fakeTx, 0, 0);
@@ -109,6 +112,9 @@ bool ExtractParkRateResult(const CScript& scriptPubKey, CParkRateVote& parkRateR
         return false;
 
     CScript script(scriptPubKey.begin() + 2, scriptPubKey.end());
+
+    if (!script.IsPushOnly())
+        return false;
 
     vector<vector<unsigned char> > stack;
     CTransaction fakeTx;
