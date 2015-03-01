@@ -23,6 +23,8 @@ public:
     {
     }
 
+    bool IsValid() const;
+
     IMPLEMENT_SERIALIZE
     (
         READWRITE(cUnit);
@@ -124,6 +126,8 @@ public:
     {
     }
 
+    bool IsValid() const;
+
     IMPLEMENT_SERIALIZE
     (
         READWRITE(nCompactDuration);
@@ -167,6 +171,8 @@ public:
         cUnit = '?';
         vParkRate.clear();
     }
+
+    bool IsValid() const;
 
     IMPLEMENT_SERIALIZE
     (

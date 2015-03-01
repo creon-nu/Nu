@@ -307,14 +307,38 @@ bool CalculateParkRateResults(const CVote &vote, CBlockIndex *pindexprev, std::v
     return CalculateParkRateResults(vVote, mapPreviousRates, vParkRateResult);
 }
 
+bool CParkRateVote::IsValid() const
+{
+    if (cUnit == 'S')
+        return false;
+    if (cUnit != 'B')
+        return false;
+    BOOST_FOREACH(const CParkRate& parkRate, vParkRate)
+        if (!parkRate.IsValid())
+            return false;
+    return true;
+}
+
+bool CParkRate::IsValid() const
+{
+    return true;
+}
+
+bool CCustodianVote::IsValid() const
+{
+    if (cUnit == 'S')
+        return false;
+    if (cUnit != 'B')
+        return false;
+    return true;
+}
+
 bool CVote::IsValid() const
 {
     set<unsigned char> seenParkVoteUnits;
     BOOST_FOREACH(const CParkRateVote& parkRateVote, vParkRateVote)
     {
-        if (parkRateVote.cUnit == 'S')
-            return false;
-        if (parkRateVote.cUnit != 'B')
+        if (!parkRateVote.IsValid())
             return false;
         if (seenParkVoteUnits.find(parkRateVote.cUnit) != seenParkVoteUnits.end())
             return false;
@@ -332,9 +356,7 @@ bool CVote::IsValid() const
     set<CCustodianVote> seenCustodianVotes;
     BOOST_FOREACH(const CCustodianVote& custodianVote, vCustodianVote)
     {
-        if (custodianVote.cUnit == 'S')
-            return false;
-        if (custodianVote.cUnit != 'B')
+        if (!custodianVote.IsValid())
             return false;
 
         if (seenCustodianVotes.count(custodianVote))
