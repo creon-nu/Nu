@@ -159,7 +159,7 @@ void WalletTxToJSON(const CWalletTx& wtx, Object& entry)
     BOOST_FOREACH(const CTxOut& txo, wtx.vout)
     {
         Object park;
-        uint64 nDuration;
+        int64 nDuration;
 
         CTxDestination unparkDestination;
         if (!ExtractPark(txo.scriptPubKey, nDuration, unparkDestination))
@@ -222,12 +222,12 @@ void ScriptPubKeyToJSON(const CScript& scriptPubKey, Object& out, unsigned char 
     out.push_back(Pair("type", GetTxnOutputType(type)));
     if (type == TX_PARK)
     {
-        uint64 nDuration;
+        int64 nDuration;
         CTxDestination unparkAddress;
         Object park;
         if (ExtractPark(scriptPubKey, nDuration, unparkAddress))
         {
-            park.push_back(Pair("duration", (boost::uint64_t)nDuration));
+            park.push_back(Pair("duration", (boost::int64_t)nDuration));
             park.push_back(Pair("unparkaddress", CBitcoinAddress(unparkAddress, cUnit).ToString()));
         }
         out.push_back(Pair("park", park));
@@ -474,7 +474,7 @@ Object blockToJSON(const CBlock& block, const CBlockIndex* blockindex, bool fTxI
             txinfo.push_back(tx.GetHash().GetHex());
     }
     result.push_back(Pair("tx", txinfo));
-    result.push_back(Pair("coinagedestroyed", (boost::uint64_t)blockindex->nCoinAgeDestroyed));
+    result.push_back(Pair("coinagedestroyed", (boost::int64_t)blockindex->nCoinAgeDestroyed));
     result.push_back(Pair("vote", voteToJSON(blockindex->vote)));
     Array parkRateResults;
     BOOST_FOREACH(const CParkRateVote& parkRateResult, blockindex->vParkRateResult)
@@ -1476,7 +1476,7 @@ Value getpremium(const Array& params, bool fHelp)
     if (nDuration <= 0)
         throw JSONRPCError(-5, "Invalid duration");
 
-    uint64 nPremium = pindexBest->GetPremium(nAmount, nDuration, pwalletMain->GetUnit());
+    int64 nPremium = pindexBest->GetPremium(nAmount, nDuration, pwalletMain->GetUnit());
 
     return FormatMoney(nPremium);
 }
@@ -1941,7 +1941,7 @@ Value listparked(const Array& params, bool fHelp)
         const CTxOut& txo = wtx.vout[it->n];
 
         Object park;
-        uint64 nDuration;
+        int64 nDuration;
 
         CTxDestination unparkDestination;
         if (!ExtractPark(txo.scriptPubKey, nDuration, unparkDestination))
@@ -1959,7 +1959,7 @@ Value listparked(const Array& params, bool fHelp)
         park.push_back(Pair("unparkaddress", unparkAddress.ToString()));
 
         CBlockIndex* pindex = NULL;
-        uint64 nDepth = wtx.GetDepthInMainChain(pindex);
+        int nDepth = wtx.GetDepthInMainChain(pindex);
         park.push_back(Pair("depth", (boost::int64_t)nDepth));
 
         boost::int64_t nRemaining = nDuration;
@@ -1971,7 +1971,7 @@ Value listparked(const Array& params, bool fHelp)
 
         if (pindex)
         {
-            uint64 nPremium = pindex->GetPremium(txo.nValue, nDuration, wtx.cUnit);
+            int64 nPremium = pindex->GetPremium(txo.nValue, nDuration, wtx.cUnit);
             park.push_back(Pair("premium", ValueFromAmount(nPremium)));
         }
 
@@ -3146,7 +3146,7 @@ Value setvote(const Array& params, bool fHelp)
 struct MotionResult
 {
     int nBlocks;
-    uint64 nShareDaysDestroyed;
+    int64 nShareDaysDestroyed;
 
     MotionResult() :
         nBlocks(0),
@@ -3217,7 +3217,7 @@ Value getmotions(const Array& params, bool fHelp)
         Object resultObject;
         resultObject.push_back(Pair("blocks", result.nBlocks));
         resultObject.push_back(Pair("block_percentage", (double)result.nBlocks / total.nBlocks * 100.0));
-        resultObject.push_back(Pair("sharedays", (boost::uint64_t)result.nShareDaysDestroyed));
+        resultObject.push_back(Pair("sharedays", (boost::int64_t)result.nShareDaysDestroyed));
         resultObject.push_back(Pair("shareday_percentage", (double)result.nShareDaysDestroyed / total.nShareDaysDestroyed * 100.0));
         obj.push_back(Pair(hashMotion.ToString(), resultObject));
     }
@@ -3228,7 +3228,7 @@ Value getmotions(const Array& params, bool fHelp)
 struct CustodianResult
 {
     int nBlocks;
-    uint64 nShareDaysDestroyed;
+    int64 nShareDaysDestroyed;
 
     CustodianResult() :
         nBlocks(0),
@@ -3237,7 +3237,7 @@ struct CustodianResult
     }
 };
 
-typedef map<uint64, CustodianResult> CustodianAmountResultMap;
+typedef map<int64, CustodianResult> CustodianAmountResultMap;
 typedef map<CBitcoinAddress, CustodianAmountResultMap> CustodianResultMap;
 
 Value getcustodianvotes(const Array& params, bool fHelp)
@@ -3296,14 +3296,14 @@ Value getcustodianvotes(const Array& params, bool fHelp)
     {
         const CBitcoinAddress& address = custodianResultPair.first;
         Object custodianObject;
-        BOOST_FOREACH(const PAIRTYPE(uint64, CustodianResult)& resultPair, custodianResultPair.second)
+        BOOST_FOREACH(const PAIRTYPE(int64, CustodianResult)& resultPair, custodianResultPair.second)
         {
-            uint64 nAmount = resultPair.first;
+            int64 nAmount = resultPair.first;
             const CustodianResult& result = resultPair.second;
             Object resultObject;
             resultObject.push_back(Pair("blocks", result.nBlocks));
             resultObject.push_back(Pair("block_percentage", (double)result.nBlocks / total.nBlocks * 100.0));
-            resultObject.push_back(Pair("sharedays", (boost::uint64_t)result.nShareDaysDestroyed));
+            resultObject.push_back(Pair("sharedays", (boost::int64_t)result.nShareDaysDestroyed));
             resultObject.push_back(Pair("shareday_percentage", (double)result.nShareDaysDestroyed / total.nShareDaysDestroyed * 100.0));
             custodianObject.push_back(Pair(FormatMoney(nAmount), resultObject));
         }
@@ -3312,7 +3312,7 @@ Value getcustodianvotes(const Array& params, bool fHelp)
 
     Object totalObject;
     totalObject.push_back(Pair("blocks", total.nBlocks));
-    totalObject.push_back(Pair("sharedays", (boost::uint64_t)total.nShareDaysDestroyed));
+    totalObject.push_back(Pair("sharedays", (boost::int64_t)total.nShareDaysDestroyed));
     obj.push_back(Pair("total", totalObject));
 
     return obj;
@@ -3354,7 +3354,7 @@ Value getelectedcustodians(const Array& params, bool fHelp)
 }
 
 
-typedef map<uint64, uint64> RateWeightMap;
+typedef map<int64, int64> RateWeightMap;
 typedef RateWeightMap::value_type RateWeight;
 
 typedef map<unsigned char, RateWeightMap> DurationRateWeightMap;
@@ -3392,8 +3392,8 @@ Value getparkvotes(const Array& params, bool fHelp)
         throw runtime_error("Invalid quantity\n");
 
     DurationRateWeightMap durationRateWeights;
-    uint64 totalVoteWeight = 0;
-    map<unsigned char, uint64> coinAgeDestroyedPerDuration;
+    int64 totalVoteWeight = 0;
+    map<unsigned char, int64> coinAgeDestroyedPerDuration;
 
     for (int i = 0; i < nQuantity && pindex; i++, pindex = pindex->pprev)
     {
@@ -3426,21 +3426,21 @@ Value getparkvotes(const Array& params, bool fHelp)
         durationObject.push_back(Pair("blocks", blocks));
         durationObject.push_back(Pair("estimated_duration", BlocksToTime(blocks)));
 
-        uint64 abstainedCoinAge = totalVoteWeight - coinAgeDestroyedPerDuration[nCompactDuration];
+        int64 abstainedCoinAge = totalVoteWeight - coinAgeDestroyedPerDuration[nCompactDuration];
         if (abstainedCoinAge > 0)
         {
             RateWeightMap &rateWeights = durationRateWeights[nCompactDuration];
             rateWeights[0] += abstainedCoinAge;
         }
 
-        uint64 accumulatedWeight = 0;
+        int64 accumulatedWeight = 0;
 
         Array votes;
         BOOST_FOREACH(const RateWeight& rateWeight, rateWeights)
         {
             Object rateVoteObject;
-            boost::uint64_t rate = rateWeight.first;
-            boost::uint64_t weight = rateWeight.second;
+            boost::int64_t rate = rateWeight.first;
+            boost::int64_t weight = rateWeight.second;
 
             double shareDays = (double)weight / (24 * 60 * 60);
             double shareDayPercentage = (double)weight / (double)totalVoteWeight * 100;

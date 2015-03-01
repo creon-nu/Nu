@@ -165,13 +165,13 @@ bool ExtractParkRateResults(const CBlock& block, vector<CParkRateVote>& vParkRat
 }
 
 
-typedef map<uint64, uint64> RateWeightMap;
+typedef map<int64, int64> RateWeightMap;
 typedef RateWeightMap::value_type RateWeight;
 
 typedef map<unsigned char, RateWeightMap> DurationRateWeightMap;
 typedef DurationRateWeightMap::value_type DurationRateWeight;
 
-static uint64 AddRateWeight(const uint64& totalWeight, const RateWeight& rateWeight)
+static int64 AddRateWeight(const int64& totalWeight, const RateWeight& rateWeight)
 {
     return totalWeight + rateWeight.second;
 }
@@ -187,7 +187,7 @@ bool CalculateParkRateResults(const std::vector<CVote>& vVote, const std::map<un
     vector<CParkRate> result;
 
     DurationRateWeightMap durationRateWeights;
-    uint64 totalVoteWeight = 0;
+    int64 totalVoteWeight = 0;
 
     BOOST_FOREACH(const CVote& vote, vVote)
     {
@@ -209,16 +209,16 @@ bool CalculateParkRateResults(const std::vector<CVote>& vVote, const std::map<un
         }
     }
 
-    uint64 halfWeight = totalVoteWeight / 2;
+    int64 halfWeight = totalVoteWeight / 2;
 
     BOOST_FOREACH(const DurationRateWeight& durationRateWeight, durationRateWeights)
     {
         unsigned char nCompactDuration = durationRateWeight.first;
         const RateWeightMap &rateWeights = durationRateWeight.second;
 
-        uint64 totalWeight = accumulate(rateWeights.begin(), rateWeights.end(), (uint64)0, AddRateWeight);
-        uint64 sum = totalWeight;
-        uint64 median = 0;
+        int64 totalWeight = accumulate(rateWeights.begin(), rateWeights.end(), (int64)0, AddRateWeight);
+        int64 sum = totalWeight;
+        int64 median = 0;
 
         BOOST_FOREACH(const RateWeight& rateWeight, rateWeights)
         {
@@ -259,11 +259,11 @@ bool CalculateParkRateResults(const std::vector<CVote>& vVote, const std::map<un
 
     BOOST_FOREACH(CParkRate& parkRate, result)
     {
-        uint64 previousMin = minPreviousRates[parkRate.nCompactDuration];
-        uint64 duration = parkRate.GetDuration();
-        uint64 maxIncrease = (uint64)100 * COIN_PARK_RATE / COIN * duration * STAKE_TARGET_SPACING / 31557600;
+        int64 previousMin = minPreviousRates[parkRate.nCompactDuration];
+        int64 duration = parkRate.GetDuration();
+        int64 maxIncrease = (int64)100 * COIN_PARK_RATE / COIN * duration * STAKE_TARGET_SPACING / 31557600;
 
-        if (parkRate.nRate > (int64)previousMin + maxIncrease)
+        if (parkRate.nRate > previousMin + maxIncrease)
             parkRate.nRate = previousMin + maxIncrease;
     }
 
@@ -321,6 +321,10 @@ bool CParkRateVote::IsValid() const
 
 bool CParkRate::IsValid() const
 {
+    if (!CompactDurationRange(nCompactDuration))
+        return false;
+    if (!ParkRateRange(nRate))
+        return false;
     return true;
 }
 
@@ -329,6 +333,8 @@ bool CCustodianVote::IsValid() const
     if (cUnit == 'S')
         return false;
     if (cUnit != 'B')
+        return false;
+    if (!MoneyRange(nAmount))
         return false;
     return true;
 }
@@ -426,12 +432,12 @@ bool CheckVote(const CBlock& block, CBlockIndex *pindexprev)
 class CCustodianVoteCounter
 {
 public:
-    uint64 nWeight;
+    int64 nWeight;
     int nCount;
 };
 
 typedef map<CCustodianVote, CCustodianVoteCounter> CustodianVoteCounterMap;
-typedef map<CBitcoinAddress, uint64> GrantedAmountMap;
+typedef map<CBitcoinAddress, int64> GrantedAmountMap;
 typedef map<unsigned char, GrantedAmountMap> GrantedAmountPerUnitMap;
 
 bool GenerateCurrencyCoinBases(const std::vector<CVote> vVote, std::map<CBitcoinAddress, CBlockIndex*> mapAlreadyElected, std::vector<CTransaction>& vCurrencyCoinBaseRet)
@@ -442,7 +448,7 @@ bool GenerateCurrencyCoinBases(const std::vector<CVote> vVote, std::map<CBitcoin
         return true;
 
     CustodianVoteCounterMap mapCustodianVoteCounter;
-    uint64 totalVoteWeight = 0;
+    int64 totalVoteWeight = 0;
 
     BOOST_FOREACH(const CVote& vote, vVote)
     {
@@ -465,10 +471,10 @@ bool GenerateCurrencyCoinBases(const std::vector<CVote> vVote, std::map<CBitcoin
         }
     }
 
-    uint64 halfWeight = totalVoteWeight / 2;
-    uint64 halfCount = vVote.size() / 2;
+    int64 halfWeight = totalVoteWeight / 2;
+    int64 halfCount = vVote.size() / 2;
 
-    map<CBitcoinAddress, uint64> mapGrantedAddressWeight;
+    map<CBitcoinAddress, int64> mapGrantedAddressWeight;
     GrantedAmountPerUnitMap mapGrantedCustodians;
 
     BOOST_FOREACH(const CustodianVoteCounterMap::value_type& value, mapCustodianVoteCounter)
@@ -499,7 +505,7 @@ bool GenerateCurrencyCoinBases(const std::vector<CVote> vVote, std::map<CBitcoin
         BOOST_FOREACH(const GrantedAmountMap::value_type& grantedAmount, mapGrantedAmount)
         {
             const CBitcoinAddress& address = grantedAmount.first;
-            uint64 amount = grantedAmount.second;
+            int64 amount = grantedAmount.second;
 
             CScript scriptPubKey;
             scriptPubKey.SetDestination(address.Get());
@@ -513,7 +519,7 @@ bool GenerateCurrencyCoinBases(const std::vector<CVote> vVote, std::map<CBitcoin
     return true;
 }
 
-uint64 GetPremium(uint64 nValue, uint64 nDuration, unsigned char cUnit, const std::vector<CParkRateVote>& vParkRateResult)
+int64 GetPremium(int64 nValue, int64 nDuration, unsigned char cUnit, const std::vector<CParkRateVote>& vParkRateResult)
 {
     BOOST_FOREACH(const CParkRateVote& parkRateVote, vParkRateResult)
     {
@@ -528,7 +534,13 @@ uint64 GetPremium(uint64 nValue, uint64 nDuration, unsigned char cUnit, const st
             const CParkRate& parkRate = vSortedParkRate[i];
 
             if (nDuration == parkRate.GetDuration())
-                return nValue * parkRate.nRate / COIN_PARK_RATE;
+            {
+                CBigNum bnResult = CBigNum(nValue) * CBigNum(parkRate.nRate) / COIN_PARK_RATE;
+                if (bnResult < 0 || bnResult > MAX_MONEY)
+                    return 0;
+                else
+                    return (int64)bnResult.getuint64();
+            }
 
             if (nDuration < parkRate.GetDuration())
             {
@@ -540,12 +552,15 @@ uint64 GetPremium(uint64 nValue, uint64 nDuration, unsigned char cUnit, const st
                 CBigNum bnRate(prevParkRate.nRate);
                 CBigNum bnInterpolatedRate(nDuration);
                 bnInterpolatedRate -= prevParkRate.GetDuration();
-                bnInterpolatedRate *= (int64)parkRate.nRate - (int64)prevParkRate.nRate;
-                bnInterpolatedRate /= (int64)parkRate.GetDuration() - (int64)prevParkRate.GetDuration();
+                bnInterpolatedRate *= CBigNum(parkRate.nRate) - CBigNum(prevParkRate.nRate);
+                bnInterpolatedRate /= CBigNum(parkRate.GetDuration()) - CBigNum(prevParkRate.GetDuration());
                 bnRate += bnInterpolatedRate;
-                uint64 nRate = bnRate.getuint64();
 
-                return nValue * nRate / COIN_PARK_RATE;
+                CBigNum bnResult = bnRate * CBigNum(nValue) / COIN_PARK_RATE;
+                if (bnResult < 0 || bnResult > MAX_MONEY)
+                    return 0;
+                else
+                    return (int64)bnResult.getuint64();
             }
         }
     }

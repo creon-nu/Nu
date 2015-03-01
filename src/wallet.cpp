@@ -419,7 +419,7 @@ bool CWallet::AddToWallet(const CWalletTx& wtxIn)
         {
             const CTxOut& txo = wtx.vout[i];
 
-            uint64 nDuration;
+            int64 nDuration;
             CTxDestination unparkAddress;
 
             if (!ExtractPark(txo.scriptPubKey, nDuration, unparkAddress))
@@ -1382,7 +1382,7 @@ bool CWallet::CreateTransaction(CScript scriptPubKey, int64 nValue, CWalletTx& w
 static map<const CWalletTx*, uint256> mapTxHash;
 static map<const CWalletTx*, CTxIndex> mapTxIndex;
 static map<const CWalletTx*, CBlock> mapTxBlock;
-static map<const CWalletTx*, uint64> mapTxLastUse;
+static map<const CWalletTx*, int64> mapTxLastUse;
 
 // ppcoin: create coin stake transaction
 bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int64 nSearchInterval, CTransaction& txNew, CBlockIndex* pindexprev)
@@ -1393,12 +1393,12 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
     LOCK2(cs_main, cs_wallet);
 
     // remove from cache the unused transactions
-    uint64 nNow = GetTime();
-    map<const CWalletTx*, uint64>::iterator it = mapTxLastUse.begin();
+    int64 nNow = GetTime();
+    map<const CWalletTx*, int64>::iterator it = mapTxLastUse.begin();
     while (it != mapTxLastUse.end())
     {
         const CWalletTx* wtx = it->first;
-        uint64& nLastUse = it->second;
+        int64& nLastUse = it->second;
 
         if (nNow > nLastUse + 24 * 60 * 60)
         {
@@ -1658,12 +1658,12 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
     return true;
 }
 
-bool CWallet::CreateUnparkTransaction(CWalletTx& wtxParked, unsigned int nOut, const CBitcoinAddress& unparkAddress, uint64 nAmount, CWalletTx& wtxNew)
+bool CWallet::CreateUnparkTransaction(CWalletTx& wtxParked, unsigned int nOut, const CBitcoinAddress& unparkAddress, int64 nAmount, CWalletTx& wtxNew)
 {
     return CreateUnparkTransaction(wtxParked.GetHash(), nOut, unparkAddress, nAmount, wtxNew);
 }
 
-bool CWallet::CreateUnparkTransaction(const uint256& hashPark, unsigned int nOut, const CBitcoinAddress& unparkAddress, uint64 nAmount, CWalletTx& wtxNew)
+bool CWallet::CreateUnparkTransaction(const uint256& hashPark, unsigned int nOut, const CBitcoinAddress& unparkAddress, int64 nAmount, CWalletTx& wtxNew)
 {
     wtxNew.BindWallet(this);
 
@@ -1708,7 +1708,7 @@ bool CWallet::SendUnparkTransactions(vector<CWalletTx>& vtxRet)
             if (!IsMine(txo))
                 continue;
 
-            uint64 nDuration;
+            int64 nDuration;
 
             CTxDestination unparkDestination;
             if (!ExtractPark(txo.scriptPubKey, nDuration, unparkDestination))
@@ -1716,7 +1716,7 @@ bool CWallet::SendUnparkTransactions(vector<CWalletTx>& vtxRet)
             CBitcoinAddress unparkAddress(unparkDestination, wtx.cUnit);
 
             CBlockIndex *pindex = NULL;
-            uint64 nDepth = wtx.GetDepthInMainChain(pindex);
+            int64 nDepth = wtx.GetDepthInMainChain(pindex);
 
             if (nDepth < nDuration)
                 continue;
@@ -1724,8 +1724,8 @@ bool CWallet::SendUnparkTransactions(vector<CWalletTx>& vtxRet)
             if (!pindex)
                 continue;
 
-            uint64 nPremium = pindex->GetPremium(txo.nValue, nDuration, wtx.cUnit);
-            uint64 nAmount = txo.nValue + nPremium;
+            int64 nPremium = pindex->GetPremium(txo.nValue, nDuration, wtx.cUnit);
+            int64 nAmount = txo.nValue + nPremium;
 
             printf("Found unparkable output: hash=%s output=%d unit=%c value=%" PRI64u " duration=%" PRI64u " unparkAddress=%s premium=%" PRI64u "\n",
                     wtx.GetHash().GetHex().c_str(), i, wtx.cUnit, txo.nValue, nDuration, unparkAddress.ToString().c_str(), nPremium);
@@ -1868,7 +1868,7 @@ std::string CWallet::Park(int64 nValue, int64 nDuration, const CBitcoinAddress& 
     if (nValue + GetMinTxFee() > GetBalance())
         return _("Insufficient funds");
 
-    uint64 nPremium = pindexBest->GetPremium(nValue, nDuration, cUnit);
+    int64 nPremium = pindexBest->GetPremium(nValue, nDuration, cUnit);
 
     if (nPremium == 0)
         return _("No premium for this duration");

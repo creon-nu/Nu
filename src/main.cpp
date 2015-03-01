@@ -1484,7 +1484,7 @@ bool CTransaction::ConnectInputs(CTxDB& txdb, MapPrevTx inputs,
                 if (vout.size() != 1)
                     return error("ConnectInputs() : unpark transaction with too many outputs");
 
-                uint64 nDuration;
+                int64 nDuration;
                 CTxDestination unparkDestination;
                 if (!ExtractPark(txPrev.vout[prevout.n].scriptPubKey, nDuration, unparkDestination))
                     return error("ConnectInputs() : ExtractPark failed");
@@ -1497,9 +1497,13 @@ bool CTransaction::ConnectInputs(CTxDB& txdb, MapPrevTx inputs,
                 if (!pindex)
                     return error("ConnectInputs() : parked transaction not in main chain");
 
-                uint64 nValue = txPrev.vout[prevout.n].nValue;
-                uint64 nPremium = pindex->GetPremium(nValue, nDuration, cUnit);
-                uint64 nExpectedValueOut = nValue + nPremium;
+                int64 nValue = txPrev.vout[prevout.n].nValue;
+                int64 nPremium = pindex->GetPremium(nValue, nDuration, cUnit);
+                if (!MoneyRange(nPremium))
+                    return error("ConnectInputs() : premium out of range");
+                int64 nExpectedValueOut = nValue + nPremium;
+                if (!MoneyRange(nExpectedValueOut))
+                    return error("ConnectInputs() : expected output out of range");
 
                 if (GetValueOut() != nExpectedValueOut)
                     return error("ConnectInputs() : unpark value doesn't match the expected value");

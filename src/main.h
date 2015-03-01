@@ -66,7 +66,6 @@ static const unsigned int CUSTODIAN_VOTES = 10000;
 static const int64 MOTION_VOTES = 10000;
 static const int64 PROOF_OF_STAKE_REWARD = 40 * COIN; // Constant reward of Proof of Stake blocks
 static const int64 MIN_COINSTAKE_VALUE = 10000 * COIN; // Minimum value allowed as input in a CoinStake
-static const int64 COIN_PARK_RATE = 100000 * COIN; // Park rate internal encoding precision. The minimum possible rate is (1.0 / COIN_PARK_RATE) coins per parked coin
 
 
 #ifdef USE_UPNP
@@ -1468,7 +1467,7 @@ public:
             nFlags |= BLOCK_STAKE_MODIFIER;
     }
 
-    uint64 GetPremium(uint64 nValue, uint64 nDuration, unsigned char cUnit)
+    int64 GetPremium(int64 nValue, int64 nDuration, unsigned char cUnit)
     {
         return ::GetPremium(nValue, nDuration, cUnit, vParkRateResult);
     }

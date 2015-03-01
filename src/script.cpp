@@ -1621,7 +1621,7 @@ bool IsPark(const CScript& scriptPubKey)
     return whichType == TX_PARK;
 }
 
-bool ExtractPark(const CScript& scriptPubKey, uint64& nDurationRet, CTxDestination& unparkAddressRet)
+bool ExtractPark(const CScript& scriptPubKey, int64& nDurationRet, CTxDestination& unparkAddressRet)
 {
     vector<valtype> vSolutions;
     txnouttype whichType;
@@ -1649,7 +1649,7 @@ bool ExtractPark(const CScript& scriptPubKey, uint64& nDurationRet, CTxDestinati
 
 bool IsValidPark(const CScript& scriptPubKey)
 {
-    uint64 nDurationRet;
+    int64 nDurationRet;
     CTxDestination unparkAddressRet;
     return ExtractPark(scriptPubKey, nDurationRet, unparkAddressRet);
 }

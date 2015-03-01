@@ -607,7 +607,7 @@ bool VerifySignature(const CTransaction& txFrom, const CTransaction& txTo, unsig
 bool VerifyScript(const CScript& scriptSig, const CScript& scriptPubKey, const CTransaction& txTo, unsigned int nIn, bool fValidatePayToScriptHash, int nHashType);
 CScript CombineSignatures(CScript scriptPubKey, const CTransaction& txTo, unsigned int nIn, const CScript& scriptSig1, const CScript& scriptSig2);
 bool IsPark(const CScript& scriptPubKey);
-bool ExtractPark(const CScript& scriptPubKey, uint64& nDurationRet, CTxDestination& unparkAddressRet);
+bool ExtractPark(const CScript& scriptPubKey, int64& nDurationRet, CTxDestination& unparkAddressRet);
 bool IsValidPark(const CScript& scriptPubKey);
 bool IsUnpark(const CScript& scriptSig);
 

@@ -7,13 +7,16 @@
 class CBlock;
 class CBlockIndex;
 
+static const int64 COIN_PARK_RATE = 100000 * COIN; // Park rate internal encoding precision. The minimum possible rate is (1.0 / COIN_PARK_RATE) coins per parked coin
+static const int64 MAX_PARK_RATE = 1000000 * COIN_PARK_RATE;
+
 class CCustodianVote
 {
 public:
     unsigned char cUnit;
     bool fScript;
     uint160 hashAddress;
-    uint64 nAmount;
+    int64 nAmount;
 
     CCustodianVote() :
         cUnit('?'),
@@ -108,11 +111,21 @@ public:
     }
 };
 
+inline bool CompactDurationRange(unsigned char nCompactDuration)
+{
+    return (nCompactDuration < 30); // about 2000 years
+}
+
+inline bool ParkRateRange(int64 nRate)
+{
+    return (nRate >= 0 && nRate <= MAX_PARK_RATE);
+}
+
 class CParkRate
 {
 public:
     unsigned char nCompactDuration;
-    uint64 nRate;
+    int64 nRate;
 
     CParkRate() :
         nCompactDuration(0),
@@ -120,7 +133,7 @@ public:
     {
     }
 
-    CParkRate(unsigned char nCompactDuration, uint64 nRate) :
+    CParkRate(unsigned char nCompactDuration, int64 nRate) :
         nCompactDuration(nCompactDuration),
         nRate(nRate)
     {
@@ -134,8 +147,10 @@ public:
         READWRITE(nRate);
     )
 
-    uint64 GetDuration() const
+    int64 GetDuration() const
     {
+        if (!CompactDurationRange(nCompactDuration))
+            throw std::runtime_error("Park rate compact duration out of range");
         return 1 << nCompactDuration;
     }
 
@@ -307,7 +322,7 @@ bool ExtractParkRateResults(const CBlock& block, std::vector<CParkRateVote>& vPa
 
 bool CalculateParkRateResults(const std::vector<CVote>& vVote, const std::map<unsigned char, std::vector<const CParkRateVote*> >& mapPreviousVotes, std::vector<CParkRateVote>& results);
 bool CalculateParkRateResults(const CVote &vote, CBlockIndex *pindexprev, std::vector<CParkRateVote>& vParkRateResult);
-uint64 GetPremium(uint64 nValue, uint64 nDuration, unsigned char cUnit, const std::vector<CParkRateVote>& vParkRateResult);
+int64 GetPremium(int64 nValue, int64 nDuration, unsigned char cUnit, const std::vector<CParkRateVote>& vParkRateResult);
 
 bool CheckVote(const CBlock& block, CBlockIndex *pindexprev);
 
