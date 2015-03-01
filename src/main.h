@@ -740,7 +740,8 @@ public:
                 a.nTime     == b.nTime &&
                 a.vin       == b.vin &&
                 a.vout      == b.vout &&
-                a.nLockTime == b.nLockTime);
+                a.nLockTime == b.nLockTime &&
+                a.cUnit     == b.cUnit);
     }
 
     friend bool operator!=(const CTransaction& a, const CTransaction& b)
