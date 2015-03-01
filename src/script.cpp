@@ -1647,6 +1647,13 @@ bool ExtractPark(const CScript& scriptPubKey, uint64& nDurationRet, CTxDestinati
     return true;
 }
 
+bool IsValidPark(const CScript& scriptPubKey)
+{
+    uint64 nDurationRet;
+    CTxDestination unparkAddressRet;
+    return ExtractPark(scriptPubKey, nDurationRet, unparkAddressRet);
+}
+
 bool IsUnpark(const CScript& scriptSig)
 {
     return scriptSig.size() == 1 && scriptSig[0] == OP_3;
