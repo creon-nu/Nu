@@ -1543,15 +1543,22 @@ public:
         READWRITE(nBlockPos);
         READWRITE(nHeight);
         READWRITE(nMint);
+
         if (nVersion <= 30000) // v0.3.0
         {
             int64 nMoneySupply = 0;
             READWRITE(nMoneySupply);
+            if (fRead)
+                const_cast<CDiskBlockIndex*>(this)->mapMoneySupply.clear();
         }
         else
             READWRITE(mapMoneySupply);
+
         if (nVersion > 40400) // v0.4.4
             READWRITE(mapTotalParked);
+        else if (fRead)
+            const_cast<CDiskBlockIndex*>(this)->mapTotalParked.clear();
+
         READWRITE(nFlags);
         READWRITE(nStakeModifier);
         if (IsProofOfStake())
