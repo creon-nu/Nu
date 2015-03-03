@@ -42,6 +42,7 @@ public:
     inline bool operator==(const CCustodianVote& other) const
     {
         return (cUnit == other.cUnit &&
+                fScript == other.fScript &&
                 hashAddress == other.hashAddress &&
                 nAmount == other.nAmount);
     }
