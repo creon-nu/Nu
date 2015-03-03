@@ -3150,7 +3150,7 @@ struct MotionResult
 
     MotionResult() :
         nBlocks(0),
-        nShareDaysDestroyed(0.0)
+        nShareDaysDestroyed(0)
     {
     }
 };
@@ -3232,7 +3232,7 @@ struct CustodianResult
 
     CustodianResult() :
         nBlocks(0),
-        nShareDaysDestroyed(0.0)
+        nShareDaysDestroyed(0)
     {
     }
 };
@@ -3426,6 +3426,7 @@ Value getparkvotes(const Array& params, bool fHelp)
         durationObject.push_back(Pair("blocks", blocks));
         durationObject.push_back(Pair("estimated_duration", BlocksToTime(blocks)));
 
+        assert(coinAgeDestroyedPerDuration[nCompactDuration] >= totalVoteWeight);
         int64 abstainedCoinAge = totalVoteWeight - coinAgeDestroyedPerDuration[nCompactDuration];
         if (abstainedCoinAge > 0)
         {

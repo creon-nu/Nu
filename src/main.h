@@ -66,6 +66,7 @@ static const unsigned int CUSTODIAN_VOTES = 10000;
 static const int64 MOTION_VOTES = 10000;
 static const int64 PROOF_OF_STAKE_REWARD = 40 * COIN; // Constant reward of Proof of Stake blocks
 static const int64 MIN_COINSTAKE_VALUE = 10000 * COIN; // Minimum value allowed as input in a CoinStake
+static const int64 MAX_COIN_AGE = 100000000000000; // To make sure coin days can be added about 10,000 times without overflow
 
 
 #ifdef USE_UPNP
@@ -818,7 +819,7 @@ public:
     bool ClientConnectInputs();
     bool CheckTransaction() const;
     bool AcceptToMemoryPool(CTxDB& txdb, bool fCheckInputs=true, bool* pfMissingInputs=NULL);
-    bool GetCoinAge(CTxDB& txdb, uint64& nCoinAge) const;  // ppcoin: get transaction coin age
+    bool GetCoinAge(CTxDB& txdb, int64& nCoinAge) const;  // ppcoin: get transaction coin age
 
     // Add an output, split if appropriate
     void AddOutput(const CScript script, int64 nAmount);
@@ -1205,8 +1206,8 @@ public:
     bool AddToBlockIndex(unsigned int nFile, unsigned int nBlockPos);
     bool CheckBlock() const;
     bool AcceptBlock();
-    bool GetCoinAge(uint64& nCoinAge) const; // ppcoin: calculate total coin age spent in block
-    bool GetCoinStakeAge(uint64& nCoinAge) const;
+    bool GetCoinAge(int64& nCoinAge) const; // ppcoin: calculate total coin age spent in block
+    bool GetCoinStakeAge(int64& nCoinAge) const;
     bool SignBlock(const CKeyStore& keystore);
     bool CheckBlockSignature() const;
     unsigned int GetStakeEntropyBit() const; // ppcoin: entropy bit for stake modifier if chosen by modifier
@@ -1260,7 +1261,7 @@ public:
     // nubit vote fields
     CVote vote;
     std::vector<CParkRateVote> vParkRateResult;
-    uint64 nCoinAgeDestroyed;
+    int64 nCoinAgeDestroyed;
 
     // nubit: elected custodians
     std::vector<CCustodianVote> vElectedCustodian;

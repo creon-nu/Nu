@@ -217,7 +217,7 @@ public:
     std::vector<CParkRateVote> vParkRateVote;
     std::vector<uint160> vMotion;
 
-    uint64 nCoinAgeDestroyed;
+    int64 nCoinAgeDestroyed;
 
     CVote() :
         nVersion(PROTOCOL_VERSION)
