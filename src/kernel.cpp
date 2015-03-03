@@ -294,16 +294,16 @@ static bool GetKernelStakeModifier(uint256 hashBlockFrom, uint64& nStakeModifier
 
 // Stake modifier cache
 static map<const uint256, uint64> mapStakeModifier;
-static map<const uint256, uint64> mapStakeModifierLastUse;
+static map<const uint256, int64> mapStakeModifierLastUse;
 
 void CleanStakeModifierCache()
 {
-    uint64 nNow = GetTime();
-    map<const uint256, uint64>::iterator it = mapStakeModifierLastUse.begin();
+    int64 nNow = GetTime();
+    map<const uint256, int64>::iterator it = mapStakeModifierLastUse.begin();
     while (it != mapStakeModifierLastUse.end())
     {
         const uint256& hash = it->first;
-        uint64& nLastUse = it->second;
+        int64& nLastUse = it->second;
 
         if (nNow > nLastUse + 24 * 60 * 60)
         {
