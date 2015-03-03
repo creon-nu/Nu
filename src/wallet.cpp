@@ -1586,14 +1586,7 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
             txNew.vout.push_back(CTxOut(0, txNew.vout[1].scriptPubKey));
     }
 
-    // Calculate coin age reward
-    uint64 nCoinAge;
-    {
-        CTxDB txdb("r");
-        if (!txNew.GetCoinAge(txdb, nCoinAge))
-            return error("CreateCoinStake : failed to calculate coin age");
-        nCredit += GetProofOfStakeReward(nCoinAge);
-    }
+    nCredit += GetProofOfStakeReward();
 
     // nubit: Add current vote
     int nVersion;
@@ -1606,7 +1599,12 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
     // nubit: The result of the vote is stored in the CoinStake transaction
     CParkRateVote parkRateResult;
 
-    vote.nCoinAgeDestroyed = nCoinAge;
+    {
+        CTxDB txdb("r");
+        if (!txNew.GetCoinAge(txdb, vote.nCoinAgeDestroyed))
+            return error("CreateCoinStake : failed to calculate coin age");
+    }
+
     vector<CParkRateVote> vParkRateResult;
     if (!CalculateParkRateResults(vote, pindexprev, vParkRateResult))
         return error("CalculateParkRateResults failed");

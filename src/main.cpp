@@ -1117,7 +1117,7 @@ int64 GetProofOfWorkReward(unsigned int nBits)
 
 // ppcoin: minter's coin stake is rewarded based on coin age spent (coin-days)
 // nu: miner's coin stake reward is constant
-int64 GetProofOfStakeReward(int64 nCoinAge)
+int64 GetProofOfStakeReward()
 {
     return PROOF_OF_STAKE_REWARD;
 }
@@ -1552,11 +1552,8 @@ bool CTransaction::ConnectInputs(CTxDB& txdb, MapPrevTx inputs,
         if (IsCoinStake())
         {
             // ppcoin: coin stake tx earns reward instead of paying fee
-            uint64 nCoinAge;
-            if (!GetCoinAge(txdb, nCoinAge))
-                return error("ConnectInputs() : %s unable to get coin age for coinstake", GetHash().ToString().substr(0,10).c_str());
             int64 nStakeReward = GetValueOut() - nValueIn;
-            if (nStakeReward > GetProofOfStakeReward(nCoinAge) - GetMinFee() + GetUnitMinFee())
+            if (nStakeReward > GetProofOfStakeReward() - GetMinFee() + GetUnitMinFee())
                 return DoS(100, error("ConnectInputs() : %s stake reward exceeded", GetHash().ToString().substr(0,10).c_str()));
         }
         else if (!fValidUnpark)
