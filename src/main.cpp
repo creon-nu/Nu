@@ -2192,10 +2192,16 @@ bool CBlock::AddToBlockIndex(unsigned int nFile, unsigned int nBlockPos)
     // nubit: save vote data
     if (pindexNew->IsProofOfStake())
     {
-        ExtractVote(*this, pindexNew->vote);
-        ExtractParkRateResults(*this, pindexNew->vParkRateResult);
+        if (!ExtractVote(*this, pindexNew->vote))
+            return error("AddToBlockIndex() : Unable to extract vote");
+        if (!pindexNew->vote.IsValid())
+            return error("AddToBlockIndex() : Invalid vote");
+
+        if (!ExtractParkRateResults(*this, pindexNew->vParkRateResult))
+            return error("AddToBlockIndex() : Unable to extract park rate results");
+
         if (!GetCoinStakeAge(pindexNew->nCoinAgeDestroyed))
-            return error("Unable to get coin age");
+            return error("AddToBlockIndex() : Unable to get coin age");
         pindexNew->vote.nCoinAgeDestroyed = pindexNew->nCoinAgeDestroyed;
     }
 
