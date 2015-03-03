@@ -716,6 +716,22 @@ int64 CTransaction::GetMinFee(unsigned int nBlockSize, bool fAllowFree,
     return nMinFee;
 }
 
+bool CTransaction::CheckParkWithResult(const std::vector<CParkRateVote>& vParkRateResult) const
+{
+    BOOST_FOREACH(const CTxOut& txout, vout)
+    {
+        int64 nDuration;
+        CTxDestination unparkAddress;
+        if (ExtractPark(txout.scriptPubKey, nDuration, unparkAddress))
+        {
+            int64 nPremium = GetPremium(txout.nValue, nDuration, cUnit, vParkRateResult);
+            if (!MoneyRange(txout.nValue) || !MoneyRange(nPremium) || !MoneyRange(txout.nValue + nPremium))
+                return false;
+        }
+    }
+    return true;
+}
+
 bool CTxMemPool::accept(CTxDB& txdb, CTransaction &tx, bool fCheckInputs,
                         bool* pfMissingInputs)
 {
@@ -2202,6 +2218,13 @@ bool CBlock::AddToBlockIndex(unsigned int nFile, unsigned int nBlockPos)
 
         if (!ExtractParkRateResults(*this, pindexNew->vParkRateResult))
             return error("AddToBlockIndex() : Unable to extract park rate results");
+
+        // Verify park transactions now that the premium can be calculated
+        BOOST_FOREACH(const CTransaction& tx, vtx)
+        {
+            if (!tx.CheckParkWithResult(pindexNew->vParkRateResult))
+                return error("AddToBlockIndex() : invalid park transactions found");
+        }
 
         if (!GetCoinStakeAge(pindexNew->nCoinAgeDestroyed))
             return error("AddToBlockIndex() : Unable to get coin age");
@@ -4310,6 +4333,29 @@ CBlock* CreateNewBlock(CReserveKey& reservekey, CWallet* pwallet, bool fProofOfS
             pblock->vtx.push_back(tx);
     }
 
+    // nubit: Calculate park rate results to determine whether park transactions are valid in the block
+    std::vector<CParkRateVote> vParkRateResult;
+    if (pblock->IsProofOfStake())
+    {
+        CVote vote;
+        if (!ExtractVote(*pblock, vote))
+        {
+            printf("CreateNewBlock(): unable to extract vote");
+            return NULL;
+        }
+        if (!pblock->GetCoinStakeAge(vote.nCoinAgeDestroyed))
+        {
+            printf("CreateNewBlock(): unable to get vote coin age");
+            return NULL;
+        }
+
+        if (!CalculateParkRateResults(vote, pindexPrev, vParkRateResult))
+        {
+            printf("CreateNewBlock(): unable to calculate park rate results");
+            return NULL;
+        }
+    }
+
     // Collect memory pool transactions into the block
     int64 nFees = 0;
     {
@@ -4324,6 +4370,11 @@ CBlock* CreateNewBlock(CReserveKey& reservekey, CWallet* pwallet, bool fProofOfS
         {
             CTransaction& tx = (*mi).second;
             if (tx.IsCoinBase() || tx.IsCoinStake() || tx.IsCurrencyCoinBase() || !tx.IsFinal())
+                continue;
+
+            if (pblock->IsProofOfStake() && !tx.CheckParkWithResult(vParkRateResult))
+                // The transaction contains park outputs that do not work with the park rate results
+                // If we include it the block would be rejected
                 continue;
 
             COrphan* porphan = NULL;

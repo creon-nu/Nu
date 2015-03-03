@@ -827,6 +827,8 @@ public:
     // Add the change output, split if appropriate, and back to scriptChange if avatar mode is enabled
     void AddChange(int64 nChange, CScript& scriptChange, const CCoinControl* coinControl, CReserveKey& reservekey);
 
+    bool CheckParkWithResult(const std::vector<CParkRateVote>& vParkRateResult) const;
+
 protected:
     const CTxOut& GetOutputFor(const CTxIn& input, const MapPrevTx& inputs) const;
 };
