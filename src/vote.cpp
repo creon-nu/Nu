@@ -521,6 +521,11 @@ bool GenerateCurrencyCoinBases(const std::vector<CVote> vVote, std::map<CBitcoin
 
 int64 GetPremium(int64 nValue, int64 nDuration, unsigned char cUnit, const std::vector<CParkRateVote>& vParkRateResult)
 {
+    if (!MoneyRange(nValue))
+        return 0;
+    if (nDuration <= 0)
+        return 0;
+
     BOOST_FOREACH(const CParkRateVote& parkRateVote, vParkRateResult)
     {
         if (parkRateVote.cUnit != cUnit)
