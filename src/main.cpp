@@ -2344,6 +2344,16 @@ bool CBlock::CheckBlock() const
     if (hashMerkleRoot != BuildMerkleTree())
         return DoS(100, error("CheckBlock() : hashMerkleRoot mismatch"));
 
+    // nubit: Basic vote check
+    if (IsProofOfStake())
+    {
+        CVote vote;
+        if (!ExtractVote(*this, vote))
+            return error("CheckBlock() : Unable to extract vote");
+        if (!vote.IsValid())
+            return error("CheckBlock() : Invalid vote");
+    }
+
     // ppcoin: check block signature
     if (!CheckBlockSignature())
         return DoS(100, error("CheckBlock() : bad block signature"));
