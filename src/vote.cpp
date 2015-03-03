@@ -354,7 +354,7 @@ bool CVote::IsValid() const
     {
         if (!parkRateVote.IsValid())
             return false;
-        if (seenParkVoteUnits.find(parkRateVote.cUnit) != seenParkVoteUnits.end())
+        if (seenParkVoteUnits.count(parkRateVote.cUnit))
             return false;
         seenParkVoteUnits.insert(parkRateVote.cUnit);
     }
