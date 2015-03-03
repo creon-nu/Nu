@@ -33,6 +33,8 @@ public:
         READWRITE(cUnit);
         if (nVersion >= 20200) // version 0.2.2
             READWRITE(fScript);
+        else if (fRead)
+            const_cast<CCustodianVote*>(this)->fScript = false;
         READWRITE(hashAddress);
         READWRITE(nAmount);
     )
