@@ -214,6 +214,8 @@ public:
     std::vector<CParkRateVote> vParkRateVote;
     std::vector<uint160> vMotion;
 
+    uint64 nCoinAgeDestroyed;
+
     CVote() :
         nVersion(PROTOCOL_VERSION)
     {
@@ -234,6 +236,7 @@ public:
         vCustodianVote.clear();
         vParkRateVote.clear();
         vMotion.clear();
+        nCoinAgeDestroyed = 0;
     }
 
     template<typename Stream>
@@ -291,8 +294,6 @@ public:
     {
         return ToScript(nVersion);
     }
-
-    uint64 nCoinAgeDestroyed;
 
     bool IsValid() const;
 
