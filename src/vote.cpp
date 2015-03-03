@@ -313,9 +313,17 @@ bool CParkRateVote::IsValid() const
         return false;
     if (cUnit != 'B')
         return false;
+
+    set<unsigned char> seenCompactDurations;
     BOOST_FOREACH(const CParkRate& parkRate, vParkRate)
+    {
         if (!parkRate.IsValid())
             return false;
+        if (seenCompactDurations.find(parkRate.nCompactDuration) != seenCompactDurations.end())
+            return false;
+        seenCompactDurations.insert(parkRate.nCompactDuration);
+    }
+
     return true;
 }
 
@@ -349,14 +357,6 @@ bool CVote::IsValid() const
         if (seenParkVoteUnits.find(parkRateVote.cUnit) != seenParkVoteUnits.end())
             return false;
         seenParkVoteUnits.insert(parkRateVote.cUnit);
-
-        set<unsigned char> seenCompactDurations;
-        BOOST_FOREACH(const CParkRate& parkRate, parkRateVote.vParkRate)
-        {
-            if (seenCompactDurations.find(parkRate.nCompactDuration) != seenCompactDurations.end())
-                return false;
-            seenCompactDurations.insert(parkRate.nCompactDuration);
-        }
     }
 
     set<CCustodianVote> seenCustodianVotes;
