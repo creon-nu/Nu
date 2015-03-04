@@ -724,10 +724,13 @@ bool CTxDB::LoadBlockIndex()
     ReadBestInvalidTrust(bnBestInvalidTrust);
 
     // nubit: rebuild list of elected custodians
-    for (CBlockIndex* pindex = pindexBest; pindex && pindex->pprev; pindex = pindex->pprev)
     {
-        BOOST_FOREACH(const CCustodianVote& custodianVote, pindex->vElectedCustodian)
-            mapElectedCustodian[custodianVote.GetAddress()] = pindex;
+        LOCK(cs_mapElectedCustodian);
+        for (CBlockIndex* pindex = pindexBest; pindex && pindex->pprev; pindex = pindex->pprev)
+        {
+            BOOST_FOREACH(const CCustodianVote& custodianVote, pindex->vElectedCustodian)
+                mapElectedCustodian[custodianVote.GetAddress()] = pindex;
+        }
     }
 
     // Verify blocks in the best chain
