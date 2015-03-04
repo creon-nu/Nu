@@ -486,9 +486,9 @@ void CTransaction::AddOutput(const CScript script, int64 nAmount)
 
         for (int64 i = 0; i < nOutputs - 1; i++)
         {
-            int64 nAmount = nSplitShareOutputs;
-            vout.push_back(CTxOut(nAmount, script));
-            nRemainingAmount -= nAmount;
+            int64 nOutputAmount = nSplitShareOutputs;
+            vout.push_back(CTxOut(nOutputAmount, script));
+            nRemainingAmount -= nOutputAmount;
         }
         vout.push_back(CTxOut(nRemainingAmount, script));
     }
@@ -530,9 +530,9 @@ void CTransaction::AddChange(int64 nChange, CScript& scriptChange, const CCoinCo
     {
         // Insert split change txn at random position:
         vector<CTxOut>::iterator position = vout.begin()+GetRandInt(vout.size());
-        int64 nAmount = nSplitShareOutputs;
-        vout.insert(position, CTxOut(nAmount, scriptChange));
-        nChangeRemaining -= nAmount;
+        int64 nOutputAmount = nSplitShareOutputs;
+        vout.insert(position, CTxOut(nOutputAmount, scriptChange));
+        nChangeRemaining -= nOutputAmount;
     }
     // Insert remaining change txn at random position:
     vector<CTxOut>::iterator position = vout.begin()+GetRandInt(vout.size());
