@@ -481,10 +481,10 @@ void CTransaction::AddOutput(const CScript script, int64 nAmount)
 {
     if (cUnit == 'S' && nSplitShareOutputs > 0 && nAmount >= nSplitShareOutputs * 2)
     {
-        int nOutputs = nAmount / nSplitShareOutputs;
+        int64 nOutputs = nAmount / nSplitShareOutputs;
         int64 nRemainingAmount = nAmount;
 
-        for (int i = 0; i < nOutputs - 1; i++)
+        for (int64 i = 0; i < nOutputs - 1; i++)
         {
             int64 nAmount = nSplitShareOutputs;
             vout.push_back(CTxOut(nAmount, script));
@@ -519,14 +519,14 @@ void CTransaction::AddChange(int64 nChange, CScript& scriptChange, const CCoinCo
     }
 
     // nu: split change if appropriate
-    int nChangeOutputs;
+    int64 nChangeOutputs;
     if (cUnit == 'S' && nSplitShareOutputs > 0 && nChange >= nSplitShareOutputs * 2)
         nChangeOutputs = nChange / nSplitShareOutputs;
     else
         nChangeOutputs = 1;
 
     int64 nChangeRemaining = nChange;
-    for (int i = 0; i < nChangeOutputs - 1; i++)
+    for (int64 i = 0; i < nChangeOutputs - 1; i++)
     {
         // Insert split change txn at random position:
         vector<CTxOut>::iterator position = vout.begin()+GetRandInt(vout.size());
