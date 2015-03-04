@@ -1650,36 +1650,6 @@ bool CBlock::DisconnectBlock(CTxDB& txdb, CBlockIndex* pindex)
         if (!vtx[i].DisconnectInputs(txdb))
             return false;
 
-    // nubit: forget elected custodians
-    BOOST_FOREACH(const CTransaction& tx, vtx)
-    {
-        if (tx.IsCurrencyCoinBase())
-        {
-            if (tx.vout.size() < 1)
-                return error("Connect() : not output in CurrencyCoinBase");
-
-            CTxDestination destination;
-            if (!ExtractDestination(tx.vout[0].scriptPubKey, destination))
-                return error("Connect() : ExtractAddress on CurrencyCoinBase failed");
-            CBitcoinAddress address(destination, tx.cUnit);
-
-            {
-                LOCK(cs_mapElectedCustodian);
-
-                if (!mapElectedCustodian.count(address))
-                    return error("Connect() : custodian was not elected");
-
-                mapElectedCustodian.erase(address);
-            }
-
-            {
-                LOCK(cs_mapLiquidityInfo);
-
-                mapLiquidityInfo.erase(address);
-            }
-        }
-    }
-
     // Update block index on disk without changing it in memory.
     // The memory index structure will be changed after the db commits.
     if (pindex->pprev)
@@ -1803,33 +1773,6 @@ bool CBlock::ConnectBlock(CTxDB& txdb, CBlockIndex* pindex)
     if (!txdb.WriteBlockIndex(CDiskBlockIndex(pindex)))
         return error("Connect() : WriteBlockIndex for pindex failed");
 
-    // nubit: track elected custodians
-    BOOST_FOREACH(const CTransaction& tx, vtx)
-    {
-        if (tx.IsCurrencyCoinBase())
-        {
-            if (tx.vout.size() < 1)
-                return error("Connect() : not output in CurrencyCoinBase");
-
-            {
-                LOCK(cs_mapElectedCustodian);
-
-                BOOST_FOREACH(const CTxOut& txo, tx.vout)
-                {
-                    CTxDestination destination;
-                    if (!ExtractDestination(txo.scriptPubKey, destination))
-                        return error("Connect() : ExtractAddress on CurrencyCoinBase failed");
-                    CBitcoinAddress address(destination, tx.cUnit);
-
-                    if (mapElectedCustodian.count(address))
-                        return error("Connect() : custodian has already been elected");
-
-                    mapElectedCustodian[address] = pindex;
-                }
-            }
-        }
-    }
-
     // Write queued txindex changes
     for (map<uint256, CTxIndex>::iterator mi = mapQueuedChanges.begin(); mi != mapQueuedChanges.end(); ++mi)
     {
@@ -1951,6 +1894,29 @@ bool Reorganize(CTxDB& txdb, CBlockIndex* pindexNew)
     BOOST_FOREACH(CTransaction& tx, vDelete)
         mempool.remove(tx);
 
+    // nubit: update elected custodians
+    {
+        BOOST_FOREACH(CBlockIndex* pindex, vDisconnect)
+        {
+            BOOST_FOREACH(const CCustodianVote& custodianVote, pindex->vElectedCustodian)
+            {
+                const CBitcoinAddress& address(custodianVote.GetAddress());
+                LOCK2(cs_mapElectedCustodian, cs_mapLiquidityInfo);
+                mapElectedCustodian.erase(address);
+                mapLiquidityInfo.erase(address);
+            }
+        }
+        BOOST_FOREACH(CBlockIndex* pindex, vConnect)
+        {
+            BOOST_FOREACH(const CCustodianVote& custodianVote, pindex->vElectedCustodian)
+            {
+                const CBitcoinAddress& address(custodianVote.GetAddress());
+                LOCK(cs_mapElectedCustodian);
+                mapElectedCustodian[address] = pindex;
+            }
+        }
+    }
+
     printf("REORGANIZE: done\n");
 
     return true;
@@ -1978,6 +1944,14 @@ bool CBlock::SetBestChainInner(CTxDB& txdb, CBlockIndex *pindexNew)
     // Delete redundant memory transactions
     BOOST_FOREACH(CTransaction& tx, vtx)
         mempool.remove(tx);
+
+    // nubit: update elected custodians
+    BOOST_FOREACH(const CCustodianVote& custodianVote, pindexNew->vElectedCustodian)
+    {
+        const CBitcoinAddress& address(custodianVote.GetAddress());
+        LOCK(cs_mapElectedCustodian);
+        mapElectedCustodian[address] = pindexNew;
+    }
 
     return true;
 }
