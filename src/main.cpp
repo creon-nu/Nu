@@ -1482,9 +1482,7 @@ bool CTransaction::ConnectInputs(CTxDB& txdb, MapPrevTx inputs,
                     return error("ConnectInputs() : ExtractAddress failed");
                 CBitcoinAddress outAddress(outDestination, cUnit);
 
-                const CKeyID& outID = get<CKeyID>(outDestination);
-                const CKeyID& unparkID = get<CKeyID>(unparkDestination);
-                if (outID != unparkID)
+                if (unparkAddress != outAddress)
                     return error("ConnectInputs() : invalid unpark address");
 
                 fValidUnpark = true;
