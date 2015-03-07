@@ -38,10 +38,8 @@ static const unsigned int MAX_BLOCK_SIGOPS = MAX_BLOCK_SIZE/50;
 static const unsigned int MAX_ORPHAN_TRANSACTIONS = MAX_BLOCK_SIZE/100;
 static const unsigned int MAX_COINSTAKE_SIZE = 1000; // nubit: maximum size of CoinStake transactions
 static const int64 MIN_SHARE_TX_FEE = COIN;
-static const int64 MIN_SHARE_RELAY_TX_FEE = COIN;
 static const int64 MIN_SHARE_TXOUT_AMOUNT = MIN_SHARE_TX_FEE;
 static const int64 MIN_CURRENCY_TX_FEE = CENT;
-static const int64 MIN_CURRENCY_RELAY_TX_FEE = CENT;
 static const int64 MIN_CURRENCY_TXOUT_AMOUNT = MIN_CURRENCY_TX_FEE;
 static const int64 MAX_MONEY = 2000000000 * COIN;
 inline bool MoneyRange(int64 nValue) { return (nValue >= 0 && nValue <= MAX_MONEY); }
@@ -177,11 +175,6 @@ inline int GetMaturity(bool fProofOfStake)
 inline int64 MinTxFee(unsigned char cUnit)
 {
     return cUnit == 'S' ? MIN_SHARE_TX_FEE : MIN_CURRENCY_TX_FEE;
-}
-
-inline int64 MinRelayTxFee(unsigned char cUnit)
-{
-    return cUnit == 'S' ? MIN_SHARE_RELAY_TX_FEE : MIN_CURRENCY_RELAY_TX_FEE;
 }
 
 inline int64 MinTxOutAmount(unsigned char cUnit)
@@ -686,11 +679,6 @@ public:
     int64 GetUnitMinFee() const
     {
         return MinTxFee(cUnit);
-    }
-
-    int64 GetMinRelayFee() const
-    {
-        return MinRelayTxFee(cUnit);
     }
 
     int64 GetMinTxOutAmount() const
