@@ -2385,6 +2385,9 @@ bool CBlock::AcceptBlock()
         {
             if (tx.IsCurrencyCoinBase())
             {
+                if (matching >= vExpectedTx.size())
+                    return error("AcceptBlock() : unexpected expansion transaction");
+
                 CTransaction& expectedTx = vExpectedTx[matching];
                 expectedTx.nTime = tx.nTime;
 
