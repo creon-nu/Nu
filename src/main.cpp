@@ -2141,8 +2141,20 @@ bool CBlock::AddToBlockIndex(unsigned int nFile, unsigned int nBlockPos)
         if (!pindexNew->vote.IsValid())
             return error("AddToBlockIndex() : Invalid vote");
 
+        if (!GetCoinStakeAge(pindexNew->nCoinAgeDestroyed))
+            return error("AddToBlockIndex() : Unable to get coin age");
+        pindexNew->vote.nCoinAgeDestroyed = pindexNew->nCoinAgeDestroyed;
+
         if (!ExtractParkRateResults(*this, pindexNew->vParkRateResult))
             return error("AddToBlockIndex() : Unable to extract park rate results");
+
+        {
+            std::vector<CParkRateVote> vExpectedParkRateResult;
+            if (!CalculateParkRateResults(pindexNew->vote, pindexNew->pprev, vExpectedParkRateResult))
+                return error("AddToBlockIndex() : Unable to calculate park rate results");
+            if (pindexNew->vParkRateResult != vExpectedParkRateResult)
+                return error("AddToBlockIndex() : Park rate results do not match");
+        }
 
         // Verify park transactions now that the premium can be calculated
         BOOST_FOREACH(const CTransaction& tx, vtx)
@@ -2150,10 +2162,6 @@ bool CBlock::AddToBlockIndex(unsigned int nFile, unsigned int nBlockPos)
             if (!tx.CheckParkWithResult(pindexNew->vParkRateResult))
                 return error("AddToBlockIndex() : invalid park transactions found");
         }
-
-        if (!GetCoinStakeAge(pindexNew->nCoinAgeDestroyed))
-            return error("AddToBlockIndex() : Unable to get coin age");
-        pindexNew->vote.nCoinAgeDestroyed = pindexNew->nCoinAgeDestroyed;
     }
 
     // nubit: save elected custodians
