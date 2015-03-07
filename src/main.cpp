@@ -2366,44 +2366,43 @@ bool CBlock::AcceptBlock()
         return error("AcceptBlock() : rejected by vote check");
 
     // nubit: check the expansion transactions match the expected ones
-    if (IsProofOfStake())
     {
-        vector<CVote> vVote;
-        if (!ExtractVotes(*this, pindexPrev, CUSTODIAN_VOTES, vVote))
-            return error("AcceptBlock() : unable to extract votes");
-
-        vector<CTransaction> vExpectedTx;
+        vector<CTransaction> vExpectedCurrencyCoinBase;
+        if (IsProofOfStake())
         {
-            LOCK(cs_mapElectedCustodian);
+            vector<CVote> vVote;
+            if (!ExtractVotes(*this, pindexPrev, CUSTODIAN_VOTES, vVote))
+                return error("AcceptBlock() : unable to extract votes");
 
-            if (!GenerateCurrencyCoinBases(vVote, mapElectedCustodian, vExpectedTx))
-                return error("AcceptBlock() : unable to generate currency coin bases");
+            {
+                LOCK(cs_mapElectedCustodian);
+
+                if (!GenerateCurrencyCoinBases(vVote, mapElectedCustodian, vExpectedCurrencyCoinBase))
+                    return error("AcceptBlock() : unable to generate currency coin bases");
+            }
         }
-
-        int matching = 0;
+        vector<CTransaction> vActualCurrencyCoinBase;
         BOOST_FOREACH(const CTransaction& tx, vtx)
         {
             if (tx.IsCurrencyCoinBase())
+                vActualCurrencyCoinBase.push_back(tx);
+        }
+        if (vActualCurrencyCoinBase.size() != vExpectedCurrencyCoinBase.size())
+            return error("AcceptBlock() : unexpected number of expansion transaction");
+        for (int i = 0; i < vActualCurrencyCoinBase.size(); i++)
+        {
+            const CTransaction& actualTx = vActualCurrencyCoinBase[i];
+
+            CTransaction& expectedTx = vExpectedCurrencyCoinBase[i];
+            expectedTx.nTime = actualTx.nTime;
+
+            if (actualTx != expectedTx)
             {
-                if (matching >= vExpectedTx.size())
-                    return error("AcceptBlock() : unexpected expansion transaction");
-
-                CTransaction& expectedTx = vExpectedTx[matching];
-                expectedTx.nTime = tx.nTime;
-
-                if (tx == expectedTx)
-                    matching++;
-                else
-                {
-                    printf("expected tx: %s\n", expectedTx.ToString().c_str());
-                    printf("actual tx:   %s\n", tx.ToString().c_str());
-                    return error("AcceptBlock() : invalid expansion transaction found");
-                }
+                printf("expected tx: %s\n", expectedTx.ToString().c_str());
+                printf("actual tx:   %s\n", actualTx.ToString().c_str());
+                return error("AcceptBlock() : invalid expansion transaction found");
             }
         }
-
-        if (matching != vExpectedTx.size())
-            return("AcceptBlock() : not enough expansion transaction");
     }
 
     // Write block to history file
