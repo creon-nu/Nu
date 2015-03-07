@@ -2367,10 +2367,6 @@ bool CBlock::AcceptBlock()
     if (!Checkpoints::CheckSync(hash, pindexPrev))
         return error("AcceptBlock() : rejected by synchronized checkpoint");
 
-    // nubit: check the vote is valid and the results match our own calculations
-    if (IsProofOfStake() && !CheckVote(*this, pindexPrev))
-        return DoS(100, error("AcceptBlock() : rejected by vote check"));
-
     // nubit: check the expansion transactions match the expected ones
     {
         vector<CTransaction> vExpectedCurrencyCoinBase;

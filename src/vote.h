@@ -328,8 +328,6 @@ bool CalculateParkRateResults(const std::vector<CVote>& vVote, const std::map<un
 bool CalculateParkRateResults(const CVote &vote, CBlockIndex *pindexprev, std::vector<CParkRateVote>& vParkRateResult);
 int64 GetPremium(int64 nValue, int64 nDuration, unsigned char cUnit, const std::vector<CParkRateVote>& vParkRateResult);
 
-bool CheckVote(const CBlock& block, CBlockIndex *pindexprev);
-
 bool GenerateCurrencyCoinBases(const std::vector<CVote> vVote, std::map<CBitcoinAddress, CBlockIndex*> mapAlreadyElected, std::vector<CTransaction>& vCurrencyCoinBaseRet);
 
 #endif

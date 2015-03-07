@@ -409,32 +409,6 @@ bool ExtractVotes(const CBlock& block, CBlockIndex *pindexprev, unsigned int nCo
     return true;
 }
 
-bool CheckVote(const CBlock& block, CBlockIndex *pindexprev)
-{
-    CVote vote;
-    if (!ExtractVote(block, vote))
-        return error("CheckVote(): ExtractVote failed");
-
-    if (!vote.IsValid())
-        return error("CheckVote(): Invalid vote");
-
-    if (!block.GetCoinStakeAge(vote.nCoinAgeDestroyed))
-        return error("CheckVote(): Unable to get coin stake coin age");
-
-    vector<CParkRateVote> vParkRateResult;
-    if (!ExtractParkRateResults(block, vParkRateResult))
-        return error("CheckVote(): ExtractParkRateResults failed");
-
-    vector<CParkRateVote> vExpectedParkRateResult;
-    if (!CalculateParkRateResults(vote, pindexprev, vExpectedParkRateResult))
-        return error("CheckVote(): CalculateParkRateResults failed");
-
-    if (vParkRateResult != vExpectedParkRateResult)
-        return error("CheckVote(): Invalid park rate result");
-
-    return true;
-}
-
 class CCustodianVoteCounter
 {
 public:
