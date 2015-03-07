@@ -4256,8 +4256,12 @@ CBlock* CreateNewBlock(CReserveKey& reservekey, CWallet* pwallet, bool fProofOfS
             }
         }
 
-        BOOST_FOREACH(const CTransaction& tx, vCurrencyCoinBase)
+        BOOST_FOREACH(CTransaction& tx, vCurrencyCoinBase)
+        {
+            if (pblock->IsProofOfStake())
+                tx.nTime = pblock->vtx[1].nTime; //same as coinstake timestamp
             pblock->vtx.push_back(tx);
+        }
     }
 
     // nubit: Calculate park rate results to determine whether park transactions are valid in the block
