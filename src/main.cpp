@@ -812,10 +812,15 @@ bool CTxMemPool::accept(CTxDB& txdb, CTransaction &tx, bool fCheckInputs,
 
         // Don't accept it if it can't get into a block
         const int64 txMinFee = tx.GetMinFee(nSize);
-        if (!tx.IsUnpark() && nFees < txMinFee)
+        if (nFees < txMinFee)
         {
-            printf("Fees: %s, minimum: %s\n", FormatMoney(nFees).c_str(), FormatMoney(txMinFee).c_str());
-            return error("CTxMemPool::accept() : not enough fees");
+            // nubit: unpark transactions do not have fees. The validity of the unpark is checked during ConnectInputs
+            const bool fAllowed = tx.IsUnpark();
+            if (!fAllowed)
+            {
+                printf("Fees: %s, minimum: %s\n", FormatMoney(nFees).c_str(), FormatMoney(txMinFee).c_str());
+                return error("CTxMemPool::accept() : not enough fees");
+            }
         }
 
         // Check against previous transactions
