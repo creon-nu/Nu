@@ -142,7 +142,7 @@ bool static IsFromMe(CTransaction& tx)
 }
 
 // get the wallet transaction with the given hash (if it exists)
-bool static GetTransaction(const uint256& hashTx, CWalletTx& wtx)
+bool static GetWalletTransaction(const uint256& hashTx, CWalletTx& wtx)
 {
     LOCK(cs_setpwalletRegistered);
     BOOST_FOREACH(CWallet* pwallet, setpwalletRegistered)
@@ -4016,7 +4016,7 @@ bool SendMessages(CNode* pto, bool fSendTrickle)
                     if (!fTrickleWait)
                     {
                         CWalletTx wtx;
-                        if (GetTransaction(inv.hash, wtx))
+                        if (GetWalletTransaction(inv.hash, wtx))
                             if (wtx.fFromMe)
                                 fTrickleWait = true;
                     }
