@@ -859,7 +859,8 @@ public:
 
 
     int SetMerkleBranch(const CBlock* pblock=NULL);
-    int GetDepthInMainChain(CBlockIndex* &pindexRet) const;
+    int GetDepthInChain(const CBlockIndex* pindexChain, CBlockIndex* &pindexRet) const;
+    int GetDepthInMainChain(CBlockIndex* &pindexRet) const { return GetDepthInChain(pindexBest, pindexRet); }
     int GetDepthInMainChain() const { CBlockIndex *pindexRet; return GetDepthInMainChain(pindexRet); }
     bool IsInMainChain() const { return GetDepthInMainChain() > 0; }
     int GetBlocksToMaturity() const;
@@ -920,7 +921,8 @@ public:
     {
         return !(a == b);
     }
-    int GetDepthInMainChain(CBlockIndex* &pindexRet) const;
+    int GetDepthInChain(const CBlockIndex* pindexChain, CBlockIndex* &pindexRet) const;
+    int GetDepthInMainChain(CBlockIndex* &pindexRet) const { return GetDepthInChain(pindexBest, pindexRet); }
     int GetDepthInMainChain() const { CBlockIndex *pindexRet; return GetDepthInMainChain(pindexRet); }
  
 };
@@ -1361,6 +1363,17 @@ public:
     bool IsInMainChain() const
     {
         return (pnext || this == pindexBest);
+    }
+
+    bool IsInChain(const CBlockIndex* pindexChain) const
+    {
+        if (pindexChain == pindexBest)
+            return IsInMainChain();
+
+        for (const CBlockIndex* pindex = pindexChain; pindex; pindex = pindex->pprev)
+            if (pindex == this)
+                return true;
+        return false;
     }
 
     bool CheckIndex() const

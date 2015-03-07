@@ -894,7 +894,7 @@ void CTxMemPool::queryHashes(std::vector<uint256>& vtxid)
 
 
 
-int CMerkleTx::GetDepthInMainChain(CBlockIndex* &pindexRet) const
+int CMerkleTx::GetDepthInChain(const CBlockIndex *pindexChain, CBlockIndex* &pindexRet) const
 {
     if (hashBlock == 0 || nIndex == -1)
         return 0;
@@ -904,7 +904,7 @@ int CMerkleTx::GetDepthInMainChain(CBlockIndex* &pindexRet) const
     if (mi == mapBlockIndex.end())
         return 0;
     CBlockIndex* pindex = (*mi).second;
-    if (!pindex || !pindex->IsInMainChain())
+    if (!pindex || !pindex->IsInChain(pindexChain))
         return 0;
 
     // Make sure the merkle branch connects to this block
@@ -916,7 +916,7 @@ int CMerkleTx::GetDepthInMainChain(CBlockIndex* &pindexRet) const
     }
 
     pindexRet = pindex;
-    return pindexBest->nHeight - pindex->nHeight + 1;
+    return pindexChain->nHeight - pindex->nHeight + 1;
 }
 
 
@@ -980,7 +980,7 @@ bool CWalletTx::AcceptWalletTransaction()
     return AcceptWalletTransaction(txdb);
 }
 
-int CTxIndex::GetDepthInMainChain(CBlockIndex* &pindexRet) const
+int CTxIndex::GetDepthInChain(const CBlockIndex* pindexChain, CBlockIndex* &pindexRet) const
 {
     pindexRet = NULL;
     // Read block header
@@ -992,7 +992,7 @@ int CTxIndex::GetDepthInMainChain(CBlockIndex* &pindexRet) const
     if (mi == mapBlockIndex.end())
         return 0;
     CBlockIndex* pindex = (*mi).second;
-    if (!pindex || !pindex->IsInMainChain())
+    if (!pindex || !pindex->IsInChain(pindexChain))
         return 0;
     pindexRet = pindex;
     return 1 + nBestHeight - pindex->nHeight;
@@ -1459,15 +1459,15 @@ bool CTransaction::ConnectInputs(CTxDB& txdb, MapPrevTx inputs,
                     return error("ConnectInputs() : ExtractPark failed");
                 CBitcoinAddress unparkAddress(unparkDestination, txPrev.cUnit);
 
-                CBlockIndex *pindex = NULL;
-                if (txindex.GetDepthInMainChain(pindex) < nDuration)
+                CBlockIndex *pindexPark = NULL;
+                if (txindex.GetDepthInChain(pindexBlock, pindexPark) < nDuration)
                     return error("ConnectInputs() : parking duration has not passed");
 
-                if (!pindex)
-                    return error("ConnectInputs() : parked transaction not in main chain");
+                if (!pindexPark)
+                    return error("ConnectInputs() : parked transaction not in chain");
 
                 int64 nValue = txPrev.vout[prevout.n].nValue;
-                int64 nPremium = pindex->GetPremium(nValue, nDuration, cUnit);
+                int64 nPremium = pindexPark->GetPremium(nValue, nDuration, cUnit);
                 if (!MoneyRange(nPremium))
                     return error("ConnectInputs() : premium out of range");
                 int64 nExpectedValueOut = nValue + nPremium;
