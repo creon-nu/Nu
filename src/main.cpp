@@ -811,7 +811,7 @@ bool CTxMemPool::accept(CTxDB& txdb, CTransaction &tx, bool fCheckInputs,
         unsigned int nSize = ::GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION);
 
         // Don't accept it if it can't get into a block
-        int64 txMinFee = tx.GetMinFee(nSize);
+        const int64 txMinFee = tx.GetMinFee(nSize);
         if (!tx.IsUnpark() && nFees < txMinFee)
         {
             printf("Fees: %s, minimum: %s\n", FormatMoney(nFees).c_str(), FormatMoney(txMinFee).c_str());
