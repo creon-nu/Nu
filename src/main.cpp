@@ -992,6 +992,7 @@ bool CWalletTx::AcceptWalletTransaction()
 
 int CTxIndex::GetDepthInMainChain(CBlockIndex* &pindexRet) const
 {
+    pindexRet = NULL;
     // Read block header
     CBlock block;
     if (!block.ReadFromDisk(pos.nFile, pos.nBlockPos, false))
