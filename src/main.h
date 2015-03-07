@@ -822,7 +822,7 @@ public:
     bool GetCoinAge(CTxDB& txdb, int64& nCoinAge) const;  // ppcoin: get transaction coin age
 
     // Add an output, split if appropriate
-    void AddOutput(const CScript script, int64 nAmount);
+    void AddOutput(const CScript& script, int64 nAmount);
 
     // Add the change output, split if appropriate, and back to scriptChange if avatar mode is enabled
     void AddChange(int64 nChange, CScript& scriptChange, const CCoinControl* coinControl, CReserveKey& reservekey);
