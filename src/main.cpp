@@ -1089,7 +1089,7 @@ uint256 WantedByOrphan(const CBlock* pblockOrphan)
     return pblockOrphan->hashPrevBlock;
 }
 
-int64 GetProofOfWorkReward(unsigned int nBits)
+int64 GetProofOfWorkReward()
 {
     return IPO_SHARES / PROOF_OF_WORK_BLOCKS; //this will only be used to create initial shares
 }
@@ -2270,10 +2270,10 @@ bool CBlock::CheckBlock() const
 
     // Check coinbase reward
     // nu: proof of work blocks do not have fee to generate the right amount of shares even when outputs are split
-    if (vtx[0].GetValueOut() > (IsProofOfWork()? GetProofOfWorkReward(nBits) : 0))
+    if (vtx[0].GetValueOut() > (IsProofOfWork()? GetProofOfWorkReward() : 0))
         return DoS(50, error("CheckBlock() : coinbase reward exceeded %s > %s", 
                    FormatMoney(vtx[0].GetValueOut()).c_str(),
-                   FormatMoney(IsProofOfWork()? GetProofOfWorkReward(nBits) : 0).c_str()));
+                   FormatMoney(IsProofOfWork()? GetProofOfWorkReward() : 0).c_str()));
 
     // Check transactions
     BOOST_FOREACH(const CTransaction& tx, vtx)
@@ -4442,7 +4442,7 @@ CBlock* CreateNewBlock(CReserveKey& reservekey, CWallet* pwallet, bool fProofOfS
     }
     if (pblock->IsProofOfWork())
     {
-        int64 nReward = GetProofOfWorkReward(pblock->nBits);
+        int64 nReward = GetProofOfWorkReward();
 
         if (nSplitShareOutputs > 0 && nReward >= nSplitShareOutputs * 2)
         {
