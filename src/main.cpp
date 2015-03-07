@@ -2363,7 +2363,7 @@ bool CBlock::AcceptBlock()
 
     // nubit: check the vote is valid and the results match our own calculations
     if (IsProofOfStake() && !CheckVote(*this, pindexPrev))
-        return error("AcceptBlock() : rejected by vote check");
+        return DoS(100, error("AcceptBlock() : rejected by vote check"));
 
     // nubit: check the expansion transactions match the expected ones
     {
@@ -2388,7 +2388,7 @@ bool CBlock::AcceptBlock()
                 vActualCurrencyCoinBase.push_back(tx);
         }
         if (vActualCurrencyCoinBase.size() != vExpectedCurrencyCoinBase.size())
-            return error("AcceptBlock() : unexpected number of expansion transaction");
+            return DoS(100, error("AcceptBlock() : unexpected number of expansion transaction"));
         for (int i = 0; i < vActualCurrencyCoinBase.size(); i++)
         {
             const CTransaction& actualTx = vActualCurrencyCoinBase[i];
@@ -2400,7 +2400,7 @@ bool CBlock::AcceptBlock()
             {
                 printf("expected tx: %s\n", expectedTx.ToString().c_str());
                 printf("actual tx:   %s\n", actualTx.ToString().c_str());
-                return error("AcceptBlock() : invalid expansion transaction found");
+                return DoS(100, error("AcceptBlock() : invalid expansion transaction found"));
             }
         }
     }
