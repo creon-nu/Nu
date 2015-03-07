@@ -621,8 +621,12 @@ bool CTransaction::CheckTransaction() const
         if (txout.IsEmpty() && (!IsCoinBase()) && (!IsCoinStake()) && (!IsCurrencyCoinBase()))
             return DoS(100, error("CTransaction::CheckTransaction() : txout empty for user transaction"));
         // ppcoin: enforce minimum output amount
-        if ((!txout.IsEmpty()) && !(IsCoinStake() && (txout.IsVote() || txout.IsParkRateResult())) && txout.nValue < GetMinTxOutAmount())
-            return DoS(100, error("CTransaction::CheckTransaction() : txout.nValue below minimum"));
+        if ((!txout.IsEmpty()) && txout.nValue < GetMinTxOutAmount())
+        {
+            const bool fAllowed = (IsCoinStake() && (txout.IsVote() || txout.IsParkRateResult()));
+            if (!fAllowed)
+                return DoS(100, error("CTransaction::CheckTransaction() : txout.nValue below minimum"));
+        }
         if (txout.nValue > MAX_MONEY)
             return DoS(100, error("CTransaction::CheckTransaction() : txout.nValue too high"));
         nValueOut += txout.nValue;
