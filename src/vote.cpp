@@ -154,11 +154,17 @@ bool ExtractParkRateResults(const CBlock& block, vector<CParkRateVote>& vParkRat
     if (!tx.IsCoinStake())
         return error("CoinStake not found in proof of stake block");
 
+    set<unsigned char> setSeenUnit;
     BOOST_FOREACH (const CTxOut& txo, tx.vout)
     {
         CParkRateVote result;
         if (ExtractParkRateResult(txo.scriptPubKey, result))
+        {
+            if (setSeenUnit.count(result.cUnit))
+                return error("Duplicate park rate result unit");
             vParkRateResultRet.push_back(result);
+            setSeenUnit.insert(result.cUnit);
+        }
     }
 
     return true;
