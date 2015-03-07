@@ -1557,8 +1557,6 @@ bool ExtractDestination(const CScript& scriptPubKey, CTxDestination& addressRet,
     vector<valtype> vSolutions;
     if (!Solver(scriptPubKey, whichType, vSolutions))
         return false;
-    if (whichType == TX_NULL_DATA)
-		return true;
 
     if (whichType == TX_PUBKEY)
     {
