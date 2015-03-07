@@ -2400,8 +2400,6 @@ bool CBlock::AcceptBlock()
                     return error("AcceptBlock() : invalid expansion transaction found");
                 }
             }
-            if (matching == vExpectedTx.size())
-                break;
         }
 
         if (matching != vExpectedTx.size())
