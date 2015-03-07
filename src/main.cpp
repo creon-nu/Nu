@@ -131,16 +131,6 @@ void UnregisterAndDeleteAllWallets()
     }
 }
 
-// check whether the passed transaction is from us
-bool static IsFromMe(CTransaction& tx)
-{
-    LOCK(cs_setpwalletRegistered);
-    BOOST_FOREACH(CWallet* pwallet, setpwalletRegistered)
-        if (pwallet->IsFromMe(tx))
-            return true;
-    return false;
-}
-
 // get the wallet transaction with the given hash (if it exists)
 bool static GetWalletTransaction(const uint256& hashTx, CWalletTx& wtx)
 {
