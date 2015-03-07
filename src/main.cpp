@@ -688,6 +688,9 @@ int64 CTransaction::GetMinFee(unsigned int nBlockSize, enum GetMinFee_mode mode,
     // Base fee is either MIN_TX_FEE or MIN_RELAY_TX_FEE
     int64 nBaseFee = (mode == GMF_RELAY) ? GetMinRelayFee() : GetUnitMinFee();
 
+    if (nBytes == 0)
+        nBytes = ::GetSerializeSize(*this, SER_NETWORK, PROTOCOL_VERSION);
+
     unsigned int nNewBlockSize = nBlockSize + nBytes;
     int64 nMinFee = (1 + (int64)nBytes / 1000) * nBaseFee;
 
