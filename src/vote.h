@@ -225,7 +225,8 @@ public:
     int64 nCoinAgeDestroyed;
 
     CVote() :
-        nVersion(PROTOCOL_VERSION)
+        nVersion(PROTOCOL_VERSION),
+        nCoinAgeDestroyed(0)
     {
     }
 
