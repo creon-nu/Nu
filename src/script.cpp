@@ -1431,7 +1431,7 @@ int ScriptSigArgsExpected(txnouttype t, const std::vector<std::vector<unsigned c
     case TX_PUBKEYHASH:
         return 2;
     case TX_PARK:
-        return 1;
+        return 1; // a single OP_3
     case TX_MULTISIG:
         if (vSolutions.size() < 1 || vSolutions[0].size() < 1)
             return -1;
