@@ -310,7 +310,10 @@ void UpdateFromDataFeed()
             else
                 throw runtime_error("Invalid part");
         }
-        pwallet->SetVote(newVote);
+        {
+            LOCK(pwallet->cs_wallet);
+            pwallet->SetVote(newVote);
+        }
         printf("Vote updated from data feed\n");
     }
 }
