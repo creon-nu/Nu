@@ -32,6 +32,8 @@ bool IsVote(const CScript& scriptPubKey)
 
 bool ExtractVote(const CScript& scriptPubKey, CVote& voteRet)
 {
+    voteRet.SetNull();
+
     if (!IsVote(scriptPubKey))
         return false;
 
@@ -63,6 +65,8 @@ bool ExtractVote(const CScript& scriptPubKey, CVote& voteRet)
 
 bool ExtractVote(const CBlock& block, CVote& voteRet)
 {
+    voteRet.SetNull();
+
     if (!block.IsProofOfStake())
         return false;
 
@@ -114,6 +118,8 @@ bool IsParkRateResult(const CScript& scriptPubKey)
 
 bool ExtractParkRateResult(const CScript& scriptPubKey, CParkRateVote& parkRateResultRet)
 {
+    parkRateResultRet.SetNull();
+
     if (!IsParkRateResult(scriptPubKey))
         return false;
 
