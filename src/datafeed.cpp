@@ -105,12 +105,9 @@ public:
         else
         {
             if (error == "")
-            {
                 error = (boost::format("Data feed failed: %s") % curl_easy_strerror(res)).str();
-                throw runtime_error(error);
-            }
-            else
-                throw runtime_error(error);
+
+            throw runtime_error(error);
         }
     }
 
