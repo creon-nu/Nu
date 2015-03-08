@@ -274,10 +274,14 @@ bool CalculateParkRateResults(const std::vector<CVote>& vVote, const std::map<un
 
     BOOST_FOREACH(CParkRate& parkRate, result)
     {
-        int64 previousMin = minPreviousRates[parkRate.nCompactDuration];
-        int64 duration = parkRate.GetDuration();
+        const int64 previousMin = minPreviousRates[parkRate.nCompactDuration];
+        const int64 duration = parkRate.GetDuration();
         // maximum increase is 1% of annual interest rate
-        int64 maxIncrease = (int64)100 * COIN_PARK_RATE / COIN * duration * STAKE_TARGET_SPACING / ((int64)60 * 60 * 24 * 36525 / 100);
+        const int64 secondsInYear = (int64)60 * 60 * 24 * 36525 / 100;
+        const int64 blocksInYear = secondsInYear / STAKE_TARGET_SPACING;
+        const int64 parkRateEncodedPercentage = COIN_PARK_RATE / CENT;
+        assert(parkRateEncodedPercentage < ((int64)1 << 62) / ((int64)1 << MAX_COMPACT_DURATION)); // to avoid overflow
+        const int64 maxIncrease = parkRateEncodedPercentage * duration / blocksInYear;
 
         if (parkRate.nRate > previousMin + maxIncrease)
             parkRate.nRate = previousMin + maxIncrease;
