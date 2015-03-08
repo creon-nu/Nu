@@ -130,7 +130,7 @@ void VerifyDataFeedSignature(const string& strMessage, const string& strSign, co
     if (!addr.GetKeyID(keyID))
         throw runtime_error("Data feed address does not refer to key");
 
-    bool fInvalid = false;
+    bool fInvalid = true;
     vector<unsigned char> vchSig = DecodeBase64(strSign.c_str(), &fInvalid);
 
     if (fInvalid)
