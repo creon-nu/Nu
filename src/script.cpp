@@ -1206,6 +1206,9 @@ bool CheckSig(vector<unsigned char> vchSig, vector<unsigned char> vchPubKey, CSc
 //
 bool Solver(const CScript& scriptPubKey, txnouttype& typeRet, vector<vector<unsigned char> >& vSolutionsRet)
 {
+    typeRet = TX_NONSTANDARD;
+    vSolutionsRet.clear();
+
     // Templates
     static map<txnouttype, CScript> mTemplates;
     if (mTemplates.empty())
@@ -1444,6 +1447,7 @@ int ScriptSigArgsExpected(txnouttype t, const std::vector<std::vector<unsigned c
 
 bool IsStandard(const CScript& scriptPubKey, txnouttype& whichType)
 {
+    whichType = TX_NONSTANDARD;
     vector<valtype> vSolutions;
     if (!Solver(scriptPubKey, whichType, vSolutions))
         return false;
