@@ -88,6 +88,9 @@ public:
 
     void Perform()
     {
+        result.clear();
+        error.clear();
+
         CURLcode res;
         res = curl_easy_perform(curl);
 
