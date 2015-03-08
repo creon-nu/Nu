@@ -1393,23 +1393,13 @@ bool Solver(const CKeyStore& keystore, const CScript& scriptPubKey, uint256 hash
     {
     case TX_NONSTANDARD:
     case TX_NULL_DATA:
+    case TX_PARK:
         return false;
     case TX_PUBKEY:
         keyID = CPubKey(vSolutions[0]).GetID();
         return Sign1(keyID, keystore, hash, nHashType, scriptSigRet);
     case TX_PUBKEYHASH:
         keyID = CKeyID(uint160(vSolutions[0]));
-        if (!Sign1(keyID, keystore, hash, nHashType, scriptSigRet))
-            return false;
-        else
-        {
-            CPubKey vch;
-            keystore.GetPubKey(keyID, vch);
-            scriptSigRet << vch;
-        }
-        return true;
-    case TX_PARK:
-        keyID = CKeyID(uint160(vSolutions[1]));
         if (!Sign1(keyID, keystore, hash, nHashType, scriptSigRet))
             return false;
         else
