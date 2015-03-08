@@ -49,13 +49,15 @@ bool ExtractVote(const CScript& scriptPubKey, CVote& voteRet)
 
     CDataStream voteStream(stack[0], SER_NETWORK, PROTOCOL_VERSION);
 
+    CVote vote;
     try {
-        voteStream >> voteRet;
+        voteStream >> vote;
     }
     catch (std::exception &e) {
         return error("vote deserialize error");
     }
 
+    voteRet = vote;
     return true;
 }
 
@@ -130,13 +132,15 @@ bool ExtractParkRateResult(const CScript& scriptPubKey, CParkRateVote& parkRateR
 
     CDataStream stream(stack[0], SER_NETWORK, PROTOCOL_VERSION);
 
+    CParkRateVote parkRateResult;
     try {
-        stream >> parkRateResultRet;
+        stream >> parkRateResult;
     }
     catch (std::exception &e) {
         return error("park rate result deserialize error");
     }
 
+    parkRateResultRet = parkRateResult;
     return true;
 }
 
