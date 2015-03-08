@@ -207,16 +207,16 @@ CVote ParseVote(const Object& objVote)
                     {
                         CBitcoinAddress address(custodianVoteAttribute.value_.get_str());
                         if (!address.IsValid())
-                            throw runtime_error("Invalid address\n");
+                            throw runtime_error("Invalid address");
 
                         custodianVote.SetAddress(address);
                         if (custodianVote.cUnit == 'S' || !ValidUnit(custodianVote.cUnit))
-                            throw runtime_error("Invalid custodian unit\n");
+                            throw runtime_error("Invalid custodian unit");
                     }
                     else if (custodianVoteAttribute.name_ == "amount")
                         custodianVote.nAmount = AmountFromValue(custodianVoteAttribute.value_);
                     else
-                        throw runtime_error("Invalid custodian vote object\n");
+                        throw runtime_error("Invalid custodian vote object");
                 }
                 vote.vCustodianVote.push_back(custodianVote);
             }
@@ -232,7 +232,7 @@ CVote ParseVote(const Object& objVote)
                     {
                         parkRateVote.cUnit = parkRateVoteAttribute.value_.get_str()[0];
                         if (parkRateVote.cUnit == 'S' || !ValidUnit(parkRateVote.cUnit))
-                            throw runtime_error("Invalid park rate unit\n");
+                            throw runtime_error("Invalid park rate unit");
                     }
                     else if (parkRateVoteAttribute.name_ == "rates")
                     {
@@ -247,34 +247,34 @@ CVote ParseVote(const Object& objVote)
                                    double compactDuration = log2(blocks);
                                    double integerPart;
                                    if (modf(compactDuration, &integerPart) != 0.0)
-                                       throw runtime_error("Park duration is not a power of 2\n");
+                                       throw runtime_error("Park duration is not a power of 2");
                                    if (compactDuration < 0 || compactDuration > 255)
-                                       throw runtime_error("Park duration out of range\n");
+                                       throw runtime_error("Park duration out of range");
                                    parkRate.nCompactDuration = compactDuration;
                                 }
                                 else if (parkRateAttribute.name_ == "rate")
                                 {
                                     double dAmount = parkRateAttribute.value_.get_real();
                                     if (dAmount < 0.0 || dAmount > MAX_MONEY)
-                                        throw runtime_error("Invalid park rate amount\n");
+                                        throw runtime_error("Invalid park rate amount");
                                     parkRate.nRate = roundint64(dAmount * COIN_PARK_RATE);
                                     if (!MoneyRange(parkRate.nRate))
-                                        throw runtime_error("Invalid park rate amount\n");
+                                        throw runtime_error("Invalid park rate amount");
                                 }
                                 else
-                                    throw runtime_error("Invalid park rate object\n");
+                                    throw runtime_error("Invalid park rate object");
                             }
                             parkRateVote.vParkRate.push_back(parkRate);
                         }
                     }
                     else
-                        throw runtime_error("Invalid custodian vote object\n");
+                        throw runtime_error("Invalid custodian vote object");
                 }
                 vote.vParkRateVote.push_back(parkRateVote);
             }
         }
         else
-            throw runtime_error("Invalid vote object\n");
+            throw runtime_error("Invalid vote object");
     }
 
     return vote;
