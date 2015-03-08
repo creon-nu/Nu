@@ -1466,9 +1466,9 @@ Value getpremium(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 2)
         throw runtime_error(
-            "park <amount> <duration>\n"
+            "getpremium <amount> <duration>\n"
             "<amount> is a real and is rounded to the nearest 0.000001\n"
-            "<duration> is the number of blocks during which the amount will be parked");
+            "<duration> is the number of blocks during which the amount would be parked");
 
     int64 nAmount = AmountFromValue(params[0]);
 
