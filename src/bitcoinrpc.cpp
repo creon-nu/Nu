@@ -57,12 +57,12 @@ static int64 nWalletUnlockTime;
 static CCriticalSection cs_nWalletUnlockTime;
 
 thread_specific_ptr<CWallet*> threadWallet;
-#define pwalletMain GetThreadWallet()
+#define pwalletMain (GetThreadWallet())
 
 CWallet *GetThreadWallet()
 {
     CWallet **wallet = threadWallet.get();
-    if (wallet == NULL)
+    if (wallet == NULL || *wallet == NULL)
         throw runtime_error("No wallet defined in this thread");
     return *wallet;
 }
