@@ -25,6 +25,9 @@ private:
 
     size_t ReceiveCallback(char *contents, size_t size, size_t nmemb)
     {
+        if (size == 0 || nmemb == 0)
+            return 0;
+
         size_t written = 0;
 
         try
