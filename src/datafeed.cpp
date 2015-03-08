@@ -80,7 +80,10 @@ public:
     ~DataFeedRequest()
     {
         if (curl)
+        {
             curl_easy_cleanup(curl);
+            curl = NULL;
+        }
     }
 
     void Perform()
