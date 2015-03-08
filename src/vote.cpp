@@ -75,7 +75,6 @@ bool ExtractVote(const CBlock& block, CVote& voteRet)
 
     BOOST_FOREACH (const CTxOut& txo, tx.vout)
     {
-        CVote vote;
         if (ExtractVote(txo.scriptPubKey, voteRet))
             return true;
     }
