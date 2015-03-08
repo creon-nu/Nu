@@ -167,9 +167,13 @@ bool GetVoteFromDataFeed(const CDataFeed& dataFeed, CVote& voteRet)
 
         Value valReply;
         if (!read_string(request.GetResult(), valReply))
-            throw runtime_error("Data feed returned invalid data");
+            throw runtime_error("Data feed returned invalid JSON data");
 
-        voteRet = ParseVote(valReply.get_obj());
+        CVote vote = ParseVote(valReply.get_obj());
+        if (!vote.IsValid())
+            throw runtime_error("Data feed vote is invalid");
+
+        voteRet = vote;
         result = true;
     }
     catch (exception &e)
