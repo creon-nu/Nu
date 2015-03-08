@@ -1882,6 +1882,19 @@ std::string CWallet::Park(int64 nValue, int64 nDuration, const CBitcoinAddress& 
 
     script.SetPark(nDuration, unparkID);
 
+    // Verify result
+    {
+        CTxDestination extractedDestination;
+        int64 nExtractedDuration;
+        if (!ExtractPark(script, nExtractedDuration, extractedDestination))
+            return _("Verification of parking script failed");
+        CBitcoinAddress extractedAddress(extractedDestination, cUnit);
+        if (extractedAddress != unparkAddress)
+            return _("Verification of parking script failed");
+        if (nExtractedDuration != nDuration)
+            return _("Verification of parking script failed");
+    }
+
     return SendMoney(script, nValue, wtxNew, fAskFee);
 }
 
