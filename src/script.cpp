@@ -230,7 +230,9 @@ const char* GetOpName(opcodetype opcode)
     // template matching params
     case OP_PUBKEYHASH             : return "OP_PUBKEYHASH";
     case OP_PUBKEY                 : return "OP_PUBKEY";
+    case OP_SMALLINTEGER           : return "OP_SMALLINTEGER";
     case OP_SMALLDATA              : return "OP_SMALLDATA";
+    case OP_INTEGER                : return "OP_INTEGER";
 
     case OP_INVALIDOPCODE          : return "OP_INVALIDOPCODE";
     default:
