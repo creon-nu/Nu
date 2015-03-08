@@ -323,5 +323,38 @@ BOOST_AUTO_TEST_CASE(script_CHECKMULTISIG23)
     BOOST_CHECK(!VerifyScript(badsig6, scriptPubKey23, txTo23, 0, true, 0));
 }    
 
+void CheckPark(const CScript& script, int64 nExpectedDuration, const uint160& expectedUnparkAddress)
+{
+    int64 nDuration;
+    CTxDestination unparkDestination;
+    BOOST_CHECK(ExtractPark(script, nDuration, unparkDestination));
+    BOOST_CHECK_EQUAL(nExpectedDuration, nDuration);
+    BOOST_CHECK(expectedUnparkAddress == boost::get<CKeyID>(unparkDestination));
+}
+
+void CheckNoPark(const CScript& script)
+{
+    int64 nDuration;
+    CTxDestination unparkDestination;
+    BOOST_CHECK(!ExtractPark(script, nDuration, unparkDestination));
+}
+
+BOOST_AUTO_TEST_CASE(park_solver)
+{
+    CheckPark(CScript() << OP_RETURN << OP_3 << OP_1  << uint160( 123),   1, uint160( 123));
+    CheckPark(CScript() << OP_RETURN << OP_3 << OP_16 << uint160(5555),  16, uint160(5555));
+    CheckPark(CScript() << OP_RETURN << OP_3 << 123   << uint160(5555), 123, uint160(5555));
+
+    CheckPark(  CScript() << OP_RETURN << OP_3 << (CBigNum(1) << 10) << uint160(5555), 1 << 10, uint160(5555));
+    CheckNoPark(CScript() << OP_RETURN << OP_3 << (CBigNum(1) << 31) << uint160(5555));
+
+    CScript script;
+    script.SetPark(-1, uint160(12));
+    CheckNoPark(script);
+    script.SetPark(0, uint160(12));
+    CheckNoPark(script);
+    script.SetPark(1, uint160(12));
+    CheckPark(script, 1, uint160(12));
+}
 
 BOOST_AUTO_TEST_SUITE_END()
