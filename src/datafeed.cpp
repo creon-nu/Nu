@@ -23,7 +23,7 @@ private:
     string error;
     string url;
 
-    size_t ReceiveCallback(void *contents, size_t size, size_t nmemb)
+    size_t ReceiveCallback(char *contents, size_t size, size_t nmemb)
     {
         size_t written = 0;
 
@@ -35,7 +35,7 @@ private:
             if (result.size() + realsize > nMaxSize)
                 throw runtime_error((boost::format("Data feed size exceeds limit (%1% bytes)") % nMaxSize).str());
 
-            result.append((char*)contents, realsize);
+            result.append(contents, realsize);
             written = realsize;
         }
         catch (exception &e)
@@ -46,7 +46,7 @@ private:
         return written;
     }
 
-    static size_t WriteMemoryCallback(void *contents, size_t size, size_t nmemb, void *userp)
+    static size_t WriteMemoryCallback(char *contents, size_t size, size_t nmemb, void *userp)
     {
         DataFeedRequest *request = (DataFeedRequest*)userp;
         return request->ReceiveCallback(contents, size, nmemb);
