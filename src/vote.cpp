@@ -503,7 +503,7 @@ int64 GetPremium(int64 nValue, int64 nDuration, unsigned char cUnit, const std::
 {
     if (!MoneyRange(nValue))
         return 0;
-    if (nDuration <= 0)
+    if (!ParkDurationRange(nDuration))
         return 0;
 
     BOOST_FOREACH(const CParkRateVote& parkRateVote, vParkRateResult)

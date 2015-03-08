@@ -1427,7 +1427,7 @@ Value park(const Array& params, bool fHelp)
     int64 nAmount = AmountFromValue(params[0]);
 
     int64 nDuration = params[1].get_int();
-    if (nDuration <= 0)
+    if (!ParkDurationRange(nDuration))
         throw JSONRPCError(-5, "Invalid duration");
 
     string strAccount;
@@ -1473,7 +1473,7 @@ Value getpremium(const Array& params, bool fHelp)
     int64 nAmount = AmountFromValue(params[0]);
 
     int64 nDuration = params[1].get_int();
-    if (nDuration <= 0)
+    if (!ParkDurationRange(nDuration))
         throw JSONRPCError(-5, "Invalid duration");
 
     int64 nPremium = pindexBest->GetPremium(nAmount, nDuration, pwalletMain->GetUnit());

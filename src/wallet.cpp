@@ -1857,7 +1857,7 @@ std::string CWallet::Park(int64 nValue, int64 nDuration, const CBitcoinAddress& 
     if (cUnit == 'S')
         return _("Cannot park shares");
 
-    if (nDuration <= 0)
+    if (!ParkDurationRange(nDuration))
         return _("Invalid park duration");
 
     // Check amount

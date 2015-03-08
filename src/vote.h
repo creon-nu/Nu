@@ -119,6 +119,11 @@ inline bool CompactDurationRange(unsigned char nCompactDuration)
     return (nCompactDuration < 30); // about 2000 years
 }
 
+inline bool ParkDurationRange(int64 nDuration)
+{
+    return (nDuration >= 1 && nDuration <= 1000000000); // about 1900 years
+}
+
 inline bool ParkRateRange(int64 nRate)
 {
     return (nRate >= 0 && nRate <= MAX_PARK_RATE);

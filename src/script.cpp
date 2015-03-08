@@ -1633,10 +1633,10 @@ bool ExtractPark(const CScript& scriptPubKey, int64& nDurationRet, CTxDestinatio
     }
 
     int64 nDuration = CastToBigNum(vSolutions[0]).getint();
-    if (nDuration <= 0)
+    if (!ParkDurationRange(nDuration))
         return false;
-    nDurationRet = nDuration;
 
+    nDurationRet = nDuration;
     unparkAddressRet = CKeyID(uint160(vSolutions[1]));
 
     return true;
@@ -1967,6 +1967,8 @@ void CScript::SetDestination(const CTxDestination& dest)
 void CScript::SetPark(int64 nDuration, const CKeyID& unparkAddress)
 {
     this->clear();
+    if (!ParkDurationRange(nDuration))
+        throw runtime_error("Invalid park duration");
     *this << OP_RETURN << OP_3 << nDuration << unparkAddress;
 }
 
