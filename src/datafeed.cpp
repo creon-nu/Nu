@@ -230,7 +230,7 @@ CVote ParseVote(const Object& objVote)
                 {
                     if (parkRateVoteAttribute.name_ == "unit")
                     {
-                        parkRateVote.cUnit = parkRateVoteAttribute.value_.get_str()[0];
+                        parkRateVote.cUnit = parkRateVoteAttribute.value_.get_str().c_str()[0];
                         if (parkRateVote.cUnit == 'S' || !ValidUnit(parkRateVote.cUnit))
                             throw runtime_error("Invalid park rate unit");
                     }
@@ -248,7 +248,7 @@ CVote ParseVote(const Object& objVote)
                                    double integerPart;
                                    if (modf(compactDuration, &integerPart) != 0.0)
                                        throw runtime_error("Park duration is not a power of 2");
-                                   if (compactDuration < 0 || compactDuration > 255)
+                                   if (!CompactDurationRange(compactDuration))
                                        throw runtime_error("Park duration out of range");
                                    parkRate.nCompactDuration = compactDuration;
                                 }
