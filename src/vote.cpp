@@ -295,7 +295,7 @@ bool CalculateParkRateResults(const std::vector<CVote>& vVote, const std::map<un
     return true;
 }
 
-bool CalculateParkRateResults(const CVote &vote, CBlockIndex *pindexprev, std::vector<CParkRateVote>& vParkRateResult)
+bool CalculateParkRateResults(const CVote &vote, const CBlockIndex *pindexprev, std::vector<CParkRateVote>& vParkRateResult)
 {
     vector<CVote> vVote;
     vVote.reserve(PARK_RATE_VOTES);
@@ -308,7 +308,7 @@ bool CalculateParkRateResults(const CVote &vote, CBlockIndex *pindexprev, std::v
             mapPreviousRates[cUnit].reserve(PARK_RATE_PREVIOUS_VOTES);
     }
 
-    CBlockIndex *pindex = pindexprev;
+    const CBlockIndex *pindex = pindexprev;
     for (int i=0; i<PARK_RATE_VOTES-1 && pindex; i++)
     {
         if (pindex->IsProofOfStake())
@@ -398,7 +398,7 @@ void CVote::Upgrade()
         nVersion = 50000;
 }
 
-bool ExtractVotes(const CBlock& block, CBlockIndex *pindexprev, unsigned int nCount, std::vector<CVote> &vVoteRet)
+bool ExtractVotes(const CBlock& block, const CBlockIndex *pindexprev, unsigned int nCount, std::vector<CVote> &vVoteRet)
 {
     CVote vote;
     if (!ExtractVote(block, vote))
@@ -413,7 +413,7 @@ bool ExtractVotes(const CBlock& block, CBlockIndex *pindexprev, unsigned int nCo
     vVoteRet.reserve(nCount);
     vVoteRet.push_back(vote);
 
-    CBlockIndex *pindex = pindexprev;
+    const CBlockIndex *pindex = pindexprev;
     for (int i=0; i<nCount-1 && pindex; i++)
     {
         if (pindex->IsProofOfStake())
@@ -434,7 +434,7 @@ typedef map<CCustodianVote, CCustodianVoteCounter> CustodianVoteCounterMap;
 typedef map<CBitcoinAddress, int64> GrantedAmountMap;
 typedef map<unsigned char, GrantedAmountMap> GrantedAmountPerUnitMap;
 
-bool GenerateCurrencyCoinBases(const std::vector<CVote> vVote, std::map<CBitcoinAddress, CBlockIndex*> mapAlreadyElected, std::vector<CTransaction>& vCurrencyCoinBaseRet)
+bool GenerateCurrencyCoinBases(const std::vector<CVote> vVote, const std::map<CBitcoinAddress, CBlockIndex*>& mapAlreadyElected, std::vector<CTransaction>& vCurrencyCoinBaseRet)
 {
     vCurrencyCoinBaseRet.clear();
 
