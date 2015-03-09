@@ -10,6 +10,7 @@ class CBlockIndex;
 static const int64 COIN_PARK_RATE = 100000 * COIN; // Park rate internal encoding precision. The minimum possible rate is (1.0 / COIN_PARK_RATE) coins per parked coin
 static const int64 MAX_PARK_RATE = 1000000 * COIN_PARK_RATE;
 static const unsigned char MAX_COMPACT_DURATION = 30; // about 2000 years
+static const int64 MAX_PARK_DURATION = 1000000000; // about 1900 years
 
 class CCustodianVote
 {
@@ -122,7 +123,7 @@ inline bool CompactDurationRange(unsigned char nCompactDuration)
 
 inline bool ParkDurationRange(int64 nDuration)
 {
-    return (nDuration >= 1 && nDuration <= 1000000000); // about 1900 years
+    return (nDuration >= 1 && nDuration <= MAX_PARK_DURATION);
 }
 
 inline bool ParkRateRange(int64 nRate)

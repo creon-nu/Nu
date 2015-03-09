@@ -1618,6 +1618,9 @@ bool IsPark(const CScript& scriptPubKey)
 
 bool ExtractPark(const CScript& scriptPubKey, int64& nDurationRet, CTxDestination& unparkAddressRet)
 {
+    nDurationRet = 0;
+    unparkAddressRet = CNoDestination();
+
     vector<valtype> vSolutions;
     txnouttype whichType;
     if (!Solver(scriptPubKey, whichType, vSolutions))

@@ -337,6 +337,9 @@ void CheckNoPark(const CScript& script)
     int64 nDuration;
     CTxDestination unparkDestination;
     BOOST_CHECK(!ExtractPark(script, nDuration, unparkDestination));
+    BOOST_CHECK_EQUAL(0, nDuration);
+    CBitcoinAddress address;
+    BOOST_CHECK(!address.Set(unparkDestination, 'S'));
 }
 
 BOOST_AUTO_TEST_CASE(park_solver)
@@ -348,13 +351,41 @@ BOOST_AUTO_TEST_CASE(park_solver)
     CheckPark(  CScript() << OP_RETURN << OP_3 << (CBigNum(1) << 10) << uint160(5555), 1 << 10, uint160(5555));
     CheckNoPark(CScript() << OP_RETURN << OP_3 << (CBigNum(1) << 31) << uint160(5555));
 
+    CheckPark(  CScript() << OP_RETURN << OP_3 <<  1                      << uint160(5555), 1, uint160(5555));
+    CheckNoPark(CScript() << OP_RETURN << OP_3 <<  0                      << uint160(5555));
+    CheckNoPark(CScript() << OP_RETURN << OP_3 <<  -1                     << uint160(5555));
+    CheckNoPark(CScript() << OP_RETURN << OP_3 <<  -MAX_PARK_DURATION     << uint160(5555));
+    CheckPark(  CScript() << OP_RETURN << OP_3 <<  MAX_PARK_DURATION      << uint160(5555), MAX_PARK_DURATION, uint160(5555));
+    CheckNoPark(CScript() << OP_RETURN << OP_3 << (MAX_PARK_DURATION + 1) << uint160(5555));
+
     CScript script;
-    script.SetPark(-1, uint160(12));
+
+    BOOST_CHECK_THROW(script.SetPark(-1, uint160(12)), runtime_error);
+    BOOST_CHECK(script.empty());
     CheckNoPark(script);
-    script.SetPark(0, uint160(12));
+
+    BOOST_CHECK_THROW(script.SetPark(0, uint160(12)), runtime_error);
+    BOOST_CHECK(script.empty());
     CheckNoPark(script);
+
     script.SetPark(1, uint160(12));
     CheckPark(script, 1, uint160(12));
+
+    {
+        string str("\x01\x02\x03\x04");
+        vector<unsigned char> vec(str.begin(), str.end());
+        CheckPark(CScript() << OP_RETURN << OP_3 << vec << uint160(5555), 67305985, uint160(5555));
+    }
+    {
+        string str("\x00\x01\x02\x03\x04");
+        vector<unsigned char> vec(str.begin(), str.end());
+        CheckNoPark(CScript() << OP_RETURN << OP_3 << vec << uint160(5555));
+    }
+    {
+        string str("");
+        vector<unsigned char> vec(str.begin(), str.end());
+        CheckNoPark(CScript() << OP_RETURN << OP_3 << vec << uint160(5555));
+    }
 }
 
 BOOST_AUTO_TEST_SUITE_END()
