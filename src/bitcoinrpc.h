@@ -19,6 +19,7 @@ void ThreadRPCServer(void* parg);
 int CommandLineRPC(int argc, char *argv[]);
 
 std::string CallPeercoinRPC(const std::string &strMethod, const json_spirit::Array &params);
+int64 AmountFromValue(const json_spirit::Value& value);
 
 class peercoin_rpc_error : public std::runtime_error
 {

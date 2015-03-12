@@ -14,6 +14,7 @@
 #include "bitcoinrpc.h"
 #include "script.h"
 #include "vote.h"
+#include "datafeed.h"
 #include <boost/algorithm/string/replace.hpp>
 
 using namespace std;
@@ -152,10 +153,31 @@ void CWallet::SetBestChain(const CBlockLocator& loc)
     walletdb.WriteBestBlock(loc);
 }
 
+void CWallet::SetVote(const CVote& vote)
+{
+    if (this->vote != vote)
+    {
+        this->vote = vote;
+        SaveVote();
+
+        std::string strCmd = GetArg("-votenotify", "");
+        printf("votenotify: %s\n", strCmd.c_str());
+        if (!strCmd.empty())
+            boost::thread t(runCommand, strCmd); // thread runs free
+
+    }
+}
+
 void CWallet::SaveVote() const
 {
     CWalletDB walletdb(strWalletFile);
     walletdb.WriteVote(vote);
+}
+
+void CWallet::SaveDataFeed() const
+{
+    CWalletDB walletdb(strWalletFile);
+    walletdb.WriteDataFeed(dataFeed);
 }
 
 // This class implements an addrIncoming entry that causes pre-0.4
@@ -1638,6 +1660,11 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
 
 bool CWallet::CreateUnparkTransaction(CWalletTx& wtxParked, unsigned int nOut, const CBitcoinAddress& unparkAddress, uint64 nAmount, CWalletTx& wtxNew)
 {
+    return CreateUnparkTransaction(wtxParked.GetHash(), nOut, unparkAddress, nAmount, wtxNew);
+}
+
+bool CWallet::CreateUnparkTransaction(const uint256& hashPark, unsigned int nOut, const CBitcoinAddress& unparkAddress, uint64 nAmount, CWalletTx& wtxNew)
+{
     wtxNew.BindWallet(this);
 
     {
@@ -1656,7 +1683,7 @@ bool CWallet::CreateUnparkTransaction(CWalletTx& wtxParked, unsigned int nOut, c
 
             CScript scriptSig;
             scriptSig.SetUnpark();
-            wtxNew.vin.push_back(CTxIn(wtxParked.GetHash(), nOut, scriptSig));
+            wtxNew.vin.push_back(CTxIn(hashPark, nOut, scriptSig));
 
             // Fill vtxPrev by copying from previous transactions vtxPrev
             wtxNew.AddSupportingTransactions(txdb);

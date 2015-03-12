@@ -42,6 +42,8 @@ When you're done working, you should remove all containers with:
 
     src/test/containers/remove_nu_containers
 
+It will also clean the shared temporary directories in `src/test/containers/tmp`.
+
 
 Testing with old versions
 -------------------------

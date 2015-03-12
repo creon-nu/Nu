@@ -32,6 +32,17 @@ public:
         READWRITE(nAmount);
     )
 
+    inline bool operator==(const CCustodianVote& other) const
+    {
+        return (cUnit == other.cUnit &&
+                hashAddress == other.hashAddress &&
+                nAmount == other.nAmount);
+    }
+    inline bool operator!=(const CCustodianVote& other) const
+    {
+        return !(*this == other);
+    }
+
     class CDestinationVisitor : public boost::static_visitor<bool>
     {
         private:
@@ -263,6 +274,20 @@ public:
     uint64 nCoinAgeDestroyed;
 
     bool IsValid() const;
+
+    void Upgrade();
+
+    inline bool operator==(const CVote& other) const
+    {
+        return (nVersion == other.nVersion &&
+                vCustodianVote == other.vCustodianVote &&
+                vParkRateVote == other.vParkRateVote &&
+                vMotion == other.vMotion);
+    }
+    inline bool operator!=(const CVote& other) const
+    {
+        return !(*this == other);
+    }
 };
 
 bool IsVote(const CScript& scriptPubKey);

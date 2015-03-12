@@ -10,6 +10,7 @@
 #include "wallet.h"
 #include "walletdb.h" // for BackupWallet
 #include "base58.h"
+#include "datafeed.h"
 
 #include <QSet>
 #include <QTimer>
@@ -283,8 +284,7 @@ void WalletModel::setVote(const CVote& vote)
     {
         LOCK(wallet->cs_wallet);
 
-        wallet->vote = vote;
-        wallet->SaveVote();
+        wallet->SetVote(vote);
     }
 }
 
@@ -502,3 +502,31 @@ CDefaultKey WalletModel::getDefaultKey()
 {
     return CDefaultKey(wallet);
 }
+
+CDataFeed WalletModel::getDataFeed() const
+{
+    return wallet->GetDataFeed();
+}
+
+void WalletModel::setDataFeed(const CDataFeed& dataFeed)
+{
+    wallet->SetDataFeed(dataFeed);
+}
+
+void WalletModel::updateFromDataFeed()
+{
+    try
+    {
+        UpdateFromDataFeed();
+    }
+    catch (std::exception& e)
+    {
+        throw WalletModelException(e.what());
+    }
+}
+
+QString WalletModel::getDataFeedError() const
+{
+    return QString::fromStdString(strDataFeedError);
+}
+

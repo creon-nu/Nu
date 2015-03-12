@@ -11,6 +11,7 @@
 #include "keystore.h"
 #include "script.h"
 #include "walletdb.h"
+#include "datafeed.h"
 
 class CWalletTx;
 class CReserveKey;
@@ -88,6 +89,8 @@ public:
     std::set<int64> setKeyPool;
 
     CVote vote;
+
+    CDataFeed dataFeed;
 
     // ppcoin: optional setting to unlock wallet for block minting only;
     //         serves to disable the trivial sendmoney when OS account compromised
@@ -184,6 +187,7 @@ public:
     bool CreateTransaction(CScript scriptPubKey, int64 nValue, CWalletTx& wtxNew, CReserveKey& reservekey, int64& nFeeRet, const CCoinControl *coinControl=NULL);
     bool CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int64 nSearchInterval, CTransaction& txNew, CBlockIndex* pindexprev);
     bool CreateUnparkTransaction(CWalletTx& wtxParked, unsigned int nOut, const CBitcoinAddress& unparkAddress, uint64 nAmount, CWalletTx& wtxNew);
+    bool CreateUnparkTransaction(const uint256& hashPark, unsigned int nOut, const CBitcoinAddress& unparkAddress, uint64 nAmount, CWalletTx& wtxNew);
     bool CommitTransaction(CWalletTx& wtxNew, CReserveKey& reservekey);
     std::string SendMoney(CScript scriptPubKey, int64 nValue, CWalletTx& wtxNew, bool fAskFee=false);
     std::string SendMoneyToDestination(const CTxDestination &address, int64 nValue, CWalletTx& wtxNew, bool fAskFee=false);
@@ -324,6 +328,7 @@ public:
     void AddParked(const COutPoint& outpoint);
     void RemoveParked(const COutPoint& outpoint);
 
+    void SetVote(const CVote& vote);
     void SaveVote() const;
 
     int64 GetMinTxFee() const
@@ -335,6 +340,18 @@ public:
     {
         return MinTxOutAmount(cUnit);
     }
+
+    void SetDataFeed(const CDataFeed& dataFeed, bool fSave = true)
+    {
+        this->dataFeed = dataFeed;
+        if (fSave)
+            SaveDataFeed();
+    }
+    const CDataFeed& GetDataFeed() const
+    {
+        return dataFeed;
+    }
+    void SaveDataFeed() const;
 };
 
 /** A key allocated from the key pool. */

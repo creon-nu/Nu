@@ -14,6 +14,7 @@
 #include "wallet.h"
 #include "liquidityinfo.h"
 #include "coincontrol.h"
+#include "datafeed.h"
 #include <boost/algorithm/string/replace.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>
@@ -1473,43 +1474,43 @@ bool CTransaction::ConnectInputs(CTxDB& txdb, MapPrevTx inputs,
             if (IsUnpark())
             {
                 if (!txPrev.IsParked(prevout.n))
-                    return DoS(100, "ConnectInputs() : prevout is not parked");
+                    return error("ConnectInputs() : prevout is not parked");
 
                 if (vin.size() != 1)
-                    return DoS(100, "ConnectInputs() : unpark transaction with too many inputs");
+                    return error("ConnectInputs() : unpark transaction with too many inputs");
 
                 if (vout.size() != 1)
-                    return DoS(100, "ConnectInputs() : unpark transaction with too many outputs");
+                    return error("ConnectInputs() : unpark transaction with too many outputs");
 
                 uint64 nDuration;
                 CTxDestination unparkDestination;
                 if (!ExtractPark(txPrev.vout[prevout.n].scriptPubKey, nDuration, unparkDestination))
-                    return DoS(100, "ConnectInputs() : ExtractPark failed");
+                    return error("ConnectInputs() : ExtractPark failed");
                 CBitcoinAddress unparkAddress(unparkDestination, txPrev.cUnit);
 
                 CBlockIndex *pindex = NULL;
                 if (txindex.GetDepthInMainChain(pindex) < nDuration)
-                    return DoS(100, "ConnectInputs() : parking duration has not passed");
+                    return error("ConnectInputs() : parking duration has not passed");
 
                 if (!pindex)
-                    return DoS(100, "ConnectInputs() : parked transaction not in main chain");
+                    return error("ConnectInputs() : parked transaction not in main chain");
 
                 uint64 nValue = txPrev.vout[prevout.n].nValue;
                 uint64 nPremium = pindex->GetPremium(nValue, nDuration, cUnit);
-                uint64 nMaxValueOut = nValue + nPremium;
+                uint64 nExpectedValueOut = nValue + nPremium;
 
-                if (GetValueOut() > nMaxValueOut)
-                    return DoS(100, "ConnectInputs() : invalid unpark value");
+                if (GetValueOut() != nExpectedValueOut)
+                    return error("ConnectInputs() : unpark value doesn't match the expected value");
 
                 CTxDestination outDestination;
                 if (!ExtractDestination(vout[0].scriptPubKey, outDestination))
-                    return DoS(100, "ConnectInputs() : ExtractAddress failed");
+                    return error("ConnectInputs() : ExtractAddress failed");
                 CBitcoinAddress outAddress(outDestination, cUnit);
 
                 const CKeyID& outID = get<CKeyID>(outDestination);
                 const CKeyID& unparkID = get<CKeyID>(unparkDestination);
                 if (outID != unparkID)
-                    return DoS(100, "ConnectInputs() : invalid unpark address");
+                    return error("ConnectInputs() : invalid unpark address");
 
                 fValidUnpark = true;
             }
@@ -3070,6 +3071,12 @@ string GetWarnings(string strFor)
     string strRPC;
     if (GetBoolArg("-testsafemode"))
         strRPC = "test";
+
+    if (strDataFeedError != "")
+    {
+        nPriority = 0;
+        strStatusBar = strDataFeedError;
+    }
 
     // ppcoin: wallet lock warning for minting
     if (strMintWarning != "")
