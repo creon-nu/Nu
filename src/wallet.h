@@ -227,6 +227,8 @@ public:
     }
     bool IsMine(const CTransaction& tx) const
     {
+        if (tx.cUnit != cUnit)
+            return false;
         BOOST_FOREACH(const CTxOut& txout, tx.vout)
             if (IsMine(txout))
                 return true;
@@ -234,10 +236,14 @@ public:
     }
     bool IsFromMe(const CTransaction& tx) const
     {
+        if (tx.cUnit != cUnit)
+            return false;
         return (GetDebit(tx) > 0);
     }
     int64 GetDebit(const CTransaction& tx) const
     {
+        if (tx.cUnit != cUnit)
+            return 0;
         // Unpark transactions never have debit (the amount was debited when it was parked)
         if (tx.IsUnpark())
             return 0;
@@ -253,6 +259,8 @@ public:
     }
     int64 GetCredit(const CTransaction& tx) const
     {
+        if (tx.cUnit != cUnit)
+            return 0;
         int64 nCredit = 0;
         BOOST_FOREACH(const CTxOut& txout, tx.vout)
         {
@@ -264,6 +272,8 @@ public:
     }
     int64 GetChange(const CTransaction& tx) const
     {
+        if (tx.cUnit != cUnit)
+            return 0;
         int64 nChange = 0;
         BOOST_FOREACH(const CTxOut& txout, tx.vout)
         {
