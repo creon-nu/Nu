@@ -3881,7 +3881,7 @@ Value signrawtransaction(const Array& params, bool fHelp)
         BOOST_FOREACH(Value k, keys)
         {
             CBitcoinSecret vchSecret;
-            bool fGood = vchSecret.SetString(k.get_str());
+            bool fGood = vchSecret.SetString(k.get_str(), pwalletMain->Unit());
             if (!fGood)
                 throw JSONRPCError(-5,"Invalid private key");
             CKey key;
