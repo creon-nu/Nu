@@ -20,10 +20,12 @@
 
 #include <string>
 #include <vector>
+
 #include "bignum.h"
 #include "key.h"
 #include <boost/format.hpp>
 #include "script.h"
+#include "allocators.h"
 
 static const char* pszBase58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
 
@@ -182,19 +184,13 @@ protected:
     unsigned char nVersion;
 
     // the actually encoded data
-    std::vector<unsigned char> vchData;
+    typedef std::vector<unsigned char, zero_after_free_allocator<unsigned char> > vector_uchar;
+    vector_uchar vchData;
 
     CBase58Data()
     {
         nVersion = 0;
         vchData.clear();
-    }
-
-    ~CBase58Data()
-    {
-        // zero the memory, as it may contain sensitive data
-        if (!vchData.empty())
-            OPENSSL_cleanse(&vchData[0], vchData.size());
     }
 
     void SetData(int nVersionIn, const void* pdata, size_t nSize)
@@ -225,7 +221,7 @@ public:
         vchData.resize(vchTemp.size() - 1);
         if (!vchData.empty())
             memcpy(&vchData[0], &vchTemp[1], vchData.size());
-        OPENSSL_cleanse(&vchTemp[0], vchData.size());
+        OPENSSL_cleanse(&vchTemp[0], vchTemp.size());
         return true;
     }
 
@@ -286,23 +282,39 @@ public:
         SCRIPT_ADDRESS = 125, // Peershare script addresses begin with 's'
         PUBKEY_ADDRESS_TEST = 32,
         SCRIPT_ADDRESS_TEST = 212,
+
+        S_PUBKEY_ADDRESS = 63,
+        S_SCRIPT_ADDRESS = 64,
+        S_PUBKEY_ADDRESS_TEST = 125,
+        S_SCRIPT_ADDRESS_TEST = 126,
+
+        B_PUBKEY_ADDRESS = 25,
+        B_SCRIPT_ADDRESS = 26,
+        B_PUBKEY_ADDRESS_TEST = 85,
+        B_SCRIPT_ADDRESS_TEST = 86,
     };
 
-    unsigned char ExpectedVersion(unsigned char cUnit, bool fPubKey, bool fTest = fTestNet) const
+    unsigned char PubKeyVersion(unsigned char cUnit) const
     {
         switch (cUnit)
         {
-            // See https://gist.github.com/sigmike/9295530
             case 'S':
-                if (fTestNet)
-                    return fPubKey ? 125 : 126;
-                else
-                    return fPubKey ? 63 : 64;
+                return fTestNet ? S_PUBKEY_ADDRESS_TEST : S_PUBKEY_ADDRESS;
             case 'B':
-                if (fTestNet)
-                    return fPubKey ? 85 : 86;
-                else
-                    return fPubKey ? 25 : 26;
+                return fTestNet ? B_PUBKEY_ADDRESS_TEST : B_PUBKEY_ADDRESS;
+            default:
+                throw std::runtime_error((boost::format("No address version defined for unit '%c'") % cUnit).str());
+        }
+    }
+
+    unsigned char ScriptVersion(unsigned char cUnit) const
+    {
+        switch (cUnit)
+        {
+            case 'S':
+                return fTestNet ? S_SCRIPT_ADDRESS_TEST : S_SCRIPT_ADDRESS;
+            case 'B':
+                return fTestNet ? B_SCRIPT_ADDRESS_TEST : B_SCRIPT_ADDRESS;
             default:
                 throw std::runtime_error((boost::format("No address version defined for unit '%c'") % cUnit).str());
         }
@@ -310,30 +322,43 @@ public:
 
     unsigned char GetUnit() const
     {
-        switch (nVersion)
+        if (fTestNet)
         {
-            case 125:
-            case 126:
-            case 63:
-            case 64:
-                return 'S';
-            case 85:
-            case 86:
-            case 25:
-            case 26:
-                return 'B';
-            default:
-                return '?';
+            switch (nVersion)
+            {
+                case S_PUBKEY_ADDRESS_TEST:
+                case S_SCRIPT_ADDRESS_TEST:
+                    return 'S';
+                case B_PUBKEY_ADDRESS_TEST:
+                case B_SCRIPT_ADDRESS_TEST:
+                    return 'B';
+                default:
+                    return '?';
+            }
+        }
+        else
+        {
+            switch (nVersion)
+            {
+                case S_PUBKEY_ADDRESS:
+                case S_SCRIPT_ADDRESS:
+                    return 'S';
+                case B_PUBKEY_ADDRESS:
+                case B_SCRIPT_ADDRESS:
+                    return 'B';
+                default:
+                    return '?';
+            }
         }
     }
 
     bool Set(const CKeyID &id, unsigned char cUnit) {
-        SetData(ExpectedVersion(cUnit, true), &id, 20);
+        SetData(PubKeyVersion(cUnit), &id, 20);
         return true;
     }
 
     bool Set(const CScriptID &id, unsigned char cUnit) {
-        SetData(ExpectedVersion(cUnit, false), &id, 20);
+        SetData(ScriptVersion(cUnit), &id, 20);
         return true;
     }
 
@@ -344,7 +369,7 @@ public:
 
     bool IsValid(unsigned char cUnit) const
     {
-        if (nVersion != ExpectedVersion(cUnit, true) && nVersion != ExpectedVersion(cUnit, false))
+        if (nVersion != PubKeyVersion(cUnit) && nVersion != ScriptVersion(cUnit))
             return false;
 
         return vchData.size() == 20;
@@ -387,37 +412,32 @@ public:
         if (!IsValid(cUnit))
             return CNoDestination();
 
-        bool fPubKey = !IsScript(cUnit);
-        if (fPubKey)
-        {
-            uint160 id;
-            memcpy(&id, &vchData[0], 20);
-            return CKeyID(id);
-        }
-        else
-        {
-            uint160 id;
-            memcpy(&id, &vchData[0], 20);
+        uint160 id;
+        memcpy(&id, &vchData[0], 20);
+
+        if (IsScript(cUnit))
             return CScriptID(id);
-        }
+        else
+            return CKeyID(id);
     }
 
     bool GetKeyID(CKeyID &keyID) const {
         unsigned char cUnit = GetUnit();
+
         if (!IsValid(cUnit))
             return false;
-        if (!IsScript(cUnit))
-        {
-            uint160 id;
-            memcpy(&id, &vchData[0], 20);
-            keyID = CKeyID(id);
-            return true;
-        }
-        return false;
+
+        if (IsScript(cUnit))
+            return false;
+
+        uint160 id;
+        memcpy(&id, &vchData[0], 20);
+        keyID = CKeyID(id);
+        return true;
     }
 
     bool IsScript(unsigned char cUnit) const {
-        return nVersion == ExpectedVersion(cUnit, false);
+        return nVersion == ScriptVersion(cUnit);
     }
 
     bool IsScript() const {
@@ -439,7 +459,6 @@ class CPeercoinAddressVisitor : public boost::static_visitor<bool>
 {
 private:
     CPeercoinAddress *addr;
-    unsigned char cUnit;
 public:
     CPeercoinAddressVisitor(CPeercoinAddress *addrIn) : addr(addrIn) { }
     bool operator()(const CKeyID &id) const;

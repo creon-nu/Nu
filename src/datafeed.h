@@ -27,7 +27,7 @@ public:
         vParts.push_back("motions");
     }
 
-    CDataFeed(const std::string sURL, const std::string sSignatureURL, const std::string sSignatureAddress, std::vector<std::string> vParts) :
+    CDataFeed(const std::string& sURL, const std::string& sSignatureURL, const std::string& sSignatureAddress, const std::vector<std::string>& vParts) :
         sURL(sURL),
         sSignatureURL(sSignatureURL),
         sSignatureAddress(sSignatureAddress),

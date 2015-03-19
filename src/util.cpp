@@ -1552,6 +1552,8 @@ double DurationInYears(int64 blocks)
 
 double AnnualInterestRatePercentage(int64 rate, int64 blocks)
 {
+    if (blocks == 0)
+        return 0;
     return (double)rate / COIN_PARK_RATE * 100 / DurationInYears(blocks);
 }
 

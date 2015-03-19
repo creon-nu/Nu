@@ -39,10 +39,8 @@ static const unsigned int MAX_BLOCK_SIGOPS = MAX_BLOCK_SIZE/50;
 static const unsigned int MAX_ORPHAN_TRANSACTIONS = MAX_BLOCK_SIZE/100;
 static const unsigned int MAX_COINSTAKE_SIZE = 1000; // nubit: maximum size of CoinStake transactions
 static const int64 MIN_SHARE_TX_FEE = COIN;
-static const int64 MIN_SHARE_RELAY_TX_FEE = COIN;
 static const int64 MIN_SHARE_TXOUT_AMOUNT = MIN_SHARE_TX_FEE;
 static const int64 MIN_CURRENCY_TX_FEE = CENT;
-static const int64 MIN_CURRENCY_RELAY_TX_FEE = CENT;
 static const int64 MIN_CURRENCY_TXOUT_AMOUNT = MIN_CURRENCY_TX_FEE;
 static const int64 MAX_MONEY = 2000000000 * COIN;
 inline bool MoneyRange(int64 nValue) { return (nValue >= 0 && nValue <= MAX_MONEY); }
@@ -67,7 +65,7 @@ static const unsigned int CUSTODIAN_VOTES = 10000;
 static const int64 MOTION_VOTES = 10000;
 static const int64 PROOF_OF_STAKE_REWARD = 40 * COIN; // Constant reward of Proof of Stake blocks
 static const int64 MIN_COINSTAKE_VALUE = 10000 * COIN; // Minimum value allowed as input in a CoinStake
-static const int64 COIN_PARK_RATE = 100000 * COIN; // Park rate internal encoding precision. The minimum possible rate is (1.0 / COIN_PARK_RATE) coins per parked coin
+static const int64 MAX_COIN_AGE = 100000000000000; // To make sure coin days can be added about 10,000 times without overflow
 
 
 #ifdef USE_UPNP
@@ -87,7 +85,7 @@ static const std::string sAvailableUnits("SB");
 
 inline bool ValidUnit(unsigned char cUnit)
 {
-    return sAvailableUnits.find(cUnit) != -1;
+    return sAvailableUnits.find(cUnit) != std::string::npos;
 }
 
 
@@ -153,8 +151,8 @@ void IncrementExtraNonce(CBlock* pblock, CBlockIndex* pindexPrev, unsigned int& 
 void FormatHashBuffers(CBlock* pblock, char* pmidstate, char* pdata, char* phash1);
 bool CheckWork(CBlock* pblock, CWallet& wallet, CReserveKey& reservekey);
 bool CheckProofOfWork(uint256 hash, unsigned int nBits);
-int64 GetProofOfWorkReward(unsigned int nBits);
-int64 GetProofOfStakeReward(int64 nCoinAge);
+int64 GetProofOfWorkReward();
+int64 GetProofOfStakeReward();
 unsigned int ComputeMinWork(unsigned int nBase, int64 nTime);
 int GetNumBlocksOfPeers();
 bool IsInitialBlockDownload();
@@ -178,11 +176,6 @@ inline int GetMaturity(bool fProofOfStake)
 inline int64 MinTxFee(unsigned char cUnit)
 {
     return cUnit == 'S' ? MIN_SHARE_TX_FEE : MIN_CURRENCY_TX_FEE;
-}
-
-inline int64 MinRelayTxFee(unsigned char cUnit)
-{
-    return cUnit == 'S' ? MIN_SHARE_RELAY_TX_FEE : MIN_CURRENCY_RELAY_TX_FEE;
 }
 
 inline int64 MinTxOutAmount(unsigned char cUnit)
@@ -489,13 +482,6 @@ public:
 
 
 
-enum GetMinFee_mode
-{
-    GMF_BLOCK,
-    GMF_RELAY,
-    GMF_SEND,
-};
-
 typedef std::map<uint256, std::pair<CTxIndex, CTransaction> > MapPrevTx;
 
 /** The basic transaction that is broadcasted on the network and contained in
@@ -606,7 +592,7 @@ public:
     bool IsCoinStake() const
     {
         // ppcoin: the coin stake transaction is marked with the first output empty
-        return (vin.size() > 0 && (!vin[0].prevout.IsNull()) && vout.size() >= 2 && vout[0].IsEmpty());
+        return (cUnit == 'S' && vin.size() > 0 && (!vin[0].prevout.IsNull()) && vout.size() >= 2 && vout[0].IsEmpty());
     }
 
     bool IsCurrencyCoinBase() const
@@ -696,17 +682,12 @@ public:
         return MinTxFee(cUnit);
     }
 
-    int64 GetMinRelayFee() const
-    {
-        return MinRelayTxFee(cUnit);
-    }
-
     int64 GetMinTxOutAmount() const
     {
         return MinTxOutAmount(cUnit);
     }
 
-    int64 GetMinFee(unsigned int nBlockSize=1, bool fAllowFree=false, enum GetMinFee_mode mode=GMF_BLOCK, unsigned int nBytes=0) const;
+    int64 GetMinFee(unsigned int nBytes=0) const;
 
     bool ReadFromDisk(CDiskTxPos pos, FILE** pfileRet=NULL)
     {
@@ -741,7 +722,8 @@ public:
                 a.nTime     == b.nTime &&
                 a.vin       == b.vin &&
                 a.vout      == b.vout &&
-                a.nLockTime == b.nLockTime);
+                a.nLockTime == b.nLockTime &&
+                a.cUnit     == b.cUnit);
     }
 
     friend bool operator!=(const CTransaction& a, const CTransaction& b)
@@ -819,13 +801,15 @@ public:
     bool ClientConnectInputs();
     bool CheckTransaction() const;
     bool AcceptToMemoryPool(CTxDB& txdb, bool fCheckInputs=true, bool* pfMissingInputs=NULL);
-    bool GetCoinAge(CTxDB& txdb, uint64& nCoinAge) const;  // ppcoin: get transaction coin age
+    bool GetCoinAge(CTxDB& txdb, int64& nCoinAge) const;  // ppcoin: get transaction coin age
 
     // Add an output, split if appropriate
-    void AddOutput(const CScript script, int64 nAmount);
+    void AddOutput(const CScript& script, int64 nAmount);
 
     // Add the change output, split if appropriate, and back to scriptChange if avatar mode is enabled
     void AddChange(int64 nChange, CScript& scriptChange, const CCoinControl* coinControl, CReserveKey& reservekey);
+
+    bool CheckParkWithResult(const std::vector<CParkRateVote>& vParkRateResult) const;
 
 protected:
     const CTxOut& GetOutputFor(const CTxIn& input, const MapPrevTx& inputs) const;
@@ -876,7 +860,8 @@ public:
 
 
     int SetMerkleBranch(const CBlock* pblock=NULL);
-    int GetDepthInMainChain(CBlockIndex* &pindexRet) const;
+    int GetDepthInChain(const CBlockIndex* pindexChain, CBlockIndex* &pindexRet) const;
+    int GetDepthInMainChain(CBlockIndex* &pindexRet) const { return GetDepthInChain(pindexBest, pindexRet); }
     int GetDepthInMainChain() const { CBlockIndex *pindexRet; return GetDepthInMainChain(pindexRet); }
     bool IsInMainChain() const { return GetDepthInMainChain() > 0; }
     int GetBlocksToMaturity() const;
@@ -937,7 +922,8 @@ public:
     {
         return !(a == b);
     }
-    int GetDepthInMainChain(CBlockIndex* &pindexRet) const;
+    int GetDepthInChain(const CBlockIndex* pindexChain, CBlockIndex* &pindexRet) const;
+    int GetDepthInMainChain(CBlockIndex* &pindexRet) const { return GetDepthInChain(pindexBest, pindexRet); }
     int GetDepthInMainChain() const { CBlockIndex *pindexRet; return GetDepthInMainChain(pindexRet); }
  
 };
@@ -1206,8 +1192,8 @@ public:
     bool AddToBlockIndex(unsigned int nFile, unsigned int nBlockPos);
     bool CheckBlock() const;
     bool AcceptBlock();
-    bool GetCoinAge(uint64& nCoinAge) const; // ppcoin: calculate total coin age spent in block
-    bool GetCoinStakeAge(uint64& nCoinAge) const;
+    bool GetCoinAge(int64& nCoinAge) const; // ppcoin: calculate total coin age spent in block
+    bool GetCoinStakeAge(int64& nCoinAge) const;
     bool SignBlock(const CKeyStore& keystore);
     bool CheckBlockSignature() const;
     unsigned int GetStakeEntropyBit() const; // ppcoin: entropy bit for stake modifier if chosen by modifier
@@ -1261,7 +1247,7 @@ public:
     // nubit vote fields
     CVote vote;
     std::vector<CParkRateVote> vParkRateResult;
-    uint64 nCoinAgeDestroyed;
+    int64 nCoinAgeDestroyed;
 
     // nubit: elected custodians
     std::vector<CCustodianVote> vElectedCustodian;
@@ -1380,6 +1366,17 @@ public:
         return (pnext || this == pindexBest);
     }
 
+    bool IsInChain(const CBlockIndex* pindexChain) const
+    {
+        if (pindexChain == pindexBest)
+            return IsInMainChain();
+
+        for (const CBlockIndex* pindex = pindexChain; pindex; pindex = pindex->pprev)
+            if (pindex == this)
+                return true;
+        return false;
+    }
+
     bool CheckIndex() const
     {
         return IsProofOfWork() ? CheckProofOfWork(GetBlockHash(), nBits) : true;
@@ -1468,7 +1465,7 @@ public:
             nFlags |= BLOCK_STAKE_MODIFIER;
     }
 
-    uint64 GetPremium(uint64 nValue, uint64 nDuration, unsigned char cUnit)
+    int64 GetPremium(int64 nValue, int64 nDuration, unsigned char cUnit)
     {
         return ::GetPremium(nValue, nDuration, cUnit, vParkRateResult);
     }
@@ -1543,15 +1540,22 @@ public:
         READWRITE(nBlockPos);
         READWRITE(nHeight);
         READWRITE(nMint);
+
         if (nVersion <= 30000) // v0.3.0
         {
             int64 nMoneySupply = 0;
             READWRITE(nMoneySupply);
+            if (fRead)
+                const_cast<CDiskBlockIndex*>(this)->mapMoneySupply.clear();
         }
         else
             READWRITE(mapMoneySupply);
+
         if (nVersion > 40400) // v0.4.4
             READWRITE(mapTotalParked);
+        else if (fRead)
+            const_cast<CDiskBlockIndex*>(this)->mapTotalParked.clear();
+
         READWRITE(nFlags);
         READWRITE(nStakeModifier);
         if (IsProofOfStake())
