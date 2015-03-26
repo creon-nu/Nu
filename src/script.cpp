@@ -230,7 +230,9 @@ const char* GetOpName(opcodetype opcode)
     // template matching params
     case OP_PUBKEYHASH             : return "OP_PUBKEYHASH";
     case OP_PUBKEY                 : return "OP_PUBKEY";
+    case OP_SMALLINTEGER           : return "OP_SMALLINTEGER";
     case OP_SMALLDATA              : return "OP_SMALLDATA";
+    case OP_INTEGER                : return "OP_INTEGER";
 
     case OP_INVALIDOPCODE          : return "OP_INVALIDOPCODE";
     default:
@@ -1204,6 +1206,9 @@ bool CheckSig(vector<unsigned char> vchSig, vector<unsigned char> vchPubKey, CSc
 //
 bool Solver(const CScript& scriptPubKey, txnouttype& typeRet, vector<vector<unsigned char> >& vSolutionsRet)
 {
+    typeRet = TX_NONSTANDARD;
+    vSolutionsRet.clear();
+
     // Templates
     static map<txnouttype, CScript> mTemplates;
     if (mTemplates.empty())
@@ -1321,10 +1326,10 @@ bool Solver(const CScript& scriptPubKey, txnouttype& typeRet, vector<vector<unsi
             }
             else if (opcode2 == OP_SMALLDATA)
             {
-				//small pushdata, <= 80bytes
-				if (vch1.size() > 80)
-				break;
-			}
+                //small pushdata, <= 80bytes
+                if (vch1.size() > 80)
+                    break;
+            }
             else if (opcode1 != opcode2 || vch1 != vch2)
             {
                 // Others must match exactly
@@ -1391,23 +1396,13 @@ bool Solver(const CKeyStore& keystore, const CScript& scriptPubKey, uint256 hash
     {
     case TX_NONSTANDARD:
     case TX_NULL_DATA:
+    case TX_PARK:
         return false;
     case TX_PUBKEY:
         keyID = CPubKey(vSolutions[0]).GetID();
         return Sign1(keyID, keystore, hash, nHashType, scriptSigRet);
     case TX_PUBKEYHASH:
         keyID = CKeyID(uint160(vSolutions[0]));
-        if (!Sign1(keyID, keystore, hash, nHashType, scriptSigRet))
-            return false;
-        else
-        {
-            CPubKey vch;
-            keystore.GetPubKey(keyID, vch);
-            scriptSigRet << vch;
-        }
-        return true;
-    case TX_PARK:
-        keyID = CKeyID(uint160(vSolutions[1]));
         if (!Sign1(keyID, keystore, hash, nHashType, scriptSigRet))
             return false;
         else
@@ -1432,15 +1427,14 @@ int ScriptSigArgsExpected(txnouttype t, const std::vector<std::vector<unsigned c
     switch (t)
     {
     case TX_NONSTANDARD:
-        return -1;
     case TX_NULL_DATA:
-        return 1;
+        return -1;
     case TX_PUBKEY:
         return 1;
     case TX_PUBKEYHASH:
         return 2;
     case TX_PARK:
-        return 1;
+        return 1; // a single OP_3
     case TX_MULTISIG:
         if (vSolutions.size() < 1 || vSolutions[0].size() < 1)
             return -1;
@@ -1453,6 +1447,7 @@ int ScriptSigArgsExpected(txnouttype t, const std::vector<std::vector<unsigned c
 
 bool IsStandard(const CScript& scriptPubKey, txnouttype& whichType)
 {
+    whichType = TX_NONSTANDARD;
     vector<valtype> vSolutions;
     if (!Solver(scriptPubKey, whichType, vSolutions))
         return false;
@@ -1552,11 +1547,11 @@ bool ExtractDestination(const CScript& scriptPubKey, CTxDestination& addressRet)
 
 bool ExtractDestination(const CScript& scriptPubKey, CTxDestination& addressRet, txnouttype& whichType)
 {
+    addressRet = CNoDestination();
+
     vector<valtype> vSolutions;
     if (!Solver(scriptPubKey, whichType, vSolutions))
         return false;
-    if (whichType == TX_NULL_DATA)
-		return true;
 
     if (whichType == TX_PUBKEY)
     {
@@ -1621,8 +1616,11 @@ bool IsPark(const CScript& scriptPubKey)
     return whichType == TX_PARK;
 }
 
-bool ExtractPark(const CScript& scriptPubKey, uint64& nDurationRet, CTxDestination& unparkAddressRet)
+bool ExtractPark(const CScript& scriptPubKey, int64& nDurationRet, CTxDestination& unparkAddressRet)
 {
+    nDurationRet = 0;
+    unparkAddressRet = CNoDestination();
+
     vector<valtype> vSolutions;
     txnouttype whichType;
     if (!Solver(scriptPubKey, whichType, vSolutions))
@@ -1638,13 +1636,20 @@ bool ExtractPark(const CScript& scriptPubKey, uint64& nDurationRet, CTxDestinati
     }
 
     int64 nDuration = CastToBigNum(vSolutions[0]).getint();
-    if (nDuration <= 0)
+    if (!ParkDurationRange(nDuration))
         return false;
-    nDurationRet = nDuration;
 
+    nDurationRet = nDuration;
     unparkAddressRet = CKeyID(uint160(vSolutions[1]));
 
     return true;
+}
+
+bool IsValidPark(const CScript& scriptPubKey)
+{
+    int64 nDurationRet;
+    CTxDestination unparkAddressRet;
+    return ExtractPark(scriptPubKey, nDurationRet, unparkAddressRet);
 }
 
 bool IsUnpark(const CScript& scriptSig)
@@ -1965,6 +1970,8 @@ void CScript::SetDestination(const CTxDestination& dest)
 void CScript::SetPark(int64 nDuration, const CKeyID& unparkAddress)
 {
     this->clear();
+    if (!ParkDurationRange(nDuration))
+        throw runtime_error("Invalid park duration");
     *this << OP_RETURN << OP_3 << nDuration << unparkAddress;
 }
 

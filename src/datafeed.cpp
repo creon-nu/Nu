@@ -23,8 +23,11 @@ private:
     string error;
     string url;
 
-    size_t ReceiveCallback(void *contents, size_t size, size_t nmemb)
+    size_t ReceiveCallback(char *contents, size_t size, size_t nmemb)
     {
+        if (size == 0 || nmemb == 0)
+            return 0;
+
         size_t written = 0;
 
         try
@@ -35,7 +38,7 @@ private:
             if (result.size() + realsize > nMaxSize)
                 throw runtime_error((boost::format("Data feed size exceeds limit (%1% bytes)") % nMaxSize).str());
 
-            result.append((char*)contents, realsize);
+            result.append(contents, realsize);
             written = realsize;
         }
         catch (exception &e)
@@ -46,7 +49,7 @@ private:
         return written;
     }
 
-    static size_t WriteMemoryCallback(void *contents, size_t size, size_t nmemb, void *userp)
+    static size_t WriteMemoryCallback(char *contents, size_t size, size_t nmemb, void *userp)
     {
         DataFeedRequest *request = (DataFeedRequest*)userp;
         return request->ReceiveCallback(contents, size, nmemb);
@@ -77,11 +80,17 @@ public:
     ~DataFeedRequest()
     {
         if (curl)
+        {
             curl_easy_cleanup(curl);
+            curl = NULL;
+        }
     }
 
     void Perform()
     {
+        result.clear();
+        error.clear();
+
         CURLcode res;
         res = curl_easy_perform(curl);
 
@@ -99,12 +108,9 @@ public:
         else
         {
             if (error == "")
-            {
                 error = (boost::format("Data feed failed: %s") % curl_easy_strerror(res)).str();
-                throw runtime_error(error);
-            }
-            else
-                throw runtime_error(error);
+
+            throw runtime_error(error);
         }
     }
 
@@ -124,7 +130,7 @@ void VerifyDataFeedSignature(const string& strMessage, const string& strSign, co
     if (!addr.GetKeyID(keyID))
         throw runtime_error("Data feed address does not refer to key");
 
-    bool fInvalid = false;
+    bool fInvalid = true;
     vector<unsigned char> vchSig = DecodeBase64(strSign.c_str(), &fInvalid);
 
     if (fInvalid)
@@ -161,9 +167,13 @@ bool GetVoteFromDataFeed(const CDataFeed& dataFeed, CVote& voteRet)
 
         Value valReply;
         if (!read_string(request.GetResult(), valReply))
-            throw runtime_error("Data feed returned invalid data");
+            throw runtime_error("Data feed returned invalid JSON data");
 
-        voteRet = ParseVote(valReply.get_obj());
+        CVote vote = ParseVote(valReply.get_obj());
+        if (!vote.IsValid())
+            throw runtime_error("Data feed vote is invalid");
+
+        voteRet = vote;
         result = true;
     }
     catch (exception &e)
@@ -197,16 +207,16 @@ CVote ParseVote(const Object& objVote)
                     {
                         CBitcoinAddress address(custodianVoteAttribute.value_.get_str());
                         if (!address.IsValid())
-                            throw runtime_error("Invalid address\n");
+                            throw runtime_error("Invalid address");
 
                         custodianVote.SetAddress(address);
                         if (custodianVote.cUnit == 'S' || !ValidUnit(custodianVote.cUnit))
-                            throw runtime_error("Invalid custodian unit\n");
+                            throw runtime_error("Invalid custodian unit");
                     }
                     else if (custodianVoteAttribute.name_ == "amount")
                         custodianVote.nAmount = AmountFromValue(custodianVoteAttribute.value_);
                     else
-                        throw runtime_error("Invalid custodian vote object\n");
+                        throw runtime_error("Invalid custodian vote object");
                 }
                 vote.vCustodianVote.push_back(custodianVote);
             }
@@ -220,9 +230,9 @@ CVote ParseVote(const Object& objVote)
                 {
                     if (parkRateVoteAttribute.name_ == "unit")
                     {
-                        parkRateVote.cUnit = parkRateVoteAttribute.value_.get_str()[0];
+                        parkRateVote.cUnit = parkRateVoteAttribute.value_.get_str().c_str()[0];
                         if (parkRateVote.cUnit == 'S' || !ValidUnit(parkRateVote.cUnit))
-                            throw runtime_error("Invalid park rate unit\n");
+                            throw runtime_error("Invalid park rate unit");
                     }
                     else if (parkRateVoteAttribute.name_ == "rates")
                     {
@@ -237,34 +247,34 @@ CVote ParseVote(const Object& objVote)
                                    double compactDuration = log2(blocks);
                                    double integerPart;
                                    if (modf(compactDuration, &integerPart) != 0.0)
-                                       throw runtime_error("Park duration is not a power of 2\n");
-                                   if (compactDuration < 0 || compactDuration > 255)
-                                       throw runtime_error("Park duration out of range\n");
+                                       throw runtime_error("Park duration is not a power of 2");
+                                   if (!CompactDurationRange(compactDuration))
+                                       throw runtime_error("Park duration out of range");
                                    parkRate.nCompactDuration = compactDuration;
                                 }
                                 else if (parkRateAttribute.name_ == "rate")
                                 {
                                     double dAmount = parkRateAttribute.value_.get_real();
                                     if (dAmount < 0.0 || dAmount > MAX_MONEY)
-                                        throw runtime_error("Invalid park rate amount\n");
+                                        throw runtime_error("Invalid park rate amount");
                                     parkRate.nRate = roundint64(dAmount * COIN_PARK_RATE);
                                     if (!MoneyRange(parkRate.nRate))
-                                        throw runtime_error("Invalid park rate amount\n");
+                                        throw runtime_error("Invalid park rate amount");
                                 }
                                 else
-                                    throw runtime_error("Invalid park rate object\n");
+                                    throw runtime_error("Invalid park rate object");
                             }
                             parkRateVote.vParkRate.push_back(parkRate);
                         }
                     }
                     else
-                        throw runtime_error("Invalid custodian vote object\n");
+                        throw runtime_error("Invalid custodian vote object");
                 }
                 vote.vParkRateVote.push_back(parkRateVote);
             }
         }
         else
-            throw runtime_error("Invalid vote object\n");
+            throw runtime_error("Invalid vote object");
     }
 
     return vote;
@@ -300,7 +310,10 @@ void UpdateFromDataFeed()
             else
                 throw runtime_error("Invalid part");
         }
-        pwallet->SetVote(newVote);
+        {
+            LOCK(pwallet->cs_wallet);
+            pwallet->SetVote(newVote);
+        }
         printf("Vote updated from data feed\n");
     }
 }
