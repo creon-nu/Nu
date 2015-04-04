@@ -1,3 +1,7 @@
+// Copyright (c) 2014-2015 The Nu developers
+// Distributed under the MIT/X11 software license, see the accompanying
+// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+
 #include <numeric>
 
 #include "script.h"
@@ -32,10 +36,15 @@ bool IsVote(const CScript& scriptPubKey)
 
 bool ExtractVote(const CScript& scriptPubKey, CVote& voteRet)
 {
+    voteRet.SetNull();
+
     if (!IsVote(scriptPubKey))
         return false;
 
     CScript voteScript(scriptPubKey.begin() + 2, scriptPubKey.end());
+
+    if (!voteScript.IsPushOnly())
+        return false;
 
     vector<vector<unsigned char> > stack;
     CTransaction fakeTx;
@@ -46,13 +55,22 @@ bool ExtractVote(const CScript& scriptPubKey, CVote& voteRet)
 
     CDataStream voteStream(stack[0], SER_NETWORK, PROTOCOL_VERSION);
 
-    voteStream >> voteRet;
+    CVote vote;
+    try {
+        voteStream >> vote;
+    }
+    catch (std::exception &e) {
+        return error("vote deserialize error");
+    }
 
+    voteRet = vote;
     return true;
 }
 
 bool ExtractVote(const CBlock& block, CVote& voteRet)
 {
+    voteRet.SetNull();
+
     if (!block.IsProofOfStake())
         return false;
 
@@ -65,7 +83,6 @@ bool ExtractVote(const CBlock& block, CVote& voteRet)
 
     BOOST_FOREACH (const CTxOut& txo, tx.vout)
     {
-        CVote vote;
         if (ExtractVote(txo.scriptPubKey, voteRet))
             return true;
     }
@@ -105,10 +122,15 @@ bool IsParkRateResult(const CScript& scriptPubKey)
 
 bool ExtractParkRateResult(const CScript& scriptPubKey, CParkRateVote& parkRateResultRet)
 {
+    parkRateResultRet.SetNull();
+
     if (!IsParkRateResult(scriptPubKey))
         return false;
 
     CScript script(scriptPubKey.begin() + 2, scriptPubKey.end());
+
+    if (!script.IsPushOnly())
+        return false;
 
     vector<vector<unsigned char> > stack;
     CTransaction fakeTx;
@@ -119,8 +141,15 @@ bool ExtractParkRateResult(const CScript& scriptPubKey, CParkRateVote& parkRateR
 
     CDataStream stream(stack[0], SER_NETWORK, PROTOCOL_VERSION);
 
-    stream >> parkRateResultRet;
+    CParkRateVote parkRateResult;
+    try {
+        stream >> parkRateResult;
+    }
+    catch (std::exception &e) {
+        return error("park rate result deserialize error");
+    }
 
+    parkRateResultRet = parkRateResult;
     return true;
 }
 
@@ -138,24 +167,30 @@ bool ExtractParkRateResults(const CBlock& block, vector<CParkRateVote>& vParkRat
     if (!tx.IsCoinStake())
         return error("CoinStake not found in proof of stake block");
 
+    set<unsigned char> setSeenUnit;
     BOOST_FOREACH (const CTxOut& txo, tx.vout)
     {
         CParkRateVote result;
         if (ExtractParkRateResult(txo.scriptPubKey, result))
+        {
+            if (setSeenUnit.count(result.cUnit))
+                return error("Duplicate park rate result unit");
             vParkRateResultRet.push_back(result);
+            setSeenUnit.insert(result.cUnit);
+        }
     }
 
     return true;
 }
 
 
-typedef map<uint64, uint64> RateWeightMap;
+typedef map<int64, int64> RateWeightMap;
 typedef RateWeightMap::value_type RateWeight;
 
 typedef map<unsigned char, RateWeightMap> DurationRateWeightMap;
 typedef DurationRateWeightMap::value_type DurationRateWeight;
 
-static uint64 AddRateWeight(const uint64& totalWeight, const RateWeight& rateWeight)
+static int64 AddRateWeight(const int64& totalWeight, const RateWeight& rateWeight)
 {
     return totalWeight + rateWeight.second;
 }
@@ -171,7 +206,7 @@ bool CalculateParkRateResults(const std::vector<CVote>& vVote, const std::map<un
     vector<CParkRate> result;
 
     DurationRateWeightMap durationRateWeights;
-    uint64 totalVoteWeight = 0;
+    int64 totalVoteWeight = 0;
 
     BOOST_FOREACH(const CVote& vote, vVote)
     {
@@ -193,16 +228,16 @@ bool CalculateParkRateResults(const std::vector<CVote>& vVote, const std::map<un
         }
     }
 
-    uint64 halfWeight = totalVoteWeight / 2;
+    int64 halfWeight = totalVoteWeight / 2;
 
     BOOST_FOREACH(const DurationRateWeight& durationRateWeight, durationRateWeights)
     {
         unsigned char nCompactDuration = durationRateWeight.first;
         const RateWeightMap &rateWeights = durationRateWeight.second;
 
-        uint64 totalWeight = accumulate(rateWeights.begin(), rateWeights.end(), (uint64)0, AddRateWeight);
-        uint64 sum = totalWeight;
-        uint64 median = 0;
+        int64 totalWeight = accumulate(rateWeights.begin(), rateWeights.end(), (int64)0, AddRateWeight);
+        int64 sum = totalWeight;
+        int64 median = 0;
 
         BOOST_FOREACH(const RateWeight& rateWeight, rateWeights)
         {
@@ -243,11 +278,16 @@ bool CalculateParkRateResults(const std::vector<CVote>& vVote, const std::map<un
 
     BOOST_FOREACH(CParkRate& parkRate, result)
     {
-        uint64 previousMin = minPreviousRates[parkRate.nCompactDuration];
-        uint64 duration = parkRate.GetDuration();
-        uint64 maxIncrease = (uint64)100 * COIN_PARK_RATE / COIN * duration * STAKE_TARGET_SPACING / 31557600;
+        const int64 previousMin = minPreviousRates[parkRate.nCompactDuration];
+        const int64 duration = parkRate.GetDuration();
+        // maximum increase is 1% of annual interest rate
+        const int64 secondsInYear = (int64)60 * 60 * 24 * 36525 / 100;
+        const int64 blocksInYear = secondsInYear / STAKE_TARGET_SPACING;
+        const int64 parkRateEncodedPercentage = COIN_PARK_RATE / CENT;
+        assert(parkRateEncodedPercentage < ((int64)1 << 62) / ((int64)1 << MAX_COMPACT_DURATION)); // to avoid overflow
+        const int64 maxIncrease = parkRateEncodedPercentage * duration / blocksInYear;
 
-        if (parkRate.nRate > (int64)previousMin + maxIncrease)
+        if (parkRate.nRate > previousMin + maxIncrease)
             parkRate.nRate = previousMin + maxIncrease;
     }
 
@@ -259,7 +299,7 @@ bool CalculateParkRateResults(const std::vector<CVote>& vVote, const std::map<un
     return true;
 }
 
-bool CalculateParkRateResults(const CVote &vote, CBlockIndex *pindexprev, std::vector<CParkRateVote>& vParkRateResult)
+bool CalculateParkRateResults(const CVote &vote, const CBlockIndex *pindexprev, std::vector<CParkRateVote>& vParkRateResult)
 {
     vector<CVote> vVote;
     vVote.reserve(PARK_RATE_VOTES);
@@ -272,7 +312,7 @@ bool CalculateParkRateResults(const CVote &vote, CBlockIndex *pindexprev, std::v
             mapPreviousRates[cUnit].reserve(PARK_RATE_PREVIOUS_VOTES);
     }
 
-    CBlockIndex *pindex = pindexprev;
+    const CBlockIndex *pindex = pindexprev;
     for (int i=0; i<PARK_RATE_VOTES-1 && pindex; i++)
     {
         if (pindex->IsProofOfStake())
@@ -291,34 +331,62 @@ bool CalculateParkRateResults(const CVote &vote, CBlockIndex *pindexprev, std::v
     return CalculateParkRateResults(vVote, mapPreviousRates, vParkRateResult);
 }
 
+bool CParkRateVote::IsValid() const
+{
+    if (cUnit == 'S')
+        return false;
+    if (cUnit != 'B')
+        return false;
+
+    set<unsigned char> seenCompactDurations;
+    BOOST_FOREACH(const CParkRate& parkRate, vParkRate)
+    {
+        if (!parkRate.IsValid())
+            return false;
+        if (seenCompactDurations.find(parkRate.nCompactDuration) != seenCompactDurations.end())
+            return false;
+        seenCompactDurations.insert(parkRate.nCompactDuration);
+    }
+
+    return true;
+}
+
+bool CParkRate::IsValid() const
+{
+    if (!CompactDurationRange(nCompactDuration))
+        return false;
+    if (!ParkRateRange(nRate))
+        return false;
+    return true;
+}
+
+bool CCustodianVote::IsValid() const
+{
+    if (cUnit == 'S')
+        return false;
+    if (cUnit != 'B')
+        return false;
+    if (!MoneyRange(nAmount))
+        return false;
+    return true;
+}
+
 bool CVote::IsValid() const
 {
     set<unsigned char> seenParkVoteUnits;
     BOOST_FOREACH(const CParkRateVote& parkRateVote, vParkRateVote)
     {
-        if (parkRateVote.cUnit == 'S')
+        if (!parkRateVote.IsValid())
             return false;
-        if (parkRateVote.cUnit != 'B')
-            return false;
-        if (seenParkVoteUnits.find(parkRateVote.cUnit) != seenParkVoteUnits.end())
+        if (seenParkVoteUnits.count(parkRateVote.cUnit))
             return false;
         seenParkVoteUnits.insert(parkRateVote.cUnit);
-
-        set<unsigned char> seenCompactDurations;
-        BOOST_FOREACH(const CParkRate& parkRate, parkRateVote.vParkRate)
-        {
-            if (seenCompactDurations.find(parkRate.nCompactDuration) != seenCompactDurations.end())
-                return false;
-            seenCompactDurations.insert(parkRate.nCompactDuration);
-        }
     }
 
     set<CCustodianVote> seenCustodianVotes;
     BOOST_FOREACH(const CCustodianVote& custodianVote, vCustodianVote)
     {
-        if (custodianVote.cUnit == 'S')
-            return false;
-        if (custodianVote.cUnit != 'B')
+        if (!custodianVote.IsValid())
             return false;
 
         if (seenCustodianVotes.count(custodianVote))
@@ -328,7 +396,13 @@ bool CVote::IsValid() const
     return true;
 }
 
-bool ExtractVotes(const CBlock& block, CBlockIndex *pindexprev, unsigned int nCount, std::vector<CVote> &vVoteRet)
+void CVote::Upgrade()
+{
+    if (nVersion < 50000)
+        nVersion = 50000;
+}
+
+bool ExtractVotes(const CBlock& block, const CBlockIndex *pindexprev, unsigned int nCount, std::vector<CVote> &vVoteRet)
 {
     CVote vote;
     if (!ExtractVote(block, vote))
@@ -343,7 +417,7 @@ bool ExtractVotes(const CBlock& block, CBlockIndex *pindexprev, unsigned int nCo
     vVoteRet.reserve(nCount);
     vVoteRet.push_back(vote);
 
-    CBlockIndex *pindex = pindexprev;
+    const CBlockIndex *pindex = pindexprev;
     for (int i=0; i<nCount-1 && pindex; i++)
     {
         if (pindex->IsProofOfStake())
@@ -353,44 +427,18 @@ bool ExtractVotes(const CBlock& block, CBlockIndex *pindexprev, unsigned int nCo
     return true;
 }
 
-bool CheckVote(const CBlock& block, CBlockIndex *pindexprev)
-{
-    CVote vote;
-    if (!ExtractVote(block, vote))
-        return error("CheckVote(): ExtractVote failed");
-
-    if (!vote.IsValid())
-        return error("CheckVote(): Invalid vote");
-
-    if (!block.GetCoinStakeAge(vote.nCoinAgeDestroyed))
-        return error("CheckVote(): Unable to get coin stake coin age");
-
-    vector<CParkRateVote> vParkRateResult;
-    if (!ExtractParkRateResults(block, vParkRateResult))
-        return error("CheckVote(): ExtractParkRateResults failed");
-
-    vector<CParkRateVote> vExpectedParkRateResult;
-    if (!CalculateParkRateResults(vote, pindexprev, vExpectedParkRateResult))
-        return error("CheckVote(): CalculateParkRateResults failed");
-
-    if (vParkRateResult != vExpectedParkRateResult)
-        return error("CheckVote(): Invalid park rate result");
-
-    return true;
-}
-
 class CCustodianVoteCounter
 {
 public:
-    uint64 nWeight;
+    int64 nWeight;
     int nCount;
 };
 
 typedef map<CCustodianVote, CCustodianVoteCounter> CustodianVoteCounterMap;
-typedef map<CBitcoinAddress, uint64> GrantedAmountMap;
+typedef map<CBitcoinAddress, int64> GrantedAmountMap;
 typedef map<unsigned char, GrantedAmountMap> GrantedAmountPerUnitMap;
 
-bool GenerateCurrencyCoinBases(const std::vector<CVote> vVote, std::map<CBitcoinAddress, CBlockIndex*> mapAlreadyElected, std::vector<CTransaction>& vCurrencyCoinBaseRet)
+bool GenerateCurrencyCoinBases(const std::vector<CVote> vVote, const std::map<CBitcoinAddress, CBlockIndex*>& mapAlreadyElected, std::vector<CTransaction>& vCurrencyCoinBaseRet)
 {
     vCurrencyCoinBaseRet.clear();
 
@@ -398,7 +446,7 @@ bool GenerateCurrencyCoinBases(const std::vector<CVote> vVote, std::map<CBitcoin
         return true;
 
     CustodianVoteCounterMap mapCustodianVoteCounter;
-    uint64 totalVoteWeight = 0;
+    int64 totalVoteWeight = 0;
 
     BOOST_FOREACH(const CVote& vote, vVote)
     {
@@ -421,10 +469,10 @@ bool GenerateCurrencyCoinBases(const std::vector<CVote> vVote, std::map<CBitcoin
         }
     }
 
-    uint64 halfWeight = totalVoteWeight / 2;
-    uint64 halfCount = vVote.size() / 2;
+    int64 halfWeight = totalVoteWeight / 2;
+    int64 halfCount = vVote.size() / 2;
 
-    map<CBitcoinAddress, uint64> mapGrantedAddressWeight;
+    map<CBitcoinAddress, int64> mapGrantedAddressWeight;
     GrantedAmountPerUnitMap mapGrantedCustodians;
 
     BOOST_FOREACH(const CustodianVoteCounterMap::value_type& value, mapCustodianVoteCounter)
@@ -455,7 +503,7 @@ bool GenerateCurrencyCoinBases(const std::vector<CVote> vVote, std::map<CBitcoin
         BOOST_FOREACH(const GrantedAmountMap::value_type& grantedAmount, mapGrantedAmount)
         {
             const CBitcoinAddress& address = grantedAmount.first;
-            uint64 amount = grantedAmount.second;
+            int64 amount = grantedAmount.second;
 
             CScript scriptPubKey;
             scriptPubKey.SetDestination(address.Get());
@@ -469,8 +517,13 @@ bool GenerateCurrencyCoinBases(const std::vector<CVote> vVote, std::map<CBitcoin
     return true;
 }
 
-uint64 GetPremium(uint64 nValue, uint64 nDuration, unsigned char cUnit, const std::vector<CParkRateVote>& vParkRateResult)
+int64 GetPremium(int64 nValue, int64 nDuration, unsigned char cUnit, const std::vector<CParkRateVote>& vParkRateResult)
 {
+    if (!MoneyRange(nValue))
+        return 0;
+    if (!ParkDurationRange(nDuration))
+        return 0;
+
     BOOST_FOREACH(const CParkRateVote& parkRateVote, vParkRateResult)
     {
         if (parkRateVote.cUnit != cUnit)
@@ -484,7 +537,13 @@ uint64 GetPremium(uint64 nValue, uint64 nDuration, unsigned char cUnit, const st
             const CParkRate& parkRate = vSortedParkRate[i];
 
             if (nDuration == parkRate.GetDuration())
-                return nValue * parkRate.nRate / COIN_PARK_RATE;
+            {
+                CBigNum bnResult = CBigNum(nValue) * CBigNum(parkRate.nRate) / COIN_PARK_RATE;
+                if (bnResult < 0 || bnResult > MAX_MONEY)
+                    return 0;
+                else
+                    return (int64)bnResult.getuint64();
+            }
 
             if (nDuration < parkRate.GetDuration())
             {
@@ -496,12 +555,15 @@ uint64 GetPremium(uint64 nValue, uint64 nDuration, unsigned char cUnit, const st
                 CBigNum bnRate(prevParkRate.nRate);
                 CBigNum bnInterpolatedRate(nDuration);
                 bnInterpolatedRate -= prevParkRate.GetDuration();
-                bnInterpolatedRate *= (int64)parkRate.nRate - (int64)prevParkRate.nRate;
-                bnInterpolatedRate /= (int64)parkRate.GetDuration() - (int64)prevParkRate.GetDuration();
+                bnInterpolatedRate *= CBigNum(parkRate.nRate) - CBigNum(prevParkRate.nRate);
+                bnInterpolatedRate /= CBigNum(parkRate.GetDuration()) - CBigNum(prevParkRate.GetDuration());
                 bnRate += bnInterpolatedRate;
-                uint64 nRate = bnRate.getuint64();
 
-                return nValue * nRate / COIN_PARK_RATE;
+                CBigNum bnResult = bnRate * CBigNum(nValue) / COIN_PARK_RATE;
+                if (bnResult < 0 || bnResult > MAX_MONEY)
+                    return 0;
+                else
+                    return (int64)bnResult.getuint64();
             }
         }
     }

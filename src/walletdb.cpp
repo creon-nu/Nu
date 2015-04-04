@@ -1,6 +1,7 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2012 The Bitcoin developers
 // Copyright (c) 2012 The PPCoin developers
+// Copyright (c) 2014-2015 The Nu developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -312,6 +313,11 @@ int CWalletDB::LoadWallet(CWallet* pwallet)
             else if (strType == "vote")
             {
                 ssValue >> pwallet->vote;
+                pwallet->vote.Upgrade();
+            }
+            else if (strType == "datafeed")
+            {
+                ssValue >> pwallet->dataFeed;
             }
             else if (strType == "unit")
             {

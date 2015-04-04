@@ -2,6 +2,7 @@
 // Copyright (c) 2009-2012 The Bitcoin developers
 // Copyright (c) 2011-2013 The PPCoin developers
 // Copyright (c) 2013-2014 The Peershares developers
+// Copyright (c) 2014-2015 The Nu developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -12,6 +13,7 @@
 #include "strlcpy.h"
 #include "addrman.h"
 #include "ui_interface.h"
+#include "datafeed.h"
 
 #ifdef WIN32
 #include <string.h>
@@ -1068,8 +1070,13 @@ void ThreadDNSAddressSeed2(void* parg)
 // Physical IP seeds: 32-bit IPv4 addresses: e.g. 178.33.22.32 = 0x201621b2
 unsigned int pnSeed[] =
 {
-    0x47a034c6, 0x04d934c6, 0x4bc734c6, 0x2ec734c6, 0x2bd0f2a2, 0x92c8edc0,
-    0x0bd4b977, 0x003fc977,
+    0x4bc734c6,
+    0x2ec734c6,
+    0x2bd0f2a2,
+    0x92c8edc0,
+    0x781381d4,
+    0x7f60c780,
+    0x5edfe2bc,
 };
 
 void DumpAddresses()
@@ -1666,6 +1673,8 @@ void StartNode(void* parg)
 
     // Generate coins in the background
     GenerateBitcoins(GetBoolArg("-gen", false), GetWallet('S'));
+
+    StartUpdateFromDataFeed();
 
     // ppcoin: mint proof-of-stake blocks in the background
 #ifdef TESTING

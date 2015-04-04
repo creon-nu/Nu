@@ -1,5 +1,6 @@
 // Copyright (c) 2010 Satoshi Nakamoto
 // Copyright (c) 2009-2012 The Bitcoin developers
+// Copyright (c) 2014-2015 The Nu developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -19,6 +20,7 @@ void ThreadRPCServer(void* parg);
 int CommandLineRPC(int argc, char *argv[]);
 
 std::string CallPeercoinRPC(const std::string &strMethod, const json_spirit::Array &params);
+int64 AmountFromValue(const json_spirit::Value& value);
 
 class peercoin_rpc_error : public std::runtime_error
 {

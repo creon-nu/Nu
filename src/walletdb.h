@@ -1,5 +1,6 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2012 The Bitcoin developers
+// Copyright (c) 2014-2015 The Nu developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 #ifndef BITCOIN_WALLETDB_H
@@ -7,6 +8,7 @@
 
 #include "db.h"
 #include "base58.h"
+#include "datafeed.h"
 
 class CKeyPool;
 class CAccount;
@@ -153,6 +155,17 @@ public:
     bool ReadVote(CVote& vote)
     {
         return Read(std::string("vote"), vote);
+    }
+
+    bool WriteDataFeed(const CDataFeed& dataFeed)
+    {
+        nWalletDBUpdated++;
+        return Write(std::string("datafeed"), dataFeed);
+    }
+
+    bool ReadDataFeed(CDataFeed& dataFeed)
+    {
+        return Read(std::string("datafeed"), dataFeed);
     }
 
     // Settings are no longer stored in wallet.dat; these are

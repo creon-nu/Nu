@@ -550,7 +550,7 @@ void CoinControlDialog::updateLabels(WalletModel *model, QDialog* dialog)
             int64 nFee = txDummy.GetUnitMinFee() * (1 + (int64)nBytes / 1000);
 
             // Min Fee
-            int64 nMinFee = txDummy.GetMinFee(1, false, GMF_SEND, nBytes);
+            int64 nMinFee = txDummy.GetMinFee(nBytes);
 
             if (nPayFee < max(nFee, nMinFee))
             {
@@ -734,7 +734,7 @@ void CoinControlDialog::updateView()
 
             // coin age
             int nDayWeight = (min((GetAdjustedTime() - out.tx->GetTxTime()), (int64) STAKE_MAX_AGE) - nStakeMinAge) / 86400;
-            uint64 coinAge = max(out.tx->vout[out.i].nValue * nDayWeight / COIN, (int64) 0);
+            int64 coinAge = max(out.tx->vout[out.i].nValue * nDayWeight / COIN, (int64) 0);
             itemOutput->setText(COLUMN_COINAGE, strPad(QString::number(coinAge), 8, " "));
 
             // priority

@@ -42,6 +42,8 @@ When you're done working, you should remove all containers with:
 
     src/test/containers/remove_nu_containers
 
+It will also clean the shared temporary directories in `src/test/containers/tmp`.
+
 
 Testing with old versions
 -------------------------
@@ -62,7 +64,7 @@ Copy `test/containers/old/0.4.2` to a new directory and update the Dockerfile to
 
 Update `test/containers/build_base` to also build your version and run it.
 
-Add you version to the `OLD_VERSION` array in `test/containers/build_net` and run it.
+Add the version to the `OLD_VERSION` array in `test/containers/build_net` and run it.
 
 You should be able to use steps like this:
 

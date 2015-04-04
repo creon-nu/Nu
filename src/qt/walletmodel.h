@@ -2,6 +2,7 @@
 #define WALLETMODEL_H
 
 #include <QObject>
+#include <QtCore>
 #include <vector>
 #include <map>
 
@@ -29,6 +30,31 @@ public:
     QString address;
     QString label;
     qint64 amount;
+};
+
+class WalletModelException : public QtConcurrent::Exception
+{
+public:
+    QString message;
+
+    WalletModelException(const char* message)
+    {
+        this->message = QString::fromStdString(message);
+    }
+
+    ~WalletModelException() throw()
+    {
+    }
+
+    void raise() const
+    {
+        throw *this;
+    }
+
+    Exception *clone() const
+    {
+        return new WalletModelException(*this);
+    }
 };
 
 /** Interface to Bitcoin wallet from Qt view code. */
@@ -151,6 +177,11 @@ public:
     void listLockedCoins(std::vector<COutPoint>& vOutpts); 
 
     CDefaultKey getDefaultKey();
+
+    CDataFeed getDataFeed() const;
+    void setDataFeed(const CDataFeed&);
+    void updateFromDataFeed();
+    QString getDataFeedError() const;
 
 private:
     CWallet *wallet;

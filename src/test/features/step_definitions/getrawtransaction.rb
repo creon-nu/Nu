@@ -23,3 +23,17 @@ Then(/^getrawtransaction of "(.*?)" should work on all nodes$/) do |arg1|
   expect(result).to eq(@nodes.map { |name, node| [name, true] })
 end
 
+Then(/^getrawtransaction of "(.*?)" should work on nodes (.*?)$/) do |arg1, arg2|
+  tx = @tx[arg1]
+  nodes = arg2.scan(/"(.*?)"/).map { |name,| [name, @nodes[name]] }
+  result = nodes.map do |name, node|
+    begin
+      node.rpc("getrawtransaction", tx, 1)
+      [name, true]
+    rescue => e
+      [name, e]
+    end
+  end
+  expect(result).to eq(nodes.map { |name, node| [name, true] })
+end
+

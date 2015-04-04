@@ -2,6 +2,7 @@
 
 OLD_VERSIONS = [
   "0.4.2",
+  "0.5.2",
 ]
 
 require File.expand_path('../boot', __FILE__)
@@ -24,35 +25,48 @@ seed.wait_for_boot
 
 node_names = %w( a b c d e )
 puts "Starting #{node_names.size} nodes: #{node_names.inspect}"
-nodes = node_names.map do |name|
-  CoinContainer.new(
+nodes = []
+node_names.each do |name|
+  node = CoinContainer.new(
     image: 'nubit/node',
     bind_code: false,
-    links: [seed.name],
-    delete_at_exit: true,
+    links: [seed] + nodes,
     args: {
       timetravel: start_time_shift,
     },
   )
+  nodes << node
 end
 
 old_versions = {}
-old_nodes = OLD_VERSIONS.map do |version|
+old_nodes = []
+OLD_VERSIONS.each do |version|
   puts "Starting node with old version #{version}"
   node = CoinContainer.new(
     image: "nubit/#{version}",
     bind_code: false,
-    links: [seed.name],
-    delete_at_exit: true,
+    links: [seed] + nodes + old_nodes,
     args: {
       timetravel: start_time_shift,
     },
   )
   old_versions[node] = version
-  node
+  old_nodes << node
 end
 
-all = [seed] + nodes + old_nodes
+puts "Starting empty node"
+empty_node = CoinContainer.new(
+  image: 'nubit/node',
+  bind_code: false,
+  links: [seed.name],
+  delete_at_exit: true,
+  remove_wallet_after_shutdown: true,
+  args: {
+    timetravel: start_time_shift,
+  },
+)
+
+all = [seed] + nodes + old_nodes + [empty_node]
 
 amount = 10e6
 amount_string = amount.to_s.reverse.gsub(/(\d{3})(?=\d)/, '\\1,').reverse
@@ -60,12 +74,12 @@ amount_string = amount.to_s.reverse.gsub(/(\d{3})(?=\d)/, '\\1,').reverse
 recipient_nodes = (nodes + old_nodes)
 
 recipient_nodes.each_with_index do |node, i|
-    node.wait_for_boot
+  node.wait_for_boot
 
-    address = node.rpc("getaccountaddress", "")
+  address = node.rpc("getaccountaddress", "")
 
-    puts "Sending #{amount_string} to node #{node_names[i]}"
-    seed.rpc("sendtoaddress", address, amount)
+  puts "Sending #{amount_string} to node #{node_names[i]}"
+  seed.rpc("sendtoaddress", address, amount)
 end
 
 puts "Waiting for confirmations"
@@ -117,12 +131,12 @@ puts "Shutting down seed"
 seed.shutdown
 
 nodes.each_with_index do |node, i|
-    name = node_names[i]
-    image_name = "nunet/#{name}"
-    puts "Creating image #{image_name}"
-    node.shutdown
-    node.wait_for_shutdown
-    node.commit(image_name)
+  name = node_names[i]
+  image_name = "nunet/#{name}"
+  puts "Creating image #{image_name}"
+  node.shutdown
+  node.wait_for_shutdown
+  node.commit(image_name)
 end
 
 old_nodes.each do |node|
@@ -133,3 +147,11 @@ old_nodes.each do |node|
   node.wait_for_shutdown
   node.commit(image_name)
 end
+
+node = empty_node
+name = "empty"
+image_name = "nunet/#{name}"
+puts "Creating image #{image_name}"
+node.shutdown
+node.wait_for_shutdown
+node.commit(image_name)
