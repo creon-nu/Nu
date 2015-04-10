@@ -32,10 +32,10 @@ LIBS += \
    -l boost_program_options$(BOOST_LIB_SUFFIX) \
    -l boost_thread$(BOOST_LIB_SUFFIX) \
    -l db_cxx$(BDB_LIB_SUFFIX) \
+   -l curl \
    -l ssl \
    -l crypto \
-   -l rt \
-   -l curl
+   -l rt
 
 ifndef USE_UPNP
 	override USE_UPNP = -

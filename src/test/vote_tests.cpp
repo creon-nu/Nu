@@ -277,9 +277,9 @@ BOOST_AUTO_TEST_CASE(rate_limitation)
     vote.nCoinAgeDestroyed = 1000;
     vVote.push_back(vote);
 
-    uint64 maxIncreaseDuration15 = pow(2, 15) / 365.25 / 24 / 60 / 60 * STAKE_TARGET_SPACING * COIN_PARK_RATE / 100;
-    uint64 maxIncreaseDuration18 = pow(2, 18) / 365.25 / 24 / 60 / 60 * STAKE_TARGET_SPACING * COIN_PARK_RATE / 100;
-    uint64 maxIncreaseDuration19 = pow(2, 19) / 365.25 / 24 / 60 / 60 * STAKE_TARGET_SPACING * COIN_PARK_RATE / 100;
+    int64 maxIncreaseDuration15 = pow(2, 15) / 365.25 / 24 / 60 / 60 * STAKE_TARGET_SPACING * COIN_PARK_RATE / 100;
+    int64 maxIncreaseDuration18 = pow(2, 18) / 365.25 / 24 / 60 / 60 * STAKE_TARGET_SPACING * COIN_PARK_RATE / 100;
+    int64 maxIncreaseDuration19 = pow(2, 19) / 365.25 / 24 / 60 / 60 * STAKE_TARGET_SPACING * COIN_PARK_RATE / 100;
 
     // Without previous rates, the previous rates are all considered 0 so the rate increase is limited
     BOOST_CHECK(CalculateParkRateResults(vVote, previousRates, results));
@@ -579,8 +579,8 @@ BOOST_AUTO_TEST_CASE(premium_calculation)
     BOOST_CHECK_EQUAL( 8, GetPremium(1   * COIN,  7, 'B', vParkRateResult));
     BOOST_CHECK_EQUAL(21, GetPremium(1   * COIN, 15, 'B', vParkRateResult));
     BOOST_CHECK_EQUAL(38, GetPremium(1   * COIN, 25, 'B', vParkRateResult));
-    BOOST_CHECK_EQUAL((uint64)(3.39453125 * COIN), GetPremium(1 * COIN, 6000, 'B', vParkRateResult));
-    BOOST_CHECK_EQUAL((uint64)(49.69482421875 * COIN), GetPremium(1 * COIN, (1<<15) + 1000, 'B', vParkRateResult));
+    BOOST_CHECK_EQUAL((int64)(3.39453125 * COIN), GetPremium(1 * COIN, 6000, 'B', vParkRateResult));
+    BOOST_CHECK_EQUAL((int64)(49.69482421875 * COIN), GetPremium(1 * COIN, (1<<15) + 1000, 'B', vParkRateResult));
 }
 
 BOOST_AUTO_TEST_CASE(vote_v1_unserialization)

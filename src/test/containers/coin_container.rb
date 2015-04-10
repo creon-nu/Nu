@@ -39,9 +39,14 @@ class CoinContainer
 
     name = options[:name]
 
+    if options[:link_with_connect]
+      connect_method = "connect"
+    else
+      connect_method = options[:connect_method] || "addnode"
+    end
     connects = links.map do |linked_name, alias_name|
       upname = alias_name.upcase
-      "-addnode=$#{upname}_PORT_7895_TCP_ADDR:$#{upname}_PORT_7895_TCP_PORT"
+      "-#{connect_method}=$#{upname}_PORT_7895_TCP_ADDR:$#{upname}_PORT_7895_TCP_PORT"
     end
 
     default_args = {
@@ -72,6 +77,8 @@ class CoinContainer
     cmd_args += connects
 
     bash_cmds = []
+
+    bash_cmds += ["echo Node name: #{name}"] if name
 
     bash_cmds += ["set -x"]
 
@@ -111,7 +118,6 @@ class CoinContainer
         "15001/tcp" => {},
         "15002/tcp" => {},
       },
-      'name' => name,
     }
     node_container = Docker::Container.create(create_options)
     @container = node_container
