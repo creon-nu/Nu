@@ -39,7 +39,11 @@ class CoinContainer
 
     name = options[:name]
 
-    connect_method = options[:connect_method] || "addnode"
+    if options[:link_with_connect]
+      connect_method = "connect"
+    else
+      connect_method = options[:connect_method] || "addnode"
+    end
     connects = links.map do |linked_name, alias_name|
       upname = alias_name.upcase
       "-#{connect_method}=$#{upname}_PORT_7895_TCP_ADDR:$#{upname}_PORT_7895_TCP_PORT"
@@ -234,7 +238,7 @@ class CoinContainer
 
   def commit(repo)
     image = container.commit
-    image.tag 'repo' => repo
+    image.tag 'repo' => repo, 'force' => true
   end
 
   def shutdown

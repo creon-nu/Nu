@@ -137,7 +137,7 @@ Feature: The user can define a data feed URL to automatically update his vote fr
       """
     When node "Alice" sets her data feed to the URL of "Bob"
     Then the vote of node "Alice" should be sample vote "full"
-    And the error on node "Alice" should be "Data feed returned invalid data"
+    And the error on node "Alice" should be "Data feed returned invalid JSON data"
 
   Scenario: A data feed returns non 200 code
     Given a network with node "Alice" able to mint

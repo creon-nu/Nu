@@ -118,7 +118,7 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet *
             bool fPark = false;
             BOOST_FOREACH(const CTxOut& txout, wtx.vout)
             {
-                uint64 nParkDuration;
+                int64 nParkDuration;
                 CTxDestination unparkAddress;
 
                 if (ExtractPark(txout.scriptPubKey, nParkDuration, unparkAddress))

@@ -2,6 +2,7 @@
 // Copyright (c) 2009-2012 The Bitcoin developers
 // Copyright (c) 2011-2013 The PPCoin developers
 // Copyright (c) 2013-2014 The Peershares developers
+// Copyright (c) 2014-2015 The Nu developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -58,6 +59,7 @@ int64 nTimeBestReceived = 0;
 CMedianFilter<int> cPeerBlockCounts(5, 0); // Amount of blocks that other nodes claim to have
 
 map<uint256, CBlock*> mapOrphanBlocks;
+map<uint256, CBlock*> mapDuplicateStakeBlocks;
 multimap<uint256, CBlock*> mapOrphanBlocksByPrev;
 set<pair<COutPoint, unsigned int> > setStakeSeenOrphan;
 map<uint256, uint256> mapProofOfStake;
@@ -78,6 +80,7 @@ int64 nHPSTimerStart;
 
 #ifdef TESTING
 uint256 hashSingleStakeBlock;
+int nBlocksToIgnore = 0;
 #endif
 
 // Settings
@@ -94,6 +97,7 @@ int64 nSplitShareOutputs = MIN_COINSTAKE_VALUE;
 
 CWallet *GetWallet(unsigned char cUnit)
 {
+    LOCK(cs_setpwalletRegistered);
     BOOST_FOREACH(CWallet* pwallet, setpwalletRegistered)
         if (pwallet->Unit() == cUnit)
             return pwallet;
@@ -130,18 +134,10 @@ void UnregisterAndDeleteAllWallets()
     }
 }
 
-// check whether the passed transaction is from us
-bool static IsFromMe(CTransaction& tx)
-{
-    BOOST_FOREACH(CWallet* pwallet, setpwalletRegistered)
-        if (pwallet->IsFromMe(tx))
-            return true;
-    return false;
-}
-
 // get the wallet transaction with the given hash (if it exists)
-bool static GetTransaction(const uint256& hashTx, CWalletTx& wtx)
+bool static GetWalletTransaction(const uint256& hashTx, CWalletTx& wtx)
 {
+    LOCK(cs_setpwalletRegistered);
     BOOST_FOREACH(CWallet* pwallet, setpwalletRegistered)
         if (pwallet->GetTransaction(hashTx,wtx))
             return true;
@@ -151,6 +147,7 @@ bool static GetTransaction(const uint256& hashTx, CWalletTx& wtx)
 // erases transaction with the given hash from all wallets
 void static EraseFromWallets(uint256 hash)
 {
+    LOCK(cs_setpwalletRegistered);
     BOOST_FOREACH(CWallet* pwallet, setpwalletRegistered)
         pwallet->EraseFromWallet(hash);
 }
@@ -158,6 +155,7 @@ void static EraseFromWallets(uint256 hash)
 // make sure all wallets know about the given transaction, in the given block
 void SyncWithWallets(const CTransaction& tx, const CBlock* pblock, bool fUpdate, bool fConnect)
 {
+    LOCK(cs_setpwalletRegistered);
     if (!fConnect)
     {
         // ppcoin: wallets need to refund inputs when disconnecting coinstake
@@ -177,6 +175,7 @@ void SyncWithWallets(const CTransaction& tx, const CBlock* pblock, bool fUpdate,
 // notify wallets about a new best chain
 void static SetBestChain(const CBlockLocator& loc)
 {
+    LOCK(cs_setpwalletRegistered);
     BOOST_FOREACH(CWallet* pwallet, setpwalletRegistered)
         pwallet->SetBestChain(loc);
 }
@@ -184,6 +183,7 @@ void static SetBestChain(const CBlockLocator& loc)
 // notify wallets about an updated transaction
 void static UpdatedTransaction(const uint256& hashTx)
 {
+    LOCK(cs_setpwalletRegistered);
     BOOST_FOREACH(CWallet* pwallet, setpwalletRegistered)
         pwallet->UpdatedTransaction(hashTx);
 }
@@ -191,6 +191,7 @@ void static UpdatedTransaction(const uint256& hashTx)
 // dump all wallets
 void static PrintWallets(const CBlock& block)
 {
+    LOCK(cs_setpwalletRegistered);
     BOOST_FOREACH(CWallet* pwallet, setpwalletRegistered)
         pwallet->PrintWallet(block);
 }
@@ -198,6 +199,7 @@ void static PrintWallets(const CBlock& block)
 // notify wallets about an incoming inventory (for request counts)
 void static Inventory(const uint256& hash)
 {
+    LOCK(cs_setpwalletRegistered);
     BOOST_FOREACH(CWallet* pwallet, setpwalletRegistered)
         pwallet->Inventory(hash);
 }
@@ -205,6 +207,7 @@ void static Inventory(const uint256& hash)
 // ask wallets to resend their transactions
 void static ResendWalletTransactions()
 {
+    LOCK(cs_setpwalletRegistered);
     BOOST_FOREACH(CWallet* pwallet, setpwalletRegistered)
         pwallet->ResendWalletTransactions();
 }
@@ -212,6 +215,7 @@ void static ResendWalletTransactions()
 // nubit: ask wallets to check unparkable transactions
 void static CheckUnparkableOutputs()
 {
+    LOCK(cs_setpwalletRegistered);
     BOOST_FOREACH(CWallet* pwallet, setpwalletRegistered)
         pwallet->CheckUnparkableOutputs();
 }
@@ -354,19 +358,18 @@ bool CTransaction::IsStandard() const
     
     unsigned int nDataOut = 0;
     txnouttype whichType;
-    BOOST_FOREACH(const CTxOut& txout, vout) {
-        if (!::IsStandard(txout.scriptPubKey, whichType)){
+    BOOST_FOREACH(const CTxOut& txout, vout)
+    {
+        if (!::IsStandard(txout.scriptPubKey, whichType))
             return false;
-		}
-		if (whichType == TX_NULL_DATA)
-			nDataOut++;
-		
-		
-		if (nDataOut > 1) {
-			return false;
-		}
+
+        if (whichType == TX_NULL_DATA)
+            nDataOut++;
+
+        if (nDataOut > 1)
+            return false;
     }        
-            
+
     return true;
 }
 
@@ -467,18 +470,18 @@ CTransaction::GetLegacySigOpCount() const
     return nSigOps;
 }
 
-void CTransaction::AddOutput(const CScript script, int64 nAmount)
+void CTransaction::AddOutput(const CScript& script, int64 nAmount)
 {
     if (cUnit == 'S' && nSplitShareOutputs > 0 && nAmount >= nSplitShareOutputs * 2)
     {
-        int nOutputs = nAmount / nSplitShareOutputs;
+        int64 nOutputs = nAmount / nSplitShareOutputs;
         int64 nRemainingAmount = nAmount;
 
-        for (int i = 0; i < nOutputs - 1; i++)
+        for (int64 i = 0; i < nOutputs - 1; i++)
         {
-            int64 nAmount = nSplitShareOutputs;
-            vout.push_back(CTxOut(nAmount, script));
-            nRemainingAmount -= nAmount;
+            const int64 nOutputAmount = nSplitShareOutputs;
+            vout.push_back(CTxOut(nOutputAmount, script));
+            nRemainingAmount -= nOutputAmount;
         }
         vout.push_back(CTxOut(nRemainingAmount, script));
     }
@@ -509,23 +512,23 @@ void CTransaction::AddChange(int64 nChange, CScript& scriptChange, const CCoinCo
     }
 
     // nu: split change if appropriate
-    int nChangeOutputs;
+    int64 nChangeOutputs;
     if (cUnit == 'S' && nSplitShareOutputs > 0 && nChange >= nSplitShareOutputs * 2)
         nChangeOutputs = nChange / nSplitShareOutputs;
     else
         nChangeOutputs = 1;
 
     int64 nChangeRemaining = nChange;
-    for (int i = 0; i < nChangeOutputs - 1; i++)
+    for (int64 i = 0; i < nChangeOutputs - 1; i++)
     {
         // Insert split change txn at random position:
-        vector<CTxOut>::iterator position = vout.begin()+GetRandInt(vout.size());
-        int64 nAmount = nSplitShareOutputs;
-        vout.insert(position, CTxOut(nAmount, scriptChange));
-        nChangeRemaining -= nAmount;
+        const vector<CTxOut>::iterator position = vout.begin()+GetRandInt(vout.size());
+        const int64 nOutputAmount = nSplitShareOutputs;
+        vout.insert(position, CTxOut(nOutputAmount, scriptChange));
+        nChangeRemaining -= nOutputAmount;
     }
     // Insert remaining change txn at random position:
-    vector<CTxOut>::iterator position = vout.begin()+GetRandInt(vout.size());
+    const vector<CTxOut>::iterator position = vout.begin()+GetRandInt(vout.size());
     vout.insert(position, CTxOut(nChangeRemaining, scriptChange));
 }
 
@@ -589,8 +592,8 @@ int CMerkleTx::SetMerkleBranch(const CBlock* pblock)
 bool CTransaction::CheckTransaction() const
 {
     // Basic checks that don't depend on any context
-    if (cUnit == 0)
-        return DoS(10, error("CTransaction::CheckTransaction() : blank unit"));
+    if (!ValidUnit(cUnit))
+        return DoS(10, error("CTransaction::CheckTransaction() : invalid unit"));
     if (vin.empty())
         return DoS(10, error("CTransaction::CheckTransaction() : vin empty"));
     if (vout.empty())
@@ -611,8 +614,12 @@ bool CTransaction::CheckTransaction() const
         if (txout.IsEmpty() && (!IsCoinBase()) && (!IsCoinStake()) && (!IsCurrencyCoinBase()))
             return DoS(100, error("CTransaction::CheckTransaction() : txout empty for user transaction"));
         // ppcoin: enforce minimum output amount
-        if ((!txout.IsEmpty()) && !(IsCoinStake() && (txout.IsVote() || txout.IsParkRateResult())) && txout.nValue < GetMinTxOutAmount())
-            return DoS(100, error("CTransaction::CheckTransaction() : txout.nValue below minimum"));
+        if ((!txout.IsEmpty()) && txout.nValue < GetMinTxOutAmount())
+        {
+            const bool fAllowed = (IsCoinStake() && (txout.IsVote() || txout.IsParkRateResult()));
+            if (!fAllowed)
+                return DoS(100, error("CTransaction::CheckTransaction() : txout.nValue below minimum"));
+        }
         if (txout.nValue > MAX_MONEY)
             return DoS(100, error("CTransaction::CheckTransaction() : txout.nValue too high"));
         nValueOut += txout.nValue;
@@ -651,65 +658,53 @@ bool CTransaction::CheckTransaction() const
                 return DoS(10, error("CTransaction::CheckTransaction() : prevout is null"));
     }
 
-    // nubit: parking shares is not allowed
-    if (cUnit == 'S')
+    // nubit: validate parking outputs
+    for (unsigned int i = 0; i < vout.size(); i++)
     {
-        for (unsigned int i = 0; i < vout.size(); i++)
+        const CTxOut& txout = vout[i];
+        if (IsPark(txout.scriptPubKey))
         {
-            const CTxOut& txout = vout[i];
-            if (IsPark(txout.scriptPubKey))
+            // parking shares is not allowed
+            if (cUnit == 'S')
                 return DoS(100, error("CTransaction::CheckTransaction() : parking of shares"));
+
+            if (!IsValidPark(txout.scriptPubKey))
+                return DoS(100, error("CTransaction::CheckTransaction() : invalid parking transaction"));
         }
     }
 
     return true;
 }
 
-int64 CTransaction::GetMinFee(unsigned int nBlockSize, bool fAllowFree,
-                              enum GetMinFee_mode mode, unsigned int nBytes) const
+int64 CTransaction::GetMinFee(unsigned int nBytes) const
 {
-    // Base fee is either MIN_TX_FEE or MIN_RELAY_TX_FEE
-    int64 nBaseFee = (mode == GMF_RELAY) ? GetMinRelayFee() : GetUnitMinFee();
+    const int64 nBaseFee = GetUnitMinFee();
 
-    unsigned int nNewBlockSize = nBlockSize + nBytes;
+    if (nBytes == 0)
+        nBytes = ::GetSerializeSize(*this, SER_NETWORK, PROTOCOL_VERSION);
+
     int64 nMinFee = (1 + (int64)nBytes / 1000) * nBaseFee;
-
-    if (fAllowFree)
-    {
-        if (nBlockSize == 1)
-        {
-            // Transactions under 10K are free
-            // (about 4500 BTC if made of 50 BTC inputs)
-            if (nBytes < 10000)
-                nMinFee = 0;
-        }
-        else
-        {
-            // Free transaction area
-            if (nNewBlockSize < 27000)
-                nMinFee = 0;
-        }
-    }
-
-    // To limit dust spam, require MIN_TX_FEE/MIN_RELAY_TX_FEE if any output is less than 0.01
-    if (nMinFee < nBaseFee)
-    {
-        BOOST_FOREACH(const CTxOut& txout, vout)
-            if (txout.nValue < CENT)
-                nMinFee = nBaseFee;
-    }
-
-    // Raise the price as the block approaches full
-    if (nBlockSize != 1 && nNewBlockSize >= MAX_BLOCK_SIZE_GEN/2)
-    {
-        if (nNewBlockSize >= MAX_BLOCK_SIZE_GEN)
-            return MAX_MONEY;
-        nMinFee *= MAX_BLOCK_SIZE_GEN / (MAX_BLOCK_SIZE_GEN - nNewBlockSize);
-    }
 
     if (!MoneyRange(nMinFee))
         nMinFee = MAX_MONEY;
+
     return nMinFee;
+}
+
+bool CTransaction::CheckParkWithResult(const std::vector<CParkRateVote>& vParkRateResult) const
+{
+    BOOST_FOREACH(const CTxOut& txout, vout)
+    {
+        int64 nDuration;
+        CTxDestination unparkAddress;
+        if (ExtractPark(txout.scriptPubKey, nDuration, unparkAddress))
+        {
+            int64 nPremium = GetPremium(txout.nValue, nDuration, cUnit, vParkRateResult);
+            if (!MoneyRange(txout.nValue) || !MoneyRange(nPremium) || !MoneyRange(txout.nValue + nPremium))
+                return false;
+        }
+    }
+    return true;
 }
 
 bool CTxMemPool::accept(CTxDB& txdb, CTransaction &tx, bool fCheckInputs,
@@ -809,35 +804,15 @@ bool CTxMemPool::accept(CTxDB& txdb, CTransaction &tx, bool fCheckInputs,
         unsigned int nSize = ::GetSerializeSize(tx, SER_NETWORK, PROTOCOL_VERSION);
 
         // Don't accept it if it can't get into a block
-        int64 txMinFee = tx.GetMinFee(1000, false, GMF_RELAY, nSize);
-        if (!tx.IsUnpark() && nFees < txMinFee)
+        const int64 txMinFee = tx.GetMinFee(nSize);
+        if (nFees < txMinFee)
         {
-            printf("Fees: %s, minimum: %s\n", FormatMoney(nFees).c_str(), FormatMoney(txMinFee).c_str());
-            return error("CTxMemPool::accept() : not enough fees");
-        }
-
-        // Continuously rate-limit free transactions
-        // This mitigates 'penny-flooding' -- sending thousands of free transactions just to
-        // be annoying or make other's transactions take longer to confirm.
-        if (!tx.IsUnpark() && nFees < tx.GetMinRelayFee())
-        {
-            static CCriticalSection cs;
-            static double dFreeCount;
-            static int64 nLastTime;
-            int64 nNow = GetTime();
-
+            // nubit: unpark transactions do not have fees. The validity of the unpark is checked during ConnectInputs
+            const bool fAllowed = tx.IsUnpark();
+            if (!fAllowed)
             {
-                LOCK(cs);
-                // Use an exponentially decaying ~10-minute window:
-                dFreeCount *= pow(1.0 - 1.0/600.0, (double)(nNow - nLastTime));
-                nLastTime = nNow;
-                // -limitfreerelay unit is thousand-bytes-per-minute
-                // At default rate it would take over a month to fill 1GB
-                if (dFreeCount > GetArg("-limitfreerelay", 15)*10*1000 && !IsFromMe(tx))
-                    return error("CTxMemPool::accept() : free transaction rejected by rate limiter");
-                if (fDebug)
-                    printf("Rate limit dFreeCount: %g => %g\n", dFreeCount, dFreeCount+nSize);
-                dFreeCount += nSize;
+                printf("Fees: %s, minimum: %s\n", FormatMoney(nFees).c_str(), FormatMoney(txMinFee).c_str());
+                return error("CTxMemPool::accept() : not enough fees");
             }
         }
 
@@ -922,7 +897,7 @@ void CTxMemPool::queryHashes(std::vector<uint256>& vtxid)
 
 
 
-int CMerkleTx::GetDepthInMainChain(CBlockIndex* &pindexRet) const
+int CMerkleTx::GetDepthInChain(const CBlockIndex *pindexChain, CBlockIndex* &pindexRet) const
 {
     if (hashBlock == 0 || nIndex == -1)
         return 0;
@@ -932,7 +907,7 @@ int CMerkleTx::GetDepthInMainChain(CBlockIndex* &pindexRet) const
     if (mi == mapBlockIndex.end())
         return 0;
     CBlockIndex* pindex = (*mi).second;
-    if (!pindex || !pindex->IsInMainChain())
+    if (!pindex || !pindex->IsInChain(pindexChain))
         return 0;
 
     // Make sure the merkle branch connects to this block
@@ -944,7 +919,7 @@ int CMerkleTx::GetDepthInMainChain(CBlockIndex* &pindexRet) const
     }
 
     pindexRet = pindex;
-    return pindexBest->nHeight - pindex->nHeight + 1;
+    return pindexChain->nHeight - pindex->nHeight + 1;
 }
 
 
@@ -1008,8 +983,9 @@ bool CWalletTx::AcceptWalletTransaction()
     return AcceptWalletTransaction(txdb);
 }
 
-int CTxIndex::GetDepthInMainChain(CBlockIndex* &pindexRet) const
+int CTxIndex::GetDepthInChain(const CBlockIndex* pindexChain, CBlockIndex* &pindexRet) const
 {
+    pindexRet = NULL;
     // Read block header
     CBlock block;
     if (!block.ReadFromDisk(pos.nFile, pos.nBlockPos, false))
@@ -1019,7 +995,7 @@ int CTxIndex::GetDepthInMainChain(CBlockIndex* &pindexRet) const
     if (mi == mapBlockIndex.end())
         return 0;
     CBlockIndex* pindex = (*mi).second;
-    if (!pindex || !pindex->IsInMainChain())
+    if (!pindex || !pindex->IsInChain(pindexChain))
         return 0;
     pindexRet = pindex;
     return 1 + nBestHeight - pindex->nHeight;
@@ -1106,14 +1082,14 @@ uint256 WantedByOrphan(const CBlock* pblockOrphan)
     return pblockOrphan->hashPrevBlock;
 }
 
-int64 GetProofOfWorkReward(unsigned int nBits)
+int64 GetProofOfWorkReward()
 {
     return IPO_SHARES / PROOF_OF_WORK_BLOCKS; //this will only be used to create initial shares
 }
 
 // ppcoin: minter's coin stake is rewarded based on coin age spent (coin-days)
 // nu: miner's coin stake reward is constant
-int64 GetProofOfStakeReward(int64 nCoinAge)
+int64 GetProofOfStakeReward()
 {
     return PROOF_OF_STAKE_REWARD;
 }
@@ -1480,22 +1456,26 @@ bool CTransaction::ConnectInputs(CTxDB& txdb, MapPrevTx inputs,
                 if (vout.size() != 1)
                     return error("ConnectInputs() : unpark transaction with too many outputs");
 
-                uint64 nDuration;
+                int64 nDuration;
                 CTxDestination unparkDestination;
                 if (!ExtractPark(txPrev.vout[prevout.n].scriptPubKey, nDuration, unparkDestination))
                     return error("ConnectInputs() : ExtractPark failed");
                 CBitcoinAddress unparkAddress(unparkDestination, txPrev.cUnit);
 
-                CBlockIndex *pindex = NULL;
-                if (txindex.GetDepthInMainChain(pindex) < nDuration)
+                CBlockIndex *pindexPark = NULL;
+                if (txindex.GetDepthInChain(pindexBlock, pindexPark) < nDuration)
                     return error("ConnectInputs() : parking duration has not passed");
 
-                if (!pindex)
-                    return error("ConnectInputs() : parked transaction not in main chain");
+                if (!pindexPark)
+                    return error("ConnectInputs() : parked transaction not in chain");
 
-                uint64 nValue = txPrev.vout[prevout.n].nValue;
-                uint64 nPremium = pindex->GetPremium(nValue, nDuration, cUnit);
-                uint64 nExpectedValueOut = nValue + nPremium;
+                int64 nValue = txPrev.vout[prevout.n].nValue;
+                int64 nPremium = pindexPark->GetPremium(nValue, nDuration, cUnit);
+                if (!MoneyRange(nPremium))
+                    return error("ConnectInputs() : premium out of range");
+                int64 nExpectedValueOut = nValue + nPremium;
+                if (!MoneyRange(nExpectedValueOut))
+                    return error("ConnectInputs() : expected output out of range");
 
                 if (GetValueOut() != nExpectedValueOut)
                     return error("ConnectInputs() : unpark value doesn't match the expected value");
@@ -1505,9 +1485,7 @@ bool CTransaction::ConnectInputs(CTxDB& txdb, MapPrevTx inputs,
                     return error("ConnectInputs() : ExtractAddress failed");
                 CBitcoinAddress outAddress(outDestination, cUnit);
 
-                const CKeyID& outID = get<CKeyID>(outDestination);
-                const CKeyID& unparkID = get<CKeyID>(unparkDestination);
-                if (outID != unparkID)
+                if (unparkAddress != outAddress)
                     return error("ConnectInputs() : invalid unpark address");
 
                 fValidUnpark = true;
@@ -1544,11 +1522,8 @@ bool CTransaction::ConnectInputs(CTxDB& txdb, MapPrevTx inputs,
         if (IsCoinStake())
         {
             // ppcoin: coin stake tx earns reward instead of paying fee
-            uint64 nCoinAge;
-            if (!GetCoinAge(txdb, nCoinAge))
-                return error("ConnectInputs() : %s unable to get coin age for coinstake", GetHash().ToString().substr(0,10).c_str());
             int64 nStakeReward = GetValueOut() - nValueIn;
-            if (nStakeReward > GetProofOfStakeReward(nCoinAge) - GetMinFee() + GetUnitMinFee())
+            if (nStakeReward > GetProofOfStakeReward() - GetMinFee() + GetUnitMinFee())
                 return DoS(100, error("ConnectInputs() : %s stake reward exceeded", GetHash().ToString().substr(0,10).c_str()));
         }
         else if (!fValidUnpark)
@@ -1628,36 +1603,6 @@ bool CBlock::DisconnectBlock(CTxDB& txdb, CBlockIndex* pindex)
     for (int i = vtx.size()-1; i >= 0; i--)
         if (!vtx[i].DisconnectInputs(txdb))
             return false;
-
-    // nubit: forget elected custodians
-    BOOST_FOREACH(const CTransaction& tx, vtx)
-    {
-        if (tx.IsCurrencyCoinBase())
-        {
-            if (tx.vout.size() < 1)
-                return error("Connect() : not output in CurrencyCoinBase");
-
-            CTxDestination destination;
-            if (!ExtractDestination(tx.vout[0].scriptPubKey, destination))
-                return error("Connect() : ExtractAddress on CurrencyCoinBase failed");
-            CBitcoinAddress address(destination, tx.cUnit);
-
-            {
-                LOCK(cs_mapElectedCustodian);
-
-                if (!mapElectedCustodian.count(address))
-                    return error("Connect() : custodian was not elected");
-
-                mapElectedCustodian.erase(address);
-            }
-
-            {
-                LOCK(cs_mapLiquidityInfo);
-
-                mapLiquidityInfo.erase(address);
-            }
-        }
-    }
 
     // Update block index on disk without changing it in memory.
     // The memory index structure will be changed after the db commits.
@@ -1782,33 +1727,6 @@ bool CBlock::ConnectBlock(CTxDB& txdb, CBlockIndex* pindex)
     if (!txdb.WriteBlockIndex(CDiskBlockIndex(pindex)))
         return error("Connect() : WriteBlockIndex for pindex failed");
 
-    // nubit: track elected custodians
-    BOOST_FOREACH(const CTransaction& tx, vtx)
-    {
-        if (tx.IsCurrencyCoinBase())
-        {
-            if (tx.vout.size() < 1)
-                return error("Connect() : not output in CurrencyCoinBase");
-
-            {
-                LOCK(cs_mapElectedCustodian);
-
-                BOOST_FOREACH(const CTxOut& txo, tx.vout)
-                {
-                    CTxDestination destination;
-                    if (!ExtractDestination(txo.scriptPubKey, destination))
-                        return error("Connect() : ExtractAddress on CurrencyCoinBase failed");
-                    CBitcoinAddress address(destination, tx.cUnit);
-
-                    if (mapElectedCustodian.count(address))
-                        return error("Connect() : custodian has already been elected");
-
-                    mapElectedCustodian[address] = pindex;
-                }
-            }
-        }
-    }
-
     // Write queued txindex changes
     for (map<uint256, CTxIndex>::iterator mi = mapQueuedChanges.begin(); mi != mapQueuedChanges.end(); ++mi)
     {
@@ -1930,6 +1848,29 @@ bool Reorganize(CTxDB& txdb, CBlockIndex* pindexNew)
     BOOST_FOREACH(CTransaction& tx, vDelete)
         mempool.remove(tx);
 
+    // nubit: update elected custodians
+    {
+        BOOST_FOREACH(CBlockIndex* pindex, vDisconnect)
+        {
+            BOOST_FOREACH(const CCustodianVote& custodianVote, pindex->vElectedCustodian)
+            {
+                const CBitcoinAddress& address(custodianVote.GetAddress());
+                LOCK2(cs_mapElectedCustodian, cs_mapLiquidityInfo);
+                mapElectedCustodian.erase(address);
+                mapLiquidityInfo.erase(address);
+            }
+        }
+        BOOST_FOREACH(CBlockIndex* pindex, vConnect)
+        {
+            BOOST_FOREACH(const CCustodianVote& custodianVote, pindex->vElectedCustodian)
+            {
+                const CBitcoinAddress& address(custodianVote.GetAddress());
+                LOCK(cs_mapElectedCustodian);
+                mapElectedCustodian[address] = pindex;
+            }
+        }
+    }
+
     printf("REORGANIZE: done\n");
 
     return true;
@@ -1957,6 +1898,14 @@ bool CBlock::SetBestChainInner(CTxDB& txdb, CBlockIndex *pindexNew)
     // Delete redundant memory transactions
     BOOST_FOREACH(CTransaction& tx, vtx)
         mempool.remove(tx);
+
+    // nubit: update elected custodians
+    BOOST_FOREACH(const CCustodianVote& custodianVote, pindexNew->vElectedCustodian)
+    {
+        const CBitcoinAddress& address(custodianVote.GetAddress());
+        LOCK(cs_mapElectedCustodian);
+        mapElectedCustodian[address] = pindexNew;
+    }
 
     return true;
 }
@@ -2064,7 +2013,7 @@ bool CBlock::SetBestChain(CTxDB& txdb, CBlockIndex* pindexNew)
 // guaranteed to be in main chain by sync-checkpoint. This rule is
 // introduced to help nodes establish a consistent view of the coin
 // age (trust score) of competing branches.
-bool CTransaction::GetCoinAge(CTxDB& txdb, uint64& nCoinAge) const
+bool CTransaction::GetCoinAge(CTxDB& txdb, int64& nCoinAge) const
 {
     CBigNum bnCentSecond = 0;  // coin age in the unit of cent-seconds
     nCoinAge = 0;
@@ -2099,33 +2048,39 @@ bool CTransaction::GetCoinAge(CTxDB& txdb, uint64& nCoinAge) const
     CBigNum bnCoinDay = bnCentSecond * CENT / COIN / (24 * 60 * 60);
     if (fDebug && GetBoolArg("-printcoinage"))
         printf("coin age bnCoinDay=%s\n", bnCoinDay.ToString().c_str());
-    nCoinAge = bnCoinDay.getuint64();
+
+    if (bnCoinDay < 0)
+        bnCoinDay = 0;
+    if (bnCoinDay > MAX_COIN_AGE)
+        bnCoinDay = MAX_COIN_AGE;
+    nCoinAge = (int64)bnCoinDay.getuint64();
+
     return true;
 }
 
 // ppcoin: total coin age spent in block, in the unit of coin-days.
-bool CBlock::GetCoinAge(uint64& nCoinAge) const
+bool CBlock::GetCoinAge(int64& nCoinAge) const
 {
     nCoinAge = 0;
 
     CTxDB txdb("r");
     BOOST_FOREACH(const CTransaction& tx, vtx)
     {
-        uint64 nTxCoinAge;
+        int64 nTxCoinAge;
         if (tx.GetCoinAge(txdb, nTxCoinAge))
             nCoinAge += nTxCoinAge;
         else
             return false;
     }
 
-    if (nCoinAge == 0) // block coin age minimum 1 coin-day
+    if (nCoinAge <= 0) // block coin age minimum 1 coin-day
         nCoinAge = 1;
     if (fDebug && GetBoolArg("-printcoinage"))
         printf("block coin age total nCoinDays=%"PRI64d"\n", nCoinAge);
     return true;
 }
 
-bool CBlock::GetCoinStakeAge(uint64& nCoinAge) const
+bool CBlock::GetCoinStakeAge(int64& nCoinAge) const
 {
     nCoinAge = 0;
 
@@ -2184,11 +2139,32 @@ bool CBlock::AddToBlockIndex(unsigned int nFile, unsigned int nBlockPos)
     // nubit: save vote data
     if (pindexNew->IsProofOfStake())
     {
-        ExtractVote(*this, pindexNew->vote);
-        ExtractParkRateResults(*this, pindexNew->vParkRateResult);
+        if (!ExtractVote(*this, pindexNew->vote))
+            return error("AddToBlockIndex() : Unable to extract vote");
+        if (!pindexNew->vote.IsValid())
+            return error("AddToBlockIndex() : Invalid vote");
+
         if (!GetCoinStakeAge(pindexNew->nCoinAgeDestroyed))
-            return error("Unable to get coin age");
+            return error("AddToBlockIndex() : Unable to get coin age");
         pindexNew->vote.nCoinAgeDestroyed = pindexNew->nCoinAgeDestroyed;
+
+        if (!ExtractParkRateResults(*this, pindexNew->vParkRateResult))
+            return error("AddToBlockIndex() : Unable to extract park rate results");
+
+        {
+            std::vector<CParkRateVote> vExpectedParkRateResult;
+            if (!CalculateParkRateResults(pindexNew->vote, pindexNew->pprev, vExpectedParkRateResult))
+                return error("AddToBlockIndex() : Unable to calculate park rate results");
+            if (pindexNew->vParkRateResult != vExpectedParkRateResult)
+                return error("AddToBlockIndex() : Park rate results do not match");
+        }
+
+        // Verify park transactions now that the premium can be calculated
+        BOOST_FOREACH(const CTransaction& tx, vtx)
+        {
+            if (!tx.CheckParkWithResult(pindexNew->vParkRateResult))
+                return error("AddToBlockIndex() : invalid park transactions found");
+        }
     }
 
     // nubit: save elected custodians
@@ -2293,10 +2269,10 @@ bool CBlock::CheckBlock() const
 
     // Check coinbase reward
     // nu: proof of work blocks do not have fee to generate the right amount of shares even when outputs are split
-    if (vtx[0].GetValueOut() > (IsProofOfWork()? GetProofOfWorkReward(nBits) : 0))
+    if (vtx[0].GetValueOut() > (IsProofOfWork()? GetProofOfWorkReward() : 0))
         return DoS(50, error("CheckBlock() : coinbase reward exceeded %s > %s", 
                    FormatMoney(vtx[0].GetValueOut()).c_str(),
-                   FormatMoney(IsProofOfWork()? GetProofOfWorkReward(nBits) : 0).c_str()));
+                   FormatMoney(IsProofOfWork()? GetProofOfWorkReward() : 0).c_str()));
 
     // Check transactions
     BOOST_FOREACH(const CTransaction& tx, vtx)
@@ -2329,6 +2305,16 @@ bool CBlock::CheckBlock() const
     // Check merkleroot
     if (hashMerkleRoot != BuildMerkleTree())
         return DoS(100, error("CheckBlock() : hashMerkleRoot mismatch"));
+
+    // nubit: Basic vote check
+    if (IsProofOfStake())
+    {
+        CVote vote;
+        if (!ExtractVote(*this, vote))
+            return error("CheckBlock() : Unable to extract vote");
+        if (!vote.IsValid())
+            return error("CheckBlock() : Invalid vote");
+    }
 
     // ppcoin: check block signature
     if (!CheckBlockSignature())
@@ -2384,48 +2370,44 @@ bool CBlock::AcceptBlock()
     if (!Checkpoints::CheckSync(hash, pindexPrev))
         return error("AcceptBlock() : rejected by synchronized checkpoint");
 
-    // nubit: check the vote is valid and the results match our own calculations
-    if (IsProofOfStake() && !CheckVote(*this, pindexPrev))
-        return error("AcceptBlock() : rejected by vote check");
-
     // nubit: check the expansion transactions match the expected ones
-    if (IsProofOfStake())
     {
-        vector<CVote> vVote;
-        if (!ExtractVotes(*this, pindexPrev, CUSTODIAN_VOTES, vVote))
-            return error("AcceptBlock() : unable to extract votes");
-
-        vector<CTransaction> vExpectedTx;
+        vector<CTransaction> vExpectedCurrencyCoinBase;
+        if (IsProofOfStake())
         {
-            LOCK(cs_mapElectedCustodian);
+            vector<CVote> vVote;
+            if (!ExtractVotes(*this, pindexPrev, CUSTODIAN_VOTES, vVote))
+                return error("AcceptBlock() : unable to extract votes");
 
-            if (!GenerateCurrencyCoinBases(vVote, mapElectedCustodian, vExpectedTx))
-                return error("AcceptBlock() : unable to generate currency coin bases");
+            {
+                LOCK(cs_mapElectedCustodian);
+
+                if (!GenerateCurrencyCoinBases(vVote, mapElectedCustodian, vExpectedCurrencyCoinBase))
+                    return error("AcceptBlock() : unable to generate currency coin bases");
+            }
         }
-
-        int matching = 0;
+        vector<CTransaction> vActualCurrencyCoinBase;
         BOOST_FOREACH(const CTransaction& tx, vtx)
         {
             if (tx.IsCurrencyCoinBase())
-            {
-                CTransaction& expectedTx = vExpectedTx[matching];
-                expectedTx.nTime = tx.nTime;
-
-                if (tx == expectedTx)
-                    matching++;
-                else
-                {
-                    printf("expected tx: %s\n", expectedTx.ToString().c_str());
-                    printf("actual tx:   %s\n", tx.ToString().c_str());
-                    return error("AcceptBlock() : invalid expansion transaction found");
-                }
-            }
-            if (matching == vExpectedTx.size())
-                break;
+                vActualCurrencyCoinBase.push_back(tx);
         }
+        if (vActualCurrencyCoinBase.size() != vExpectedCurrencyCoinBase.size())
+            return DoS(100, error("AcceptBlock() : unexpected number of expansion transaction"));
+        for (int i = 0; i < vActualCurrencyCoinBase.size(); i++)
+        {
+            const CTransaction& actualTx = vActualCurrencyCoinBase[i];
 
-        if (matching != vExpectedTx.size())
-            return("AcceptBlock() : not enough expansion transaction");
+            CTransaction& expectedTx = vExpectedCurrencyCoinBase[i];
+            expectedTx.nTime = actualTx.nTime;
+
+            if (actualTx != expectedTx)
+            {
+                printf("expected tx: %s\n", expectedTx.ToString().c_str());
+                printf("actual tx:   %s\n", actualTx.ToString().c_str());
+                return DoS(100, error("AcceptBlock() : invalid expansion transaction found"));
+            }
+        }
     }
 
     // Write block to history file
@@ -2454,59 +2436,43 @@ bool CBlock::AcceptBlock()
     return true;
 }
 
+
+void CleanUpOldDuplicateStakeBlocks()
+{
+    uint64 maxAge = 24 * 60 * 60;
+    uint64 minTime = GetAdjustedTime() - maxAge;
+
+    BOOST_FOREACH(PAIRTYPE(const uint256, CBlock*)& item, mapDuplicateStakeBlocks)
+    {
+        const uint256& hash = item.first;
+        CBlock* block = item.second;
+        if (block->GetBlockTime() < minTime)
+        {
+            mapDuplicateStakeBlocks.erase(hash);
+            delete block;
+        }
+    }
+}
+
 bool ProcessBlock(CNode* pfrom, CBlock* pblock)
 {
+#ifdef TESTING
+    static set<uint256> setIgnoredBlockHashes;
+    if (nBlocksToIgnore)
+    {
+        nBlocksToIgnore--;
+        setIgnoredBlockHashes.insert(pblock->GetHash());
+        return error("ProcessBlock() : block ignored");
+    }
+    if (setIgnoredBlockHashes.count(pblock->GetHash()))
+        return error("ProcessBlock() : block ignored");
+#endif
     // Check for duplicate
     uint256 hash = pblock->GetHash();
     if (mapBlockIndex.count(hash))
         return error("ProcessBlock() : already have block %d %s", mapBlockIndex[hash]->nHeight, hash.ToString().substr(0,20).c_str());
     if (mapOrphanBlocks.count(hash))
         return error("ProcessBlock() : already have block (orphan) %s", hash.ToString().substr(0,20).c_str());
-
-    // ppcoin: check proof-of-stake
-    if (pblock->IsProofOfStake())
-    {
-        std::pair<COutPoint, unsigned int> proofOfStake = pblock->GetProofOfStake();
-
-        if (pindexBest->IsProofOfStake() && proofOfStake.first == pindexBest->prevoutStake)
-        {
-            // If the best block's stake is reused we revert the best block and propagate the duplicate so that other nodes do the same
-
-            // Only reject the best block if the duplicate is correctly signed
-            if (!pblock->CheckBlockSignature())
-            {
-                if (pfrom)
-                    pfrom->Misbehaving(100); // Immediate ban to prevent DoS because checking signature is expensive
-                return error("ProcessBlock() : Invalid signature on duplicate block");
-            }
-
-            printf("ProcessBlock() : block uses the same stake as the best block. Cancelling the best block\n");
-
-            // Propagate the duplicate block so that other nodes revert the best block too
-            RelayMessage(CInv(MSG_BLOCK, pblock->GetHash()), *pblock);
-            {
-                LOCK(cs_vNodes);
-                BOOST_FOREACH(CNode* pnode, vNodes)
-                    pnode->PushInventory(CInv(MSG_BLOCK, pblock->GetHash()));
-            }
-
-            CTxDB txdb;
-            CBlock previousBlock;
-            previousBlock.ReadFromDisk(pindexBest->pprev);
-
-            if (!previousBlock.SetBestChain(txdb, pindexBest->pprev))
-                return error("SetBestChain failed");
-
-            return false;
-        }
-        else
-        {
-            // Limited duplicity on stake: prevents block flood attack
-            // Duplicate stake allowed only when there is orphan child block
-            if (pblock->IsProofOfStake() && setStakeSeen.count(proofOfStake) && !mapOrphanBlocksByPrev.count(hash) && !Checkpoints::WantedByPendingSyncCheckpoint(hash))
-                return error("ProcessBlock() : duplicate proof-of-stake (%s, %d) for block %s", proofOfStake.first.ToString().c_str(), proofOfStake.second, hash.ToString().c_str());
-        }
-    }
 
     // Preliminary checks
     if (!pblock->CheckBlock())
@@ -2551,6 +2517,59 @@ bool ProcessBlock(CNode* pfrom, CBlock* pblock)
     // ppcoin: ask for pending sync-checkpoint if any
     if (!IsInitialBlockDownload())
         Checkpoints::AskForPendingSyncCheckpoint(pfrom);
+
+    // ppcoin: check proof-of-stake
+    if (pblock->IsProofOfStake())
+    {
+        std::pair<COutPoint, unsigned int> proofOfStake = pblock->GetProofOfStake();
+
+        if (pindexBest->IsProofOfStake() && proofOfStake.first == pindexBest->prevoutStake)
+        {
+            // If the best block's stake is reused we revert the best block and propagate the duplicate so that other nodes do the same
+            printf("ProcessBlock() : block uses the same stake as the best block. Cancelling the best block\n");
+
+            // Save the block to be able to accept it if a new chain is built from it despite the rejection
+            mapDuplicateStakeBlocks[pblock->GetHash()] = new CBlock(*pblock);
+
+            // Propagate the duplicate block so that other nodes revert the best block too
+            RelayMessage(CInv(MSG_BLOCK, pblock->GetHash()), *pblock);
+            {
+                LOCK(cs_vNodes);
+                BOOST_FOREACH(CNode* pnode, vNodes)
+                    pnode->PushInventory(CInv(MSG_BLOCK, pblock->GetHash()));
+            }
+
+            CTxDB txdb;
+            CBlock previousBlock;
+            previousBlock.ReadFromDisk(pindexBest->pprev);
+
+            if (!previousBlock.SetBestChain(txdb, pindexBest->pprev))
+                return error("SetBestChain failed");
+
+            return false;
+        }
+        else
+        {
+            // Limited duplicity on stake: prevents block flood attack
+            // Duplicate stake allowed only when there is orphan child block
+            if (pblock->IsProofOfStake() && setStakeSeen.count(proofOfStake) && !mapOrphanBlocksByPrev.count(hash) && !Checkpoints::WantedByPendingSyncCheckpoint(hash))
+                return error("ProcessBlock() : duplicate proof-of-stake (%s, %d) for block %s", proofOfStake.first.ToString().c_str(), proofOfStake.second, hash.ToString().c_str());
+        }
+    }
+
+    if (!mapBlockIndex.count(pblock->hashPrevBlock) && mapDuplicateStakeBlocks.count(pblock->hashPrevBlock))
+    {
+        printf("ProcessBlock() : parent block was previously rejected because of stake duplication. Reaccepting parent\n");
+        CBlock* pprevBlock = mapDuplicateStakeBlocks[pblock->hashPrevBlock];
+        // Block was already checked when it was first received, so we can just accept it here
+        if (!pprevBlock->AcceptBlock())
+            return error("ProcessBlock() : AcceptBlock of previously duplicate block FAILED");
+        mapDuplicateStakeBlocks.erase(pblock->hashPrevBlock);
+        delete pprevBlock;
+    }
+
+    if (mapDuplicateStakeBlocks.size())
+        CleanUpOldDuplicateStakeBlocks();
 
     // If don't already have its previous block, shunt it off to holding area until we get it
     if (!mapBlockIndex.count(pblock->hashPrevBlock))
@@ -3668,7 +3687,7 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv)
         CBlock block;
         vRecv >> block;
 
-        printf("received block %s\n", block.GetHash().ToString().substr(0,20).c_str());
+        printf("received block %s\n", block.GetHash().ToString().c_str());
         // block.print();
 
         CInv inv(MSG_BLOCK, block.GetHash());
@@ -4029,7 +4048,7 @@ bool SendMessages(CNode* pto, bool fSendTrickle)
                     if (!fTrickleWait)
                     {
                         CWalletTx wtx;
-                        if (GetTransaction(inv.hash, wtx))
+                        if (GetWalletTransaction(inv.hash, wtx))
                             if (wtx.fFromMe)
                                 fTrickleWait = true;
                     }
@@ -4279,8 +4298,35 @@ CBlock* CreateNewBlock(CReserveKey& reservekey, CWallet* pwallet, bool fProofOfS
             }
         }
 
-        BOOST_FOREACH(const CTransaction& tx, vCurrencyCoinBase)
+        BOOST_FOREACH(CTransaction& tx, vCurrencyCoinBase)
+        {
+            if (pblock->IsProofOfStake())
+                tx.nTime = pblock->vtx[1].nTime; //same as coinstake timestamp
             pblock->vtx.push_back(tx);
+        }
+    }
+
+    // nubit: Calculate park rate results to determine whether park transactions are valid in the block
+    std::vector<CParkRateVote> vParkRateResult;
+    if (pblock->IsProofOfStake())
+    {
+        CVote vote;
+        if (!ExtractVote(*pblock, vote))
+        {
+            printf("CreateNewBlock(): unable to extract vote");
+            return NULL;
+        }
+        if (!pblock->GetCoinStakeAge(vote.nCoinAgeDestroyed))
+        {
+            printf("CreateNewBlock(): unable to get vote coin age");
+            return NULL;
+        }
+
+        if (!CalculateParkRateResults(vote, pindexPrev, vParkRateResult))
+        {
+            printf("CreateNewBlock(): unable to calculate park rate results");
+            return NULL;
+        }
     }
 
     // Collect memory pool transactions into the block
@@ -4297,6 +4343,11 @@ CBlock* CreateNewBlock(CReserveKey& reservekey, CWallet* pwallet, bool fProofOfS
         {
             CTransaction& tx = (*mi).second;
             if (tx.IsCoinBase() || tx.IsCoinStake() || tx.IsCurrencyCoinBase() || !tx.IsFinal())
+                continue;
+
+            if (pblock->IsProofOfStake() && !tx.CheckParkWithResult(vParkRateResult))
+                // The transaction contains park outputs that do not work with the park rate results
+                // If we include it the block would be rejected
                 continue;
 
             COrphan* porphan = NULL;
@@ -4373,7 +4424,7 @@ CBlock* CreateNewBlock(CReserveKey& reservekey, CWallet* pwallet, bool fProofOfS
                 continue;
 
             // ppcoin: simplify transaction fee - allow free = false
-            int64 nMinFee = tx.GetMinFee(nBlockSize, false, GMF_BLOCK);
+            int64 nMinFee = tx.GetMinFee();
 
             // Connecting shouldn't fail due to dependency on other memory pool transactions
             // because we're already processing them in order of dependency
@@ -4427,7 +4478,7 @@ CBlock* CreateNewBlock(CReserveKey& reservekey, CWallet* pwallet, bool fProofOfS
     }
     if (pblock->IsProofOfWork())
     {
-        int64 nReward = GetProofOfWorkReward(pblock->nBits);
+        int64 nReward = GetProofOfWorkReward();
 
         if (nSplitShareOutputs > 0 && nReward >= nSplitShareOutputs * 2)
         {
@@ -4579,7 +4630,7 @@ void SetMintWarning(const string& strNewWarning)
 }
 
 #ifdef TESTING
-void BitcoinMiner(CWallet *pwallet, bool fProofOfStake, bool fGenerateSingleBlock, CBlockIndex *parent)
+void BitcoinMiner(CWallet *pwallet, bool fProofOfStake, bool fGenerateSingleBlock)
 #else
 void BitcoinMiner(CWallet *pwallet, bool fProofOfStake)
 #endif
@@ -4615,15 +4666,7 @@ void BitcoinMiner(CWallet *pwallet, bool fProofOfStake)
         // Create new block
         //
         unsigned int nTransactionsUpdatedLast = nTransactionsUpdated;
-#ifdef TESTING
-        CBlockIndex* pindexPrev;
-        if (parent)
-            pindexPrev = parent;
-        else
-            pindexPrev = pindexBest;
-#else
         CBlockIndex* pindexPrev = pindexBest;
-#endif
 
         auto_ptr<CBlock> pblock(CreateNewBlock(reservekey, pwallet, fProofOfStake));
         if (!pblock.get())

@@ -15,14 +15,14 @@ class ParkRecord
 public:
     uint256 hash;
     unsigned int n;
-    uint64 time;
-    uint64 amount;
-    uint64 duration;
+    int64 time;
+    int64 amount;
+    int64 duration;
     std::string unparkAddress;
-    uint64 depth;
+    int depth;
     bool premiumKnown;
-    uint64 premium;
-    uint64 remaining;
+    int64 premium;
+    int64 remaining;
     CBlockIndex* blockIndex;
     unsigned int lastUpdateBestHeight;
 
@@ -42,7 +42,7 @@ public:
 
         const CTxOut& txo = wtx.vout[out.n];
 
-        uint64 nDuration;
+        int64 nDuration;
         CTxDestination unparkAddress;
 
         if (!ExtractPark(txo.scriptPubKey, nDuration, unparkAddress))

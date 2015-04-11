@@ -1,3 +1,7 @@
+// Copyright (c) 2014-2015 The Nu developers
+// Distributed under the MIT/X11 software license, see the accompanying
+// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+
 #ifndef VOTE_H
 #define VOTE_H
 
@@ -7,13 +11,18 @@
 class CBlock;
 class CBlockIndex;
 
+static const int64 COIN_PARK_RATE = 100000 * COIN; // Park rate internal encoding precision. The minimum possible rate is (1.0 / COIN_PARK_RATE) coins per parked coin
+static const int64 MAX_PARK_RATE = 1000000 * COIN_PARK_RATE;
+static const unsigned char MAX_COMPACT_DURATION = 30; // about 2000 years
+static const int64 MAX_PARK_DURATION = 1000000000; // about 1900 years
+
 class CCustodianVote
 {
 public:
     unsigned char cUnit;
     bool fScript;
     uint160 hashAddress;
-    uint64 nAmount;
+    int64 nAmount;
 
     CCustodianVote() :
         cUnit('?'),
@@ -23,11 +32,15 @@ public:
     {
     }
 
+    bool IsValid() const;
+
     IMPLEMENT_SERIALIZE
     (
         READWRITE(cUnit);
         if (nVersion >= 20200) // version 0.2.2
             READWRITE(fScript);
+        else if (fRead)
+            const_cast<CCustodianVote*>(this)->fScript = false;
         READWRITE(hashAddress);
         READWRITE(nAmount);
     )
@@ -35,6 +48,7 @@ public:
     inline bool operator==(const CCustodianVote& other) const
     {
         return (cUnit == other.cUnit &&
+                fScript == other.fScript &&
                 hashAddress == other.hashAddress &&
                 nAmount == other.nAmount);
     }
@@ -106,11 +120,26 @@ public:
     }
 };
 
+inline bool CompactDurationRange(unsigned char nCompactDuration)
+{
+    return (nCompactDuration < MAX_COMPACT_DURATION);
+}
+
+inline bool ParkDurationRange(int64 nDuration)
+{
+    return (nDuration >= 1 && nDuration <= MAX_PARK_DURATION);
+}
+
+inline bool ParkRateRange(int64 nRate)
+{
+    return (nRate >= 0 && nRate <= MAX_PARK_RATE);
+}
+
 class CParkRate
 {
 public:
     unsigned char nCompactDuration;
-    uint64 nRate;
+    int64 nRate;
 
     CParkRate() :
         nCompactDuration(0),
@@ -118,11 +147,13 @@ public:
     {
     }
 
-    CParkRate(unsigned char nCompactDuration, uint64 nRate) :
+    CParkRate(unsigned char nCompactDuration, int64 nRate) :
         nCompactDuration(nCompactDuration),
         nRate(nRate)
     {
     }
+
+    bool IsValid() const;
 
     IMPLEMENT_SERIALIZE
     (
@@ -130,8 +161,10 @@ public:
         READWRITE(nRate);
     )
 
-    uint64 GetDuration() const
+    int64 GetDuration() const
     {
+        if (!CompactDurationRange(nCompactDuration))
+            throw std::runtime_error("Park rate compact duration out of range");
         return 1 << nCompactDuration;
     }
 
@@ -168,6 +201,8 @@ public:
         vParkRate.clear();
     }
 
+    bool IsValid() const;
+
     IMPLEMENT_SERIALIZE
     (
         READWRITE(cUnit);
@@ -193,8 +228,11 @@ public:
     std::vector<CParkRateVote> vParkRateVote;
     std::vector<uint160> vMotion;
 
+    int64 nCoinAgeDestroyed;
+
     CVote() :
-        nVersion(PROTOCOL_VERSION)
+        nVersion(PROTOCOL_VERSION),
+        nCoinAgeDestroyed(0)
     {
     }
 
@@ -213,6 +251,7 @@ public:
         vCustodianVote.clear();
         vParkRateVote.clear();
         vMotion.clear();
+        nCoinAgeDestroyed = 0;
     }
 
     template<typename Stream>
@@ -271,8 +310,6 @@ public:
         return ToScript(nVersion);
     }
 
-    uint64 nCoinAgeDestroyed;
-
     bool IsValid() const;
 
     void Upgrade();
@@ -293,18 +330,16 @@ public:
 bool IsVote(const CScript& scriptPubKey);
 bool ExtractVote(const CScript& scriptPubKey, CVote& voteRet);
 bool ExtractVote(const CBlock& block, CVote& voteRet);
-bool ExtractVotes(const CBlock &block, CBlockIndex *pindexprev, unsigned int nCount, std::vector<CVote> &vVoteResult);
+bool ExtractVotes(const CBlock &block, const CBlockIndex *pindexprev, unsigned int nCount, std::vector<CVote> &vVoteResult);
 
 bool IsParkRateResult(const CScript& scriptPubKey);
 bool ExtractParkRateResult(const CScript& scriptPubKey, CParkRateVote& parkRateResultRet);
 bool ExtractParkRateResults(const CBlock& block, std::vector<CParkRateVote>& vParkRateResultRet);
 
 bool CalculateParkRateResults(const std::vector<CVote>& vVote, const std::map<unsigned char, std::vector<const CParkRateVote*> >& mapPreviousVotes, std::vector<CParkRateVote>& results);
-bool CalculateParkRateResults(const CVote &vote, CBlockIndex *pindexprev, std::vector<CParkRateVote>& vParkRateResult);
-uint64 GetPremium(uint64 nValue, uint64 nDuration, unsigned char cUnit, const std::vector<CParkRateVote>& vParkRateResult);
+bool CalculateParkRateResults(const CVote &vote, const CBlockIndex *pindexprev, std::vector<CParkRateVote>& vParkRateResult);
+int64 GetPremium(int64 nValue, int64 nDuration, unsigned char cUnit, const std::vector<CParkRateVote>& vParkRateResult);
 
-bool CheckVote(const CBlock& block, CBlockIndex *pindexprev);
-
-bool GenerateCurrencyCoinBases(const std::vector<CVote> vVote, std::map<CBitcoinAddress, CBlockIndex*> mapAlreadyElected, std::vector<CTransaction>& vCurrencyCoinBaseRet);
+bool GenerateCurrencyCoinBases(const std::vector<CVote> vVote, const std::map<CBitcoinAddress, CBlockIndex*>& mapAlreadyElected, std::vector<CTransaction>& vCurrencyCoinBaseRet);
 
 #endif
