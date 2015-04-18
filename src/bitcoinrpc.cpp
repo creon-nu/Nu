@@ -3416,6 +3416,19 @@ Value getparkvotes(const Array& params, bool fHelp)
         }
     }
 
+    // Add abstension (= vote for a rate of 0)
+    BOOST_FOREACH(DurationRateWeight& durationRateWeight, durationRateWeights)
+    {
+        unsigned char nCompactDuration = durationRateWeight.first;
+        RateWeightMap &rateWeights = durationRateWeight.second;
+        const int64 coinAgeDestroyed = coinAgeDestroyedPerDuration[nCompactDuration];
+
+        assert(coinAgeDestroyed <= totalVoteWeight);
+        int64 abstainedCoinAge = totalVoteWeight - coinAgeDestroyed;
+        if (abstainedCoinAge)
+            rateWeights[0] += abstainedCoinAge;
+    }
+
     Object unitResult;
     BOOST_FOREACH(const DurationRateWeight& durationRateWeight, durationRateWeights)
     {
@@ -3426,14 +3439,6 @@ Value getparkvotes(const Array& params, bool fHelp)
         boost::int64_t blocks = (int64)1<<nCompactDuration;
         durationObject.push_back(Pair("blocks", blocks));
         durationObject.push_back(Pair("estimated_duration", BlocksToTime(blocks)));
-
-        assert(coinAgeDestroyedPerDuration[nCompactDuration] <= totalVoteWeight);
-        int64 abstainedCoinAge = totalVoteWeight - coinAgeDestroyedPerDuration[nCompactDuration];
-        if (abstainedCoinAge > 0)
-        {
-            RateWeightMap &rateWeights = durationRateWeights[nCompactDuration];
-            rateWeights[0] += abstainedCoinAge;
-        }
 
         int64 accumulatedWeight = 0;
 
