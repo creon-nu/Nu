@@ -223,8 +223,8 @@ When(/^node "(.*?)" finds (\d+) blocks$/) do |arg1, arg2|
   end
 end
 
-When(/^node "(.*?)" finds (\d+) blocks received by all (?:nodes|other nodes)$/) do |arg1, arg2|
-  step "node \"#{arg1}\" finds #{arg2} blocks"
+When(/^node "(.*?)" finds (\d+|a) blocks? received by all (?:nodes|other nodes)$/) do |arg1, arg2|
+  step "node \"#{arg1}\" finds #{arg2 == "a" ? 1 : arg2} blocks"
   step "all nodes reach the same height"
 end
 
@@ -373,15 +373,15 @@ When(/^node "(.*?)" finds blocks until custodian "(.*?)" is elected in transacti
 end
 
 When(/^node "(.*?)" sends "(.*?)" to "([^"]*?)" in transaction "(.*?)"$/) do |arg1, arg2, arg3, arg4|
-  @tx[arg4] = @nodes[arg1].rpc "sendtoaddress", @addresses[arg3], parse_number(arg2)
+  @tx[arg4] = @nodes[arg1].rpc "sendtoaddress", @addresses.fetch(arg3, arg3), parse_number(arg2)
 end
 
 When(/^node "(.*?)" sends "(.*?)" to "([^"]*?)"$/) do |arg1, arg2, arg3|
-  @nodes[arg1].rpc "sendtoaddress", @addresses[arg3], parse_number(arg2)
+  @nodes[arg1].rpc "sendtoaddress", @addresses.fetch(arg3, arg3), parse_number(arg2)
 end
 
 When(/^node "(.*?)" sends "(.*?)" (NuBits|NBT|NuShares|NSR) to "(.*?)"$/) do |arg1, arg2, unit_name, arg3|
-  @nodes[arg1].unit_rpc unit(unit_name), "sendtoaddress", @addresses[arg3], parse_number(arg2)
+  @nodes[arg1].unit_rpc unit(unit_name), "sendtoaddress", @addresses.fetch(arg3, arg3), parse_number(arg2)
 end
 
 Given(/^node "(.*?)" sends "(.*?)" (\w+) to node "(.*?)"$/) do |arg1, arg2, arg3, arg4|
@@ -392,15 +392,6 @@ Given(/^node "(.*?)" sends "(.*?)" (\w+) to node "(.*?)"$/) do |arg1, arg2, arg3
 
   target_address = target_node.unit_rpc(unit, "getaccountaddress", "")
   node.unit_rpc(unit, "sendtoaddress", target_address, amount)
-end
-
-When(/^node "(.*?)" finds a block received by all other nodes$/) do |arg1|
-  node = @nodes[arg1]
-  block = node.generate_stake
-  wait_for do
-    main = @nodes.values.map(&:top_hash)
-    main.all? { |hash| hash == block }
-  end
 end
 
 def debug_balance(node, unit_name)
@@ -484,7 +475,7 @@ Then(/^all nodes should (?:have|reach) (\d+) transactions? in memory pool$/) do 
   end
 end
 
-Then(/^node "(.*?)" should (?:have|reach) (\d+) transactions? in memory pool$/) do |arg1, arg2|
+Then(/^node "(.*?)" (?:should have|should reach|reaches) (\d+) transactions? in memory pool$/) do |arg1, arg2|
   node = @nodes[arg1]
   wait_for do
     expect(node.rpc("getmininginfo")["pooledtx"]).to eq(arg2.to_i)
@@ -572,7 +563,7 @@ Then(/^node "(.*?)" should have (\d+) (\w+) transactions?$/) do |arg1, arg2, uni
   end
 end
 
-Then(/^the (\d+)\S+ transaction should be a send of "(.*?)" to "(.*?)"$/) do |arg1, arg2, arg3|
+Then(/^the (\d+)\S+ transaction should be a send of "([^"]*?)" to "(.*?)"$/) do |arg1, arg2, arg3|
   begin
     tx = @listtransactions[arg1.to_i - 1]
     expect(tx["category"]).to eq("send")
@@ -592,12 +583,24 @@ Then(/^the (\d+)\S+ transaction should be a receive of "(.*?)" to "(.*?)"$/) do 
   expect(tx["address"]).to eq(@addresses[arg3])
 end
 
-Then(/^the transaction should be a send of "(.*?)" to "(.*?)"$/) do |arg1, arg2|
+Then(/^the transaction should be a send of "([^"]*?)" to "(.*?)"$/) do |arg1, arg2|
   step "the 1st transaction should be a send of \"#{arg1}\" to \"#{arg2}\""
 end
 
 Then(/^the transaction should be a receive of "(.*?)" to "(.*?)"$/) do |arg1, arg2|
   step "the 1st transaction should be a receive of \"#{arg1}\" to \"#{arg2}\""
+end
+
+Then(/^the transaction should be a receive of "([^"]*?)"$/) do |arg1|
+  tx = @listtransactions[0]
+  expect(tx["category"]).to eq("receive")
+  expect(tx["amount"]).to eq(parse_number(arg1))
+end
+
+Then(/^the (\d+)\S+ transaction should be a send of "([^"]*?)"$/) do |arg1, arg2|
+  tx = @listtransactions[arg1.to_i - 1]
+  expect(tx["category"]).to eq("send")
+  expect(tx["amount"]).to eq(-parse_number(arg2))
 end
 
 Then(/^the (\d+)st transaction should be the initial distribution of shares$/) do |arg1|
@@ -681,4 +684,11 @@ Then(/^node "(.*?)" should stay at (\d+) transactions in memory pool$/) do |arg1
   expect(node.rpc("getmininginfo")["pooledtx"]).to eq(count)
   sleep 2
   expect(node.rpc("getmininginfo")["pooledtx"]).to eq(count)
+end
+
+When(/^node "(.*?)" imports the private key "(.*?)" into the (\S+) wallet$/) do |arg1, arg2, arg3|
+  node = @nodes[arg1]
+  private_key = arg2
+  unit_name = arg3
+  node.unit_rpc(unit(unit_name), "importprivkey", private_key)
 end

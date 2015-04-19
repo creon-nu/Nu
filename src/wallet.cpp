@@ -321,6 +321,8 @@ bool CWallet::EncryptWallet(const SecureString& strWalletPassphrase)
 
 void CWallet::WalletUpdateSpent(const CTransaction &tx)
 {
+    if (tx.cUnit != cUnit)
+        return;
     // Anytime a signature is successfully verified, it's proof the outpoint is spent.
     // Update the wallet spent flag if it doesn't know due to wallet.dat being
     // restored from backup or the user making copies of wallet.dat.
@@ -458,6 +460,8 @@ bool CWallet::AddToWallet(const CWalletTx& wtxIn)
 // If fUpdate is true, existing transactions will be updated.
 bool CWallet::AddToWalletIfInvolvingMe(const CTransaction& tx, const CBlock* pblock, bool fUpdate, bool fFindBlock)
 {
+    if (tx.cUnit != cUnit)
+        return false;
     uint256 hash = tx.GetHash();
     {
         LOCK(cs_wallet);
@@ -524,6 +528,9 @@ int64 CWallet::GetDebit(const CTxIn &txin) const
 
 bool CWallet::IsChange(const CTxOut& txout, const CTransaction& tx) const
 {
+    if (tx.cUnit != cUnit)
+        return false;
+
     CTxDestination address;
     txnouttype type;
 
