@@ -2,6 +2,7 @@
 // Copyright (c) 2009-2012 The Bitcoin developers
 // Copyright (c) 2011-2012 The PPCoin developers
 // Copyright (c) 2013-2014 The Peershares developers
+// Copyright (c) 2014-2015 The Nu developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -1551,6 +1552,8 @@ double DurationInYears(int64 blocks)
 
 double AnnualInterestRatePercentage(int64 rate, int64 blocks)
 {
+    if (blocks == 0)
+        return 0;
     return (double)rate / COIN_PARK_RATE * 100 / DurationInYears(blocks);
 }
 

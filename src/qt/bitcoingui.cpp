@@ -340,7 +340,7 @@ void BitcoinGUI::createMenuBar()
     file->addSeparator();
     file->addAction(quitAction);
 
-    sharesMenu = appMenuBar->addMenu(tr("S&hares"));
+    sharesMenu = appMenuBar->addMenu(tr("Sh&ares"));
     sharesMenu->addAction(exportPeercoinKeysAction);
     sharesMenu->addAction(distributeDividendsAction);
 

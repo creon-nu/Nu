@@ -92,7 +92,8 @@ script: |
     --without-winidn \
     --without-libidn \
     --without-darwinssl \
-    --without-curl
+    --without-curl \
+    --with-ssl=$STAGING
   # Workaround to prevent re-configuring by make; make all files have a date in the past
   find . -print0 | xargs -r0 touch -t 200001010000
   export FAKETIME=$REFERENCE_DATETIME

@@ -1,4 +1,4 @@
-Nu 0.5.3 BETA
+Nu 1.0.1 BETA
 Copyright (c) 2014 Nu Developers
 
 ## End-User License Agreement

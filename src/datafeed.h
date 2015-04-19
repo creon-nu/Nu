@@ -1,3 +1,7 @@
+// Copyright (c) 2014-2015 The Nu developers
+// Distributed under the MIT/X11 software license, see the accompanying
+// file COPYING or http://www.opensource.org/licenses/mit-license.php.
+
 #ifndef DATA_FEED_H
 #define DATA_FEED_H
 
@@ -23,7 +27,7 @@ public:
         vParts.push_back("motions");
     }
 
-    CDataFeed(const std::string sURL, const std::string sSignatureURL, const std::string sSignatureAddress, std::vector<std::string> vParts) :
+    CDataFeed(const std::string& sURL, const std::string& sSignatureURL, const std::string& sSignatureAddress, const std::vector<std::string>& vParts) :
         sURL(sURL),
         sSignatureURL(sSignatureURL),
         sSignatureAddress(sSignatureAddress),

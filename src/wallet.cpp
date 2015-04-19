@@ -1,6 +1,7 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2012 The Bitcoin developers
 // Copyright (c) 2011-2013 The PPCoin developers
+// Copyright (c) 2014-2015 The Nu developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -155,6 +156,9 @@ void CWallet::SetBestChain(const CBlockLocator& loc)
 
 void CWallet::SetVote(const CVote& vote)
 {
+    if (!vote.IsValid())
+        throw runtime_error("Cannot set invalid vote");
+
     if (this->vote != vote)
     {
         this->vote = vote;
@@ -419,7 +423,7 @@ bool CWallet::AddToWallet(const CWalletTx& wtxIn)
         {
             const CTxOut& txo = wtx.vout[i];
 
-            uint64 nDuration;
+            int64 nDuration;
             CTxDestination unparkAddress;
 
             if (!ExtractPark(txo.scriptPubKey, nDuration, unparkAddress))
@@ -1353,7 +1357,7 @@ bool CWallet::CreateTransaction(const vector<pair<CScript, int64> >& vecSend, CW
 
                 // Check that enough fee is included
                 int64 nPayFee = wtxNew.GetUnitMinFee() * (1 + (int64)nBytes / 1000);
-                int64 nMinFee = wtxNew.GetMinFee(1, false, GMF_SEND, nBytes);
+                int64 nMinFee = wtxNew.GetMinFee(nBytes);
 
                 if (nFeeRet < max(nPayFee, nMinFee))
                 {
@@ -1379,10 +1383,88 @@ bool CWallet::CreateTransaction(CScript scriptPubKey, int64 nValue, CWalletTx& w
     return CreateTransaction(vecSend, wtxNew, reservekey, nFeeRet, coinControl);
 }
 
+bool CWallet::CreateBurnTransaction(int64 nBurnValue, CWalletTx& wtxNew, CReserveKey& reservekey, int64& nFeeRet, const CCoinControl* coinControl)
+{
+    if (nBurnValue < 0)
+        return false;
+
+    wtxNew.BindWallet(this);
+
+    {
+        LOCK2(cs_main, cs_wallet);
+        // txdb must be opened before the mapWallet lock
+        CTxDB txdb("r");
+        {
+            nFeeRet = GetMinTxFee();
+            loop
+            {
+                wtxNew.vin.clear();
+                wtxNew.vout.clear();
+                wtxNew.fFromMe = true;
+                wtxNew.cUnit = cUnit;
+
+                // Guarantee that there will be always a change output
+                int64 nMinChange = wtxNew.GetMinTxOutAmount();
+                int64 nBurnOrFee = max(nBurnValue, nFeeRet);
+                int64 nTotalValue = nBurnOrFee + nMinChange;
+
+                // Choose coins to use
+                set<pair<const CWalletTx*,unsigned int> > setCoins;
+                int64 nValueIn = 0;
+                if (!SelectCoins(nTotalValue, wtxNew.nTime, setCoins, nValueIn, coinControl))
+                    return false;
+
+                CScript scriptChange;
+                BOOST_FOREACH(PAIRTYPE(const CWalletTx*, unsigned int) pcoin, setCoins)
+                {
+                    scriptChange = pcoin.first->vout[pcoin.second].scriptPubKey;
+                }
+
+                // Set the change output
+                int64 nChange = nValueIn - nBurnOrFee;
+                assert(nChange >= nMinChange);
+                wtxNew.AddChange(nChange, scriptChange, coinControl, reservekey);
+
+                // Fill vin
+                BOOST_FOREACH(const PAIRTYPE(const CWalletTx*,unsigned int)& coin, setCoins)
+                    wtxNew.vin.push_back(CTxIn(coin.first->GetHash(),coin.second));
+
+                // Sign
+                int nIn = 0;
+                BOOST_FOREACH(const PAIRTYPE(const CWalletTx*,unsigned int)& coin, setCoins)
+                    if (!SignSignature(*this, *coin.first, wtxNew, nIn++))
+                        return false;
+
+                // Limit size
+                unsigned int nBytes = ::GetSerializeSize(*(CTransaction*)&wtxNew, SER_NETWORK, PROTOCOL_VERSION);
+                if (nBytes >= MAX_BLOCK_SIZE/4)
+                    return false;
+
+                // Check that enough fee is included
+                int64 nPayFee = wtxNew.GetUnitMinFee() * (1 + (int64)nBytes / 1000);
+                int64 nMinFee = wtxNew.GetMinFee(nBytes);
+
+                if (nBurnOrFee < max(nPayFee, nMinFee))
+                {
+                    nFeeRet = max(nPayFee, nMinFee);
+                    continue;
+                }
+
+                // Fill vtxPrev by copying from previous transactions vtxPrev
+                wtxNew.AddSupportingTransactions(txdb);
+                wtxNew.fTimeReceivedIsTxTime = true;
+
+                break;
+            }
+        }
+    }
+    return true;
+}
+
 static map<const CWalletTx*, uint256> mapTxHash;
 static map<const CWalletTx*, CTxIndex> mapTxIndex;
 static map<const CWalletTx*, CBlock> mapTxBlock;
-static map<const CWalletTx*, uint64> mapTxLastUse;
+static map<const CWalletTx*, int64> mapTxLastUse;
 
 // ppcoin: create coin stake transaction
 bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int64 nSearchInterval, CTransaction& txNew, CBlockIndex* pindexprev)
@@ -1393,12 +1475,12 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
     LOCK2(cs_main, cs_wallet);
 
     // remove from cache the unused transactions
-    uint64 nNow = GetTime();
-    map<const CWalletTx*, uint64>::iterator it = mapTxLastUse.begin();
+    int64 nNow = GetTime();
+    map<const CWalletTx*, int64>::iterator it = mapTxLastUse.begin();
     while (it != mapTxLastUse.end())
     {
         const CWalletTx* wtx = it->first;
-        uint64& nLastUse = it->second;
+        int64& nLastUse = it->second;
 
         if (nNow > nLastUse + 24 * 60 * 60)
         {
@@ -1586,16 +1668,12 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
             txNew.vout.push_back(CTxOut(0, txNew.vout[1].scriptPubKey));
     }
 
-    // Calculate coin age reward
-    uint64 nCoinAge;
-    {
-        CTxDB txdb("r");
-        if (!txNew.GetCoinAge(txdb, nCoinAge))
-            return error("CreateCoinStake : failed to calculate coin age");
-        nCredit += GetProofOfStakeReward(nCoinAge);
-    }
+    nCredit += GetProofOfStakeReward();
 
     // nubit: Add current vote
+    if (!vote.IsValid())
+        return error("CreateCoinStake : current vote is invalid");
+
     int nVersion;
     if (IsNuProtocolV05(txNew.nTime))
         nVersion = PROTOCOL_VERSION;
@@ -1606,7 +1684,12 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
     // nubit: The result of the vote is stored in the CoinStake transaction
     CParkRateVote parkRateResult;
 
-    vote.nCoinAgeDestroyed = nCoinAge;
+    {
+        CTxDB txdb("r");
+        if (!txNew.GetCoinAge(txdb, vote.nCoinAgeDestroyed))
+            return error("CreateCoinStake : failed to calculate coin age");
+    }
+
     vector<CParkRateVote> vParkRateResult;
     if (!CalculateParkRateResults(vote, pindexprev, vParkRateResult))
         return error("CalculateParkRateResults failed");
@@ -1658,7 +1741,12 @@ bool CWallet::CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int
     return true;
 }
 
-bool CWallet::CreateUnparkTransaction(CWalletTx& wtxParked, unsigned int nOut, const CBitcoinAddress& unparkAddress, uint64 nAmount, CWalletTx& wtxNew)
+bool CWallet::CreateUnparkTransaction(CWalletTx& wtxParked, unsigned int nOut, const CBitcoinAddress& unparkAddress, int64 nAmount, CWalletTx& wtxNew)
+{
+    return CreateUnparkTransaction(wtxParked.GetHash(), nOut, unparkAddress, nAmount, wtxNew);
+}
+
+bool CWallet::CreateUnparkTransaction(const uint256& hashPark, unsigned int nOut, const CBitcoinAddress& unparkAddress, int64 nAmount, CWalletTx& wtxNew)
 {
     wtxNew.BindWallet(this);
 
@@ -1678,7 +1766,7 @@ bool CWallet::CreateUnparkTransaction(CWalletTx& wtxParked, unsigned int nOut, c
 
             CScript scriptSig;
             scriptSig.SetUnpark();
-            wtxNew.vin.push_back(CTxIn(wtxParked.GetHash(), nOut, scriptSig));
+            wtxNew.vin.push_back(CTxIn(hashPark, nOut, scriptSig));
 
             // Fill vtxPrev by copying from previous transactions vtxPrev
             wtxNew.AddSupportingTransactions(txdb);
@@ -1703,7 +1791,7 @@ bool CWallet::SendUnparkTransactions(vector<CWalletTx>& vtxRet)
             if (!IsMine(txo))
                 continue;
 
-            uint64 nDuration;
+            int64 nDuration;
 
             CTxDestination unparkDestination;
             if (!ExtractPark(txo.scriptPubKey, nDuration, unparkDestination))
@@ -1711,7 +1799,7 @@ bool CWallet::SendUnparkTransactions(vector<CWalletTx>& vtxRet)
             CBitcoinAddress unparkAddress(unparkDestination, wtx.cUnit);
 
             CBlockIndex *pindex = NULL;
-            uint64 nDepth = wtx.GetDepthInMainChain(pindex);
+            int64 nDepth = wtx.GetDepthInMainChain(pindex);
 
             if (nDepth < nDuration)
                 continue;
@@ -1719,8 +1807,8 @@ bool CWallet::SendUnparkTransactions(vector<CWalletTx>& vtxRet)
             if (!pindex)
                 continue;
 
-            uint64 nPremium = pindex->GetPremium(txo.nValue, nDuration, wtx.cUnit);
-            uint64 nAmount = txo.nValue + nPremium;
+            int64 nPremium = pindex->GetPremium(txo.nValue, nDuration, wtx.cUnit);
+            int64 nAmount = txo.nValue + nPremium;
 
             printf("Found unparkable output: hash=%s output=%d unit=%c value=%" PRI64u " duration=%" PRI64u " unparkAddress=%s premium=%" PRI64u "\n",
                     wtx.GetHash().GetHex().c_str(), i, wtx.cUnit, txo.nValue, nDuration, unparkAddress.ToString().c_str(), nPremium);
@@ -1854,7 +1942,7 @@ std::string CWallet::Park(int64 nValue, int64 nDuration, const CBitcoinAddress& 
     if (cUnit == 'S')
         return _("Cannot park shares");
 
-    if (nDuration <= 0)
+    if (!ParkDurationRange(nDuration))
         return _("Invalid park duration");
 
     // Check amount
@@ -1863,7 +1951,7 @@ std::string CWallet::Park(int64 nValue, int64 nDuration, const CBitcoinAddress& 
     if (nValue + GetMinTxFee() > GetBalance())
         return _("Insufficient funds");
 
-    uint64 nPremium = pindexBest->GetPremium(nValue, nDuration, cUnit);
+    int64 nPremium = pindexBest->GetPremium(nValue, nDuration, cUnit);
 
     if (nPremium == 0)
         return _("No premium for this duration");
@@ -1879,9 +1967,61 @@ std::string CWallet::Park(int64 nValue, int64 nDuration, const CBitcoinAddress& 
 
     script.SetPark(nDuration, unparkID);
 
+    // Verify result
+    {
+        CTxDestination extractedDestination;
+        int64 nExtractedDuration;
+        if (!ExtractPark(script, nExtractedDuration, extractedDestination))
+            return _("Verification of parking script failed");
+        CBitcoinAddress extractedAddress(extractedDestination, cUnit);
+        if (extractedAddress != unparkAddress)
+            return _("Verification of parking script failed");
+        if (nExtractedDuration != nDuration)
+            return _("Verification of parking script failed");
+    }
+
     return SendMoney(script, nValue, wtxNew, fAskFee);
 }
 
+
+string CWallet::BurnMoney(int64 nValue, CWalletTx& wtxNew, bool fAskFee)
+{
+    CReserveKey reservekey(this);
+    int64 nFeeRequired;
+
+    if (IsLocked())
+    {
+        string strError = _("Error: Portfolio locked, unable to create transaction  ");
+        printf("BurnMoney() : %s\n", strError.c_str());
+        return strError;
+    }
+    if (fWalletUnlockMintOnly)
+    {
+        string strError = _("Error: Portfolio unlocked for block minting only, unable to create transaction.");
+        printf("BurnMoney() : %s\n", strError.c_str());
+        return strError;
+    }
+    if (!CreateBurnTransaction(nValue, wtxNew, reservekey, nFeeRequired))
+    {
+        string strError;
+        if (nValue + nFeeRequired > GetBalance())
+            strError = strprintf(_("Error: This transaction requires a transaction fee of at least %s because of its amount, complexity, or use of recently received funds  "), FormatMoney(nFeeRequired).c_str());
+        else
+            strError = _("Error: Transaction creation failed  ");
+        printf("BurnMoney() : %s\n", strError.c_str());
+        return strError;
+    }
+
+    if (fAskFee && !ThreadSafeAskFee(nFeeRequired, _("Sending..."), wtxNew.cUnit))
+        return "ABORTED";
+
+
+    if (!CommitTransaction(wtxNew, reservekey))
+        return _("Error: The transaction was rejected.  This might happen if some of the shares in your portfolio were already spent, such as if you used a copy of wallet.dat and shares were spent in the copy but not marked as spent here.");
+
+    MainFrameRepaint();
+    return "";
+}
 
 
 int CWallet::LoadWallet(bool& fFirstRunRet)

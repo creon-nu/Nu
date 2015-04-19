@@ -50,10 +50,10 @@ LIBS += \
  -lboost_filesystem-mt \
  -lboost_program_options-mt \
  -lboost_thread-mt \
- -lssl \
- -lcrypto \
- -lz \
- -l curl
+ -l curl \
+ -l ssl \
+ -l crypto \
+ -lz
 
 TESTDEFS += -DBOOST_TEST_DYN_LINK
 endif
