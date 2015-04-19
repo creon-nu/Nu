@@ -58,7 +58,7 @@ Value importprivkey(const Array& params, bool fHelp)
     if (params.size() > 1)
         strLabel = params[1].get_str();
     CBitcoinSecret vchSecret;
-    bool fGood = vchSecret.SetString(strSecret);
+    bool fGood = vchSecret.SetString(strSecret, pwalletMain->Unit());
 
     if (!fGood) throw JSONRPCError(-5,"Invalid private key");
     if (pwalletMain->IsLocked())
@@ -111,7 +111,7 @@ Value dumpprivkey(const Array& params, bool fHelp)
     bool fCompressed;
     if (!pwalletMain->GetSecret(keyID, vchSecret, fCompressed))
         throw JSONRPCError(-4,"Private key for address " + strAddress + " is not known");
-    return CBitcoinSecret(vchSecret, fCompressed).ToString();
+    return CBitcoinSecret(vchSecret, fCompressed, pwalletMain->Unit()).ToString();
 }
 
 Value exportpeercoinkeys(const Array& params, bool fHelp)

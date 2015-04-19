@@ -602,10 +602,20 @@ bool inline CPeercoinAddressVisitor::operator()(const CNoDestination &id) const 
 class CBitcoinSecret : public CBase58Data
 {
 public:
-    void SetSecret(const CSecret& vchSecret, bool fCompressed)
+    enum
+    {
+        NUSHARES_SECRET = 149,      // PXXXXXXXX... for compressed keys
+        NUSHARES_SECRET_TEST = 223, // aXXXXXXXX... for compressed keys
+        NUBITS_SECRET = 150,        // PXXXXXXXX... for compressed keys
+        NUBITS_SECRET_TEST = 224,   // aXXXXXXXX... for compressed keys
+        DEFAULT_SECRET = 191,       // 128 + CBitcoinAddress::PUBKEY_ADDRESS
+        DEFAULT_SECRET_TEST = 160,  // 128 + CBitcoinAddress::PUBKEY_ADDRESS_TEST
+    };
+
+    void SetSecret(const CSecret& vchSecret, bool fCompressed, unsigned char cUnit)
     { 
         assert(vchSecret.size() == 32);
-        SetData(128 + (fTestNet ? CBitcoinAddress::PUBKEY_ADDRESS_TEST : CBitcoinAddress::PUBKEY_ADDRESS), &vchSecret[0], vchSecret.size());
+        SetData(ExpectedVersion(cUnit), &vchSecret[0], vchSecret.size());
         if (fCompressed)
             vchData.push_back(1);
     }
@@ -619,37 +629,81 @@ public:
         return vchSecret;
     }
 
-    bool IsValid() const
+    unsigned char ExpectedVersion(unsigned char cUnit, bool fTest = fTestNet) const
+    {
+        switch (cUnit)
+        {
+            case 'S':
+                if (fTest)
+                    return NUSHARES_SECRET_TEST;
+                else
+                    return NUSHARES_SECRET;
+            case 'B':
+                if (fTest)
+                    return NUBITS_SECRET_TEST;
+                else
+                    return NUBITS_SECRET;
+            default:
+                if (fTest)
+                    return DEFAULT_SECRET_TEST;
+                else
+                    return DEFAULT_SECRET;
+        }
+    }
+
+    bool IsValid(unsigned char cUnit) const
     {
         bool fExpectTestNet = false;
+        unsigned char cDetectedUnit = '?';
         switch(nVersion)
         {
-             case (128 + CBitcoinAddress::PUBKEY_ADDRESS):
+            case NUSHARES_SECRET:
+                cDetectedUnit = 'S';
+                break;
+            case NUSHARES_SECRET_TEST:
+                cDetectedUnit = 'S';
+                fExpectTestNet = true;
                 break;
 
-            case (128 + CBitcoinAddress::PUBKEY_ADDRESS_TEST):
+            case NUBITS_SECRET:
+                cDetectedUnit = 'B';
+                break;
+            case NUBITS_SECRET_TEST:
+                cDetectedUnit = 'B';
+                fExpectTestNet = true;
+                break;
+
+            case DEFAULT_SECRET:
+                break;
+            case DEFAULT_SECRET_TEST:
                 fExpectTestNet = true;
                 break;
 
             default:
                 return false;
         }
-        return fExpectTestNet == fTestNet && (vchData.size() == 32 || (vchData.size() == 33 && vchData[32] == 1));
+
+        bool fCorrectNetwork = fExpectTestNet == fTestNet;
+        bool fExpectedFormat = vchData.size() == 32 || (vchData.size() == 33 && vchData[32] == 1);
+        // The detected default version '?' is always valid, while the new versions must be explicitly set
+        bool fCorrectUnit = cDetectedUnit == '?' || cDetectedUnit == cUnit;
+
+        return fCorrectNetwork && fExpectedFormat && fCorrectUnit;
     }
 
-    bool SetString(const char* pszSecret)
+    bool SetString(const char* pszSecret, unsigned char cUnit)
     {
-        return CBase58Data::SetString(pszSecret) && IsValid();
+        return CBase58Data::SetString(pszSecret) && IsValid(cUnit);
     }
 
-    bool SetString(const std::string& strSecret)
+    bool SetString(const std::string& strSecret, unsigned char cUnit)
     {
-        return SetString(strSecret.c_str());
+        return SetString(strSecret.c_str(), cUnit);
     }
 
-    CBitcoinSecret(const CSecret& vchSecret, bool fCompressed)
+    CBitcoinSecret(const CSecret& vchSecret, bool fCompressed, unsigned char cUnit)
     {
-        SetSecret(vchSecret, fCompressed);
+        SetSecret(vchSecret, fCompressed, cUnit);
     }
 
     CBitcoinSecret()
@@ -657,7 +711,7 @@ public:
     }
 };
 
-class CPeercoinSecret : public CBitcoinSecret
+class CPeercoinSecret : public CBase58Data
 {
 public:
     void SetSecret(const CSecret& vchSecret, bool fCompressed)
