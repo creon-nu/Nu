@@ -1035,12 +1035,12 @@ Value sendtoaddress(const Array& params, bool fHelp)
     if (pwalletMain->IsCrypted() && (fHelp || params.size() < 2 || params.size() > 4))
         throw runtime_error(
             "sendtoaddress <address> <amount> [comment] [comment-to]\n"
-            "<amount> is a real and is rounded to the nearest 0.000001\n"
+            "<amount> is a real and is rounded to the nearest 0.0001\n"
             "requires portfolio passphrase to be set with walletpassphrase first");
     if (!pwalletMain->IsCrypted() && (fHelp || params.size() < 2 || params.size() > 4))
         throw runtime_error(
             "sendtoaddress <address> <amount> [comment] [comment-to]\n"
-            "<amount> is a real and is rounded to the nearest 0.000001");
+            "<amount> is a real and is rounded to the nearest 0.0001");
 
     CBitcoinAddress address(params[0].get_str());
     if (!address.IsValid(pwalletMain->GetUnit()))
@@ -1368,12 +1368,12 @@ Value sendfrom(const Array& params, bool fHelp)
     if (pwalletMain->IsCrypted() && (fHelp || params.size() < 3 || params.size() > 6))
         throw runtime_error(
             "sendfrom <fromaccount> <toaddress> <amount> [minconf=1] [comment] [comment-to]\n"
-            "<amount> is a real and is rounded to the nearest 0.000001\n"
+            "<amount> is a real and is rounded to the nearest 0.0001\n"
             "requires portfolio passphrase to be set with walletpassphrase first");
     if (!pwalletMain->IsCrypted() && (fHelp || params.size() < 3 || params.size() > 6))
         throw runtime_error(
             "sendfrom <fromaccount> <toaddress> <amount> [minconf=1] [comment] [comment-to]\n"
-            "<amount> is a real and is rounded to the nearest 0.000001");
+            "<amount> is a real and is rounded to the nearest 0.0001");
 
     string strAccount = AccountFromValue(params[0]);
     CBitcoinAddress address(params[1].get_str());
@@ -1414,14 +1414,14 @@ Value park(const Array& params, bool fHelp)
     if (pwalletMain->IsCrypted() && (fHelp || params.size() < 2 || params.size() > 5))
         throw runtime_error(
             "park <amount> <duration> [account=\"\"] [unparkaddress] [minconf=1]\n"
-            "<amount> is a real and is rounded to the nearest 0.000001\n"
+            "<amount> is a real and is rounded to the nearest 0.0001\n"
             "<duration> is the number of blocks during which the amount will be parked\n"
             "<unparkaddress> is the address to which the amount will be returned when they are unparked (default is the main address of the account)\n"
             "requires wallet passphrase to be set with walletpassphrase first");
     if (!pwalletMain->IsCrypted() && (fHelp || params.size() < 2 || params.size() > 5))
         throw runtime_error(
             "park <amount> <duration> [account=\"\"] [unparkaddress] [minconf=1]\n"
-            "<amount> is a real and is rounded to the nearest 0.000001\n"
+            "<amount> is a real and is rounded to the nearest 0.0001\n"
             "<duration> is the number of blocks during which the amount will be parked\n"
             "<unparkaddress> is the address to which the amount will be returned when they are unparked (default is the main address of the account)\n");
 
@@ -1468,7 +1468,7 @@ Value getpremium(const Array& params, bool fHelp)
     if (fHelp || params.size() != 2)
         throw runtime_error(
             "getpremium <amount> <duration>\n"
-            "<amount> is a real and is rounded to the nearest 0.000001\n"
+            "<amount> is a real and is rounded to the nearest 0.0001\n"
             "<duration> is the number of blocks during which the amount would be parked");
 
     int64 nAmount = AmountFromValue(params[0]);
@@ -4245,6 +4245,38 @@ Value getdatafeed(const Array& params, bool fHelp)
     return result;
 }
 
+Value burn(const Array& params, bool fHelp)
+{
+    if (pwalletMain->IsCrypted() && (fHelp || params.size() < 1 || params.size() > 2))
+        throw runtime_error(
+            "burn <amount> [comment]\n"
+            "<amount> is a real and is rounded to the nearest 0.0001\n"
+            "requires portfolio passphrase to be set with walletpassphrase first");
+    if (!pwalletMain->IsCrypted() && (fHelp || params.size() < 1 || params.size() > 2))
+        throw runtime_error(
+            "burn <amount> [comment]\n"
+            "<amount> is a real and is rounded to the nearest 0.0001");
+
+    // Amount
+    int64 nAmount = AmountFromValue(params[0]);
+    if (nAmount < pwalletMain->GetMinTxOutAmount())
+        throw JSONRPCError(-101, "Burn amount too small");
+
+    // Wallet comments
+    CWalletTx wtx;
+    if (params.size() > 1 && params[1].type() != null_type && !params[1].get_str().empty())
+        wtx.mapValue["comment"] = params[1].get_str();
+
+    if (pwalletMain->IsLocked())
+        throw JSONRPCError(-13, "Error: Please enter the portfolio passphrase with walletpassphrase first.");
+
+    string strError = pwalletMain->BurnMoney(nAmount, wtx);
+    if (strError != "")
+        throw JSONRPCError(-4, strError);
+
+    return wtx.GetHash().GetHex();
+}
+
 
 #ifdef TESTING
 
@@ -4556,6 +4588,7 @@ static const CRPCCommand vRPCCommands[] =
     { "getrawmempool",          &getrawmempool,          true },
     { "setdatafeed",            &setdatafeed,            true },
     { "getdatafeed",            &getdatafeed,            true },
+    { "burn",                   &burn,                   false },
 #ifdef TESTING
     { "generatestake",          &generatestake,          true },
     { "duplicateblock",         &duplicateblock,         true },
@@ -5391,6 +5424,7 @@ Array RPCConvertValues(const std::string &strMethod, const std::vector<std::stri
     if (strMethod == "getcustodianvotes"       && n > 1) ConvertTo<boost::int64_t>(params[1]);
     if (strMethod == "getparkvotes"            && n > 0) ConvertTo<boost::int64_t>(params[0]);
     if (strMethod == "getparkvotes"            && n > 1) ConvertTo<boost::int64_t>(params[1]);
+    if (strMethod == "burn"                    && n > 0) ConvertTo<double>(params[0]);
 #ifdef TESTING
     if (strMethod == "timetravel"              && n > 0) ConvertTo<boost::int64_t>(params[0]);
 #endif

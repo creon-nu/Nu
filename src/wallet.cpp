@@ -1383,6 +1383,84 @@ bool CWallet::CreateTransaction(CScript scriptPubKey, int64 nValue, CWalletTx& w
     return CreateTransaction(vecSend, wtxNew, reservekey, nFeeRet, coinControl);
 }
 
+bool CWallet::CreateBurnTransaction(int64 nBurnValue, CWalletTx& wtxNew, CReserveKey& reservekey, int64& nFeeRet, const CCoinControl* coinControl)
+{
+    if (nBurnValue < 0)
+        return false;
+
+    wtxNew.BindWallet(this);
+
+    {
+        LOCK2(cs_main, cs_wallet);
+        // txdb must be opened before the mapWallet lock
+        CTxDB txdb("r");
+        {
+            nFeeRet = GetMinTxFee();
+            loop
+            {
+                wtxNew.vin.clear();
+                wtxNew.vout.clear();
+                wtxNew.fFromMe = true;
+                wtxNew.cUnit = cUnit;
+
+                // Guarantee that there will be always a change output
+                int64 nMinChange = wtxNew.GetMinTxOutAmount();
+                int64 nBurnOrFee = max(nBurnValue, nFeeRet);
+                int64 nTotalValue = nBurnOrFee + nMinChange;
+
+                // Choose coins to use
+                set<pair<const CWalletTx*,unsigned int> > setCoins;
+                int64 nValueIn = 0;
+                if (!SelectCoins(nTotalValue, wtxNew.nTime, setCoins, nValueIn, coinControl))
+                    return false;
+
+                CScript scriptChange;
+                BOOST_FOREACH(PAIRTYPE(const CWalletTx*, unsigned int) pcoin, setCoins)
+                {
+                    scriptChange = pcoin.first->vout[pcoin.second].scriptPubKey;
+                }
+
+                // Set the change output
+                int64 nChange = nValueIn - nBurnOrFee;
+                assert(nChange >= nMinChange);
+                wtxNew.AddChange(nChange, scriptChange, coinControl, reservekey);
+
+                // Fill vin
+                BOOST_FOREACH(const PAIRTYPE(const CWalletTx*,unsigned int)& coin, setCoins)
+                    wtxNew.vin.push_back(CTxIn(coin.first->GetHash(),coin.second));
+
+                // Sign
+                int nIn = 0;
+                BOOST_FOREACH(const PAIRTYPE(const CWalletTx*,unsigned int)& coin, setCoins)
+                    if (!SignSignature(*this, *coin.first, wtxNew, nIn++))
+                        return false;
+
+                // Limit size
+                unsigned int nBytes = ::GetSerializeSize(*(CTransaction*)&wtxNew, SER_NETWORK, PROTOCOL_VERSION);
+                if (nBytes >= MAX_BLOCK_SIZE/4)
+                    return false;
+
+                // Check that enough fee is included
+                int64 nPayFee = wtxNew.GetUnitMinFee() * (1 + (int64)nBytes / 1000);
+                int64 nMinFee = wtxNew.GetMinFee(nBytes);
+
+                if (nBurnOrFee < max(nPayFee, nMinFee))
+                {
+                    nFeeRet = max(nPayFee, nMinFee);
+                    continue;
+                }
+
+                // Fill vtxPrev by copying from previous transactions vtxPrev
+                wtxNew.AddSupportingTransactions(txdb);
+                wtxNew.fTimeReceivedIsTxTime = true;
+
+                break;
+            }
+        }
+    }
+    return true;
+}
+
 static map<const CWalletTx*, uint256> mapTxHash;
 static map<const CWalletTx*, CTxIndex> mapTxIndex;
 static map<const CWalletTx*, CBlock> mapTxBlock;
@@ -1905,6 +1983,45 @@ std::string CWallet::Park(int64 nValue, int64 nDuration, const CBitcoinAddress& 
     return SendMoney(script, nValue, wtxNew, fAskFee);
 }
 
+
+string CWallet::BurnMoney(int64 nValue, CWalletTx& wtxNew, bool fAskFee)
+{
+    CReserveKey reservekey(this);
+    int64 nFeeRequired;
+
+    if (IsLocked())
+    {
+        string strError = _("Error: Portfolio locked, unable to create transaction  ");
+        printf("BurnMoney() : %s\n", strError.c_str());
+        return strError;
+    }
+    if (fWalletUnlockMintOnly)
+    {
+        string strError = _("Error: Portfolio unlocked for block minting only, unable to create transaction.");
+        printf("BurnMoney() : %s\n", strError.c_str());
+        return strError;
+    }
+    if (!CreateBurnTransaction(nValue, wtxNew, reservekey, nFeeRequired))
+    {
+        string strError;
+        if (nValue + nFeeRequired > GetBalance())
+            strError = strprintf(_("Error: This transaction requires a transaction fee of at least %s because of its amount, complexity, or use of recently received funds  "), FormatMoney(nFeeRequired).c_str());
+        else
+            strError = _("Error: Transaction creation failed  ");
+        printf("BurnMoney() : %s\n", strError.c_str());
+        return strError;
+    }
+
+    if (fAskFee && !ThreadSafeAskFee(nFeeRequired, _("Sending..."), wtxNew.cUnit))
+        return "ABORTED";
+
+
+    if (!CommitTransaction(wtxNew, reservekey))
+        return _("Error: The transaction was rejected.  This might happen if some of the shares in your portfolio were already spent, such as if you used a copy of wallet.dat and shares were spent in the copy but not marked as spent here.");
+
+    MainFrameRepaint();
+    return "";
+}
 
 
 int CWallet::LoadWallet(bool& fFirstRunRet)
