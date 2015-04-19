@@ -20,7 +20,7 @@ files:
 - "miniupnpc-1.9.tar.gz"
 - "qrencode-3.4.3.tar.bz2"
 - "db-4.8.30.NC.tar.gz"
-- "curl-7.39.0.tar.gz"
+- "curl-7.41.0.tar.gz"
 script: |
   STAGING="$HOME/install"
   TEMPDIR="$HOME/tmp"
@@ -34,7 +34,7 @@ script: |
   echo "2923e453e880bb949e3d4da9f83dd3cb6f08946d35de0b864d0339cf70934464  miniupnpc-1.9.tar.gz"   | sha256sum -c
   echo "dfd71487513c871bad485806bfd1fdb304dedc84d2b01a8fb8e0940b50597a98  qrencode-3.4.3.tar.bz2" | sha256sum -c
   echo "12edc0df75bf9abd7f82f821795bcee50f42cb2e5f76a6a281b85732798364ef  db-4.8.30.NC.tar.gz"    | sha256sum -c
-  echo "a3a7c2b9e7416c728469eb4cb5b61e9161335df4278329e1d9cc3c194e25d795  curl-7.39.0.tar.gz"     | sha256sum -c
+  echo "58c9f7cb1be9c26e6a2fd9326c14e054780dc4bb74b590a1d47fb3788a31535d  curl-7.41.0.tar.gz"     | sha256sum -c
 
 
   #
@@ -75,13 +75,29 @@ script: |
   make install_lib install_include
   cd ../..
 
-  tar xzf curl-7.39.0.tar.gz
-  cd curl-7.39.0
+  tar xzf curl-7.41.0.tar.gz
+  cd curl-7.41.0
   unset FAKETIME # unset fake time during configure, as it does some clock sanity tests
   ./configure --prefix=$STAGING \
-    --enable-static --disable-shared \
-    --disable-ftp --disable-file --disable-ldap --disable-ldaps --disable-rtsp --disable-dict \
-    --disable-tftp --disable-pop3 --disable-imap --disable-smtp --disable-gopher --disable-manual \
+    --enable-static \
+    --disable-shared \
+    --disable-ftp \
+    --disable-file \
+    --disable-ldap \
+    --disable-ldaps \
+    --disable-rtsp \
+    --disable-dict \
+    --disable-tftp \
+    --disable-pop3 \
+    --disable-imap \
+    --disable-smtp \
+    --disable-gopher \
+    --disable-manual \
+    --disable-smb \
+    --disable-libcurl-option \
+    --disable-threaded-resolver \
+    --enable-versioned-symbols \
+    --enable-soname-bump \
     --disable-telnet \
     --disable-cookies \
     --disable-sspi \
@@ -92,7 +108,10 @@ script: |
     --without-winidn \
     --without-libidn \
     --without-darwinssl \
+    --without-libmetalink \
     --without-curl \
+    --disable-tls-srp \
+    --disable-unix-sockets \
     --with-ssl=$STAGING
   # Workaround to prevent re-configuring by make; make all files have a date in the past
   find . -print0 | xargs -r0 touch -t 200001010000
