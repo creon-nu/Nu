@@ -79,9 +79,25 @@ script: |
   cd curl-7.41.0
   unset FAKETIME # unset fake time during configure, as it does some clock sanity tests
   ./configure --prefix=$STAGING \
-    --enable-static --disable-shared \
-    --disable-ftp --disable-file --disable-ldap --disable-ldaps --disable-rtsp --disable-dict \
-    --disable-tftp --disable-pop3 --disable-imap --disable-smtp --disable-gopher --disable-manual \
+    --enable-static \
+    --disable-shared \
+    --disable-ftp \
+    --disable-file \
+    --disable-ldap \
+    --disable-ldaps \
+    --disable-rtsp \
+    --disable-dict \
+    --disable-tftp \
+    --disable-pop3 \
+    --disable-imap \
+    --disable-smtp \
+    --disable-gopher \
+    --disable-manual \
+    --disable-smb \
+    --disable-libcurl-option \
+    --disable-threaded-resolver \
+    --enable-versioned-symbols \
+    --enable-soname-bump \
     --disable-telnet \
     --disable-cookies \
     --disable-sspi \
@@ -92,6 +108,7 @@ script: |
     --without-winidn \
     --without-libidn \
     --without-darwinssl \
+    --without-libmetalink \
     --without-curl \
     --disable-tls-srp \
     --disable-unix-sockets \
