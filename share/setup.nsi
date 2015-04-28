@@ -5,7 +5,7 @@ SetCompressor /SOLID lzma
 
 # General Symbol Definitions
 !define REGKEY "SOFTWARE\$(^Name)"
-!define VERSION 1.0.1
+!define VERSION 1.1.0
 !define COMPANY "Nu project"
 !define URL http://www.NuBits.com/
 
