@@ -4252,30 +4252,39 @@ Value getdatafeed(const Array& params, bool fHelp)
 
 Value burn(const Array& params, bool fHelp)
 {
-    if (pwalletMain->IsCrypted() && (fHelp || params.size() < 1 || params.size() > 2))
+    if (fHelp || params.size() < 2 || params.size() > 3)
         throw runtime_error(
-            "burn <amount> [comment]\n"
+            "burn <amount> <unit> [comment]\n"
             "<amount> is a real and is rounded to the nearest 0.0001\n"
+            "<unit> is the unit to burn ('B' for NuBits, 'S' for NuShares).\n"
             "requires portfolio passphrase to be set with walletpassphrase first");
-    if (!pwalletMain->IsCrypted() && (fHelp || params.size() < 1 || params.size() > 2))
-        throw runtime_error(
-            "burn <amount> [comment]\n"
-            "<amount> is a real and is rounded to the nearest 0.0001");
 
     // Amount
     int64 nAmount = AmountFromValue(params[0]);
-    if (nAmount < pwalletMain->GetMinTxOutAmount())
+
+    // Unit
+    if (params[1].get_str().size() != 1)
+        throw JSONRPCError(-101, "Invalid unit length");
+    unsigned char cUnit = params[1].get_str()[0];
+    if (!ValidUnit(cUnit))
+        throw JSONRPCError(-101, "Invalid unit");
+
+    CWallet* pwallet = GetWallet(cUnit);
+    if (!pwallet)
+        throw JSONRPCError(-101, "Failed to get wallet");
+
+    if (nAmount < pwallet->GetMinTxOutAmount())
         throw JSONRPCError(-101, "Burn amount too small");
 
     // Wallet comments
     CWalletTx wtx;
-    if (params.size() > 1 && params[1].type() != null_type && !params[1].get_str().empty())
-        wtx.mapValue["comment"] = params[1].get_str();
+    if (params.size() > 2 && params[2].type() != null_type && !params[2].get_str().empty())
+        wtx.mapValue["comment"] = params[2].get_str();
 
-    if (pwalletMain->IsLocked())
+    if (pwallet->IsLocked())
         throw JSONRPCError(-13, "Error: Please enter the portfolio passphrase with walletpassphrase first.");
 
-    string strError = pwalletMain->BurnMoney(nAmount, wtx);
+    string strError = pwallet->BurnMoney(nAmount, wtx);
     if (strError != "")
         throw JSONRPCError(-4, strError);
 
