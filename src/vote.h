@@ -135,6 +135,11 @@ inline bool ParkRateRange(int64 nRate)
     return (nRate >= 0 && nRate <= MAX_PARK_RATE);
 }
 
+inline int64 CompactDurationToDuration(unsigned char nCompactDuration)
+{
+    return 1 << nCompactDuration;
+}
+
 class CParkRate
 {
 public:
@@ -165,7 +170,7 @@ public:
     {
         if (!CompactDurationRange(nCompactDuration))
             throw std::runtime_error("Park rate compact duration out of range");
-        return 1 << nCompactDuration;
+        return CompactDurationToDuration(nCompactDuration);
     }
 
     friend bool operator==(const CParkRate& a, const CParkRate& b)
@@ -337,7 +342,8 @@ bool ExtractParkRateResult(const CScript& scriptPubKey, CParkRateVote& parkRateR
 bool ExtractParkRateResults(const CBlock& block, std::vector<CParkRateVote>& vParkRateResultRet);
 
 bool CalculateParkRateVote(const std::vector<CVote>& vVote, std::vector<CParkRateVote>& results);
-bool LimitParkRateChange(std::vector<CParkRateVote>& results, const std::map<unsigned char, std::vector<const CParkRateVote*> >& mapPreviousVotes);
+bool LimitParkRateChangeV05(std::vector<CParkRateVote>& results, const std::map<unsigned char, std::vector<const CParkRateVote*> >& mapPreviousVotes);
+bool LimitParkRateChangeV06(std::vector<CParkRateVote>& results, const std::map<unsigned char, const CParkRateVote*>& mapPreviousVotedRate);
 bool CalculateParkRateResults(const CVote &vote, const CBlockIndex *pindexprev, std::vector<CParkRateVote>& vParkRateResult);
 int64 GetPremium(int64 nValue, int64 nDuration, unsigned char cUnit, const std::vector<CParkRateVote>& vParkRateResult);
 

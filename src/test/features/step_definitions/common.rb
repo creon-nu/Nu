@@ -21,6 +21,11 @@ def time_travel(seconds)
   end
 end
 
+def time_travel_to(time)
+  seconds = (time - @time).to_i
+  time_travel(seconds)
+end
+
 Given(/^a network with nodes? (.+)(?: able to mint)?$/) do |node_names|
   node_names = node_names.scan(/"(.*?)"/).map(&:first)
   available_nodes = %w( a b c d e )
@@ -681,4 +686,10 @@ Then(/^node "(.*?)" should stay at (\d+) transactions in memory pool$/) do |arg1
   expect(node.rpc("getmininginfo")["pooledtx"]).to eq(count)
   sleep 2
   expect(node.rpc("getmininginfo")["pooledtx"]).to eq(count)
+end
+
+When(/^the time changes to protocol V06 switch time$/) do
+  switch_time = File.read(File.expand_path("../../../../main.cpp", __FILE__)).scan(/unsigned int nNuProtocolV06TestSwitchTime = (\d+);/).first.first
+  switch_time = Time.at(switch_time.to_i)
+  time_travel_to(switch_time)
 end

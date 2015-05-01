@@ -265,7 +265,7 @@ bool CalculateParkRateVote(const std::vector<CVote>& vVote, std::vector<CParkRat
     return true;
 }
 
-bool LimitParkRateChange(std::vector<CParkRateVote>& results, const std::map<unsigned char, std::vector<const CParkRateVote*> >& mapPreviousRates)
+bool LimitParkRateChangeV05(std::vector<CParkRateVote>& results, const std::map<unsigned char, std::vector<const CParkRateVote*> >& mapPreviousRates)
 {
     map<unsigned char, unsigned int> minPreviousRates;
 
@@ -319,6 +319,94 @@ bool LimitParkRateChange(std::vector<CParkRateVote>& results, const std::map<uns
     return true;
 }
 
+bool LimitParkRateChangeV06(std::vector<CParkRateVote>& results, const std::map<unsigned char, const CParkRateVote*>& mapPreviousVotedRate)
+{
+    map<unsigned char, unsigned int> mapPreviousRate;
+    set<unsigned char> setCompactDuration;
+
+    if (mapPreviousVotedRate.count('B'))
+    {
+        const CParkRateVote* parkRateVote = mapPreviousVotedRate.find('B')->second;
+        BOOST_FOREACH(const CParkRate& parkRate, parkRateVote->vParkRate)
+        {
+            mapPreviousRate[parkRate.nCompactDuration] = parkRate.nRate;
+            setCompactDuration.insert(parkRate.nCompactDuration);
+        }
+    }
+
+    vector<CParkRate>* presult = NULL;
+    BOOST_FOREACH(CParkRateVote& parkRateVote, results)
+    {
+        if (parkRateVote.cUnit == 'B')
+        {
+            presult = &parkRateVote.vParkRate;
+            break;
+        }
+    }
+
+    if (presult == NULL)
+        return true;
+
+    vector<CParkRate>& result = *presult;
+
+    map<unsigned char, CParkRate*> mapParkRate;
+    BOOST_FOREACH(CParkRate& parkRate, result)
+    {
+        mapParkRate[parkRate.nCompactDuration] = &parkRate;
+        setCompactDuration.insert(parkRate.nCompactDuration);
+    }
+
+    vector<CParkRate> vNewParkRate;
+
+    BOOST_FOREACH(unsigned char nCompactDuration, setCompactDuration)
+    {
+        CParkRate* pparkRate = mapParkRate[nCompactDuration];
+        int64 votedRate = 0;
+        if (pparkRate)
+            votedRate = pparkRate->nRate;
+
+        const int64 previous = mapPreviousRate[nCompactDuration];
+        const int64 duration = CompactDurationToDuration(nCompactDuration);
+        const int64 secondsInYear = (int64)60 * 60 * 24 * 36525 / 100;
+        const int64 blocksInYear = secondsInYear / STAKE_TARGET_SPACING;
+        const int64 parkRateEncodedPercentage = COIN_PARK_RATE / CENT;
+
+        // maximum increase per block is 0.002% of annual interest rate
+        const int64 maxIncreasePercentage = parkRateEncodedPercentage * 2 / 1000; // 0.002 %
+        assert(maxIncreasePercentage < ((int64)1 << 62) / ((int64)1 << MAX_COMPACT_DURATION)); // to avoid overflow
+        const int64 maxIncrease = maxIncreasePercentage * duration / blocksInYear;
+
+        // maximum decrease per block is 0.004% of annual interest rate
+        const int64 maxDecreasePercentage = parkRateEncodedPercentage * 4 / 1000; // 0.004 %
+        assert(maxDecreasePercentage < ((int64)1 << 62) / ((int64)1 << MAX_COMPACT_DURATION)); // to avoid overflow
+        const int64 maxDecrease = maxDecreasePercentage * duration / blocksInYear;
+
+        if (votedRate > previous + maxIncrease)
+        {
+            assert(pparkRate);
+            pparkRate->nRate = previous + maxIncrease;
+        }
+
+        if (votedRate < previous - maxDecrease)
+        {
+            if (pparkRate)
+                pparkRate->nRate = previous - maxDecrease;
+            else
+                vNewParkRate.push_back(CParkRate(nCompactDuration, previous - maxDecrease));
+        }
+    }
+
+    BOOST_FOREACH(const CParkRate& parkRate, vNewParkRate)
+    {
+        vector<CParkRate>::iterator it = result.begin();
+        while (it != result.end() && it->nCompactDuration < parkRate.nCompactDuration)
+            it++;
+        result.insert(it, parkRate);
+    }
+
+    return true;
+}
+
 bool CalculateParkRateResults(const CVote &vote, const CBlockIndex *pindexprev, std::vector<CParkRateVote>& vParkRateResult)
 {
     vector<CVote> vVote;
@@ -336,28 +424,38 @@ bool CalculateParkRateResults(const CVote &vote, const CBlockIndex *pindexprev, 
     if (!CalculateParkRateVote(vVote, vParkRateResult))
         return false;
 
-    map<unsigned char, vector<const CParkRateVote*> > mapPreviousRates;
-    BOOST_FOREACH(unsigned char cUnit, sAvailableUnits)
+    if (IsNuProtocolV06(pindexprev->nTime))
     {
-        if (cUnit != 'S')
-            mapPreviousRates[cUnit].reserve(PARK_RATE_PREVIOUS_VOTES);
-    }
-
-    pindex = pindexprev;
-    for (int i=0; i<PARK_RATE_VOTES-1 && pindex; i++)
-    {
-        BOOST_FOREACH(const CParkRateVote& previousRate, pindex->vParkRateResult)
+        map<unsigned char, const CParkRateVote*> mapPreviousRate;
+        BOOST_FOREACH(const CParkRateVote& previousRate, pindexprev->vParkRateResult)
         {
-            vector<const CParkRateVote*>& unitPreviousRates = mapPreviousRates[previousRate.cUnit];
-            if (unitPreviousRates.size() < PARK_RATE_PREVIOUS_VOTES)
-                mapPreviousRates[previousRate.cUnit].push_back(&previousRate);
+            mapPreviousRate[previousRate.cUnit] = &previousRate;
+        }
+        if (!LimitParkRateChangeV06(vParkRateResult, mapPreviousRate))
+            return false;
+    }
+    else
+    {
+        map<unsigned char, vector<const CParkRateVote*> > mapPreviousRates;
+        BOOST_FOREACH(unsigned char cUnit, sAvailableUnits)
+        {
+            if (cUnit != 'S')
+                mapPreviousRates[cUnit].reserve(PARK_RATE_PREVIOUS_VOTES);
         }
 
-        pindex = pindex->pprev;
+        pindex = pindexprev;
+        for (int i=0; i<PARK_RATE_PREVIOUS_VOTES && pindex; i++)
+        {
+            BOOST_FOREACH(const CParkRateVote& previousRate, pindex->vParkRateResult)
+                mapPreviousRates[previousRate.cUnit].push_back(&previousRate);
+
+            pindex = pindex->pprev;
+        }
+
+        if (!LimitParkRateChangeV05(vParkRateResult, mapPreviousRates))
+            return false;
     }
 
-    if (!LimitParkRateChange(vParkRateResult, mapPreviousRates))
-        return false;
     return true;
 }
 
