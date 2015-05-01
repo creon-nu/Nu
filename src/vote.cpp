@@ -195,7 +195,7 @@ static int64 AddRateWeight(const int64& totalWeight, const RateWeight& rateWeigh
     return totalWeight + rateWeight.second;
 }
 
-bool CalculateParkRateResults(const std::vector<CVote>& vVote, const std::map<unsigned char, std::vector<const CParkRateVote*> >& mapPreviousRates, std::vector<CParkRateVote>& results)
+bool CalculateParkRateVote(const std::vector<CVote>& vVote, std::vector<CParkRateVote>& results)
 {
     results.clear();
 
@@ -257,6 +257,16 @@ bool CalculateParkRateResults(const std::vector<CVote>& vVote, const std::map<un
         }
     }
 
+    CParkRateVote parkRateVote;
+    parkRateVote.cUnit = 'B';
+    parkRateVote.vParkRate = result;
+    results.push_back(parkRateVote);
+
+    return true;
+}
+
+bool LimitParkRateChange(std::vector<CParkRateVote>& results, const std::map<unsigned char, std::vector<const CParkRateVote*> >& mapPreviousRates)
+{
     map<unsigned char, unsigned int> minPreviousRates;
 
     if (mapPreviousRates.count('B'))
@@ -276,6 +286,21 @@ bool CalculateParkRateResults(const std::vector<CVote>& vVote, const std::map<un
         }
     }
 
+    vector<CParkRate>* presult = NULL;
+    BOOST_FOREACH(CParkRateVote& parkRateVote, results)
+    {
+        if (parkRateVote.cUnit == 'B')
+        {
+            presult = &parkRateVote.vParkRate;
+            break;
+        }
+    }
+
+    if (presult == NULL)
+        return true;
+
+    vector<CParkRate>& result = *presult;
+
     BOOST_FOREACH(CParkRate& parkRate, result)
     {
         const int64 previousMin = minPreviousRates[parkRate.nCompactDuration];
@@ -291,11 +316,6 @@ bool CalculateParkRateResults(const std::vector<CVote>& vVote, const std::map<un
             parkRate.nRate = previousMin + maxIncrease;
     }
 
-    CParkRateVote parkRateVote;
-    parkRateVote.cUnit = 'B';
-    parkRateVote.vParkRate = result;
-    results.push_back(parkRateVote);
-
     return true;
 }
 
@@ -305,6 +325,17 @@ bool CalculateParkRateResults(const CVote &vote, const CBlockIndex *pindexprev, 
     vVote.reserve(PARK_RATE_VOTES);
     vVote.push_back(vote);
 
+    const CBlockIndex *pindex = pindexprev;
+    for (int i=0; i<PARK_RATE_VOTES-1 && pindex; i++)
+    {
+        if (pindex->IsProofOfStake())
+            vVote.push_back(pindex->vote);
+        pindex = pindex->pprev;
+    }
+
+    if (!CalculateParkRateVote(vVote, vParkRateResult))
+        return false;
+
     map<unsigned char, vector<const CParkRateVote*> > mapPreviousRates;
     BOOST_FOREACH(unsigned char cUnit, sAvailableUnits)
     {
@@ -312,12 +343,9 @@ bool CalculateParkRateResults(const CVote &vote, const CBlockIndex *pindexprev, 
             mapPreviousRates[cUnit].reserve(PARK_RATE_PREVIOUS_VOTES);
     }
 
-    const CBlockIndex *pindex = pindexprev;
+    pindex = pindexprev;
     for (int i=0; i<PARK_RATE_VOTES-1 && pindex; i++)
     {
-        if (pindex->IsProofOfStake())
-            vVote.push_back(pindex->vote);
-
         BOOST_FOREACH(const CParkRateVote& previousRate, pindex->vParkRateResult)
         {
             vector<const CParkRateVote*>& unitPreviousRates = mapPreviousRates[previousRate.cUnit];
@@ -328,7 +356,9 @@ bool CalculateParkRateResults(const CVote &vote, const CBlockIndex *pindexprev, 
         pindex = pindex->pprev;
     }
 
-    return CalculateParkRateResults(vVote, mapPreviousRates, vParkRateResult);
+    if (!LimitParkRateChange(vParkRateResult, mapPreviousRates))
+        return false;
+    return true;
 }
 
 bool CParkRateVote::IsValid() const

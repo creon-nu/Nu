@@ -336,7 +336,8 @@ bool IsParkRateResult(const CScript& scriptPubKey);
 bool ExtractParkRateResult(const CScript& scriptPubKey, CParkRateVote& parkRateResultRet);
 bool ExtractParkRateResults(const CBlock& block, std::vector<CParkRateVote>& vParkRateResultRet);
 
-bool CalculateParkRateResults(const std::vector<CVote>& vVote, const std::map<unsigned char, std::vector<const CParkRateVote*> >& mapPreviousVotes, std::vector<CParkRateVote>& results);
+bool CalculateParkRateVote(const std::vector<CVote>& vVote, std::vector<CParkRateVote>& results);
+bool LimitParkRateChange(std::vector<CParkRateVote>& results, const std::map<unsigned char, std::vector<const CParkRateVote*> >& mapPreviousVotes);
 bool CalculateParkRateResults(const CVote &vote, const CBlockIndex *pindexprev, std::vector<CParkRateVote>& vParkRateResult);
 int64 GetPremium(int64 nValue, int64 nDuration, unsigned char cUnit, const std::vector<CParkRateVote>& vParkRateResult);
 
