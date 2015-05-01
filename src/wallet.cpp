@@ -1909,7 +1909,7 @@ string CWallet::SendMoney(CScript scriptPubKey, int64 nValue, CWalletTx& wtxNew,
     {
         string strError;
         if (nValue + nFeeRequired > GetBalance())
-            strError = strprintf(_("Error: This transaction requires a transaction fee of at least %s because of its amount, complexity, or use of recently received funds  "), FormatMoney(nFeeRequired).c_str());
+            strError = strprintf(_("Error: Not enough funds. This transaction requires a transaction fee of at least %s  "), FormatMoney(nFeeRequired).c_str());
         else
             strError = _("Error: Transaction creation failed  ");
         printf("SendMoney() : %s\n", strError.c_str());
@@ -2012,7 +2012,7 @@ string CWallet::BurnMoney(int64 nValue, CWalletTx& wtxNew, bool fAskFee)
     {
         string strError;
         if (nValue + nFeeRequired > GetBalance())
-            strError = strprintf(_("Error: This transaction requires a transaction fee of at least %s because of its amount, complexity, or use of recently received funds  "), FormatMoney(nFeeRequired).c_str());
+            strError = strprintf(_("Error: Not enough funds. This transaction requires a transaction fee of at least %s  "), FormatMoney(nFeeRequired).c_str());
         else
             strError = _("Error: Transaction creation failed  ");
         printf("BurnMoney() : %s\n", strError.c_str());
