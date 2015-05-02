@@ -26,9 +26,17 @@ using namespace boost;
 unsigned int nNuProtocolV05SwitchTime     = 1415368800; // 2014-11-07 14:00:00 UTC
 unsigned int nNuProtocolV05TestSwitchTime = 1414195200; // 2014-10-25 00:00:00 UTC
 
+unsigned int nNuProtocolV06SwitchTime     = 1433167200; // 2015-06-01 14:00:00 UTC
+unsigned int nNuProtocolV06TestSwitchTime = 1433167200; // 2015-06-01 14:00:00 UTC
+
 bool IsNuProtocolV05(int64 nTimeBlock)
 {
     return (nTimeBlock >= (fTestNet? nNuProtocolV05TestSwitchTime : nNuProtocolV05SwitchTime));
+}
+
+bool IsNuProtocolV06(int64 nTimeBlock)
+{
+    return (nTimeBlock >= (fTestNet? nNuProtocolV06TestSwitchTime : nNuProtocolV06SwitchTime));
 }
 
 CCriticalSection cs_setpwalletRegistered;
