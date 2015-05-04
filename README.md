@@ -1,3 +1,4 @@
+[![Build Status](https://drone.io/github.com/NuCommunity/Nu/status.png)](https://drone.io/github.com/NuCommunity/Nu/latest)
 
 Nu Official Development Repo
 ==================================
